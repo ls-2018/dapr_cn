@@ -13,7 +13,9 @@ import (
 	"github.com/pkg/errors"
 )
 
+//以dns*开头的const和vars取自:
 // The consts and vars beginning with dns* were taken from: https://github.com/kubernetes/apimachinery/blob/fc49b38c19f02a58ebc476347e622142f19820b9/pkg/util/validation/validation.go
+// annotations 需要满足k8s格式的的要求
 const (
 	dns1123LabelFmt       string = "[a-z0-9]([-a-z0-9]*[a-z0-9])?"
 	dns1123LabelErrMsg    string = "a lowercase RFC 1123 label must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character"
@@ -22,7 +24,7 @@ const (
 
 var dns1123LabelRegexp = regexp.MustCompile("^" + dns1123LabelFmt + "$")
 
-// ValidateKubernetesAppID returns a bool that indicates whether a dapr app id is valid for the Kubernetes platform.
+// ValidateKubernetesAppID 返回一个bool值，指示dapp id对Kubernetes平台是否有效。
 func ValidateKubernetesAppID(appID string) error {
 	if appID == "" {
 		return errors.New("value for the dapr.io/app-id annotation is empty")

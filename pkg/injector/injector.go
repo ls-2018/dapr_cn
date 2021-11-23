@@ -44,7 +44,7 @@ var allowedControllersServiceAccounts = []string{
 	"daemon-set-controller",
 }
 
-// Injector is the interface for the Dapr runtime sidecar injection component.
+// Injector 是Dapr运行时sidecar注入组件的接口。
 type Injector interface {
 	Run(ctx context.Context)
 }
@@ -87,7 +87,7 @@ func getAppIDFromRequest(req *v1.AdmissionRequest) string {
 	return appID
 }
 
-// NewInjector returns a new Injector instance with the given config.
+// NewInjector 返回注入实例
 func NewInjector(authUIDs []string, config Config, daprClient scheme.Interface, kubeClient kubernetes.Interface) Injector {
 	mux := http.NewServeMux()
 
@@ -168,7 +168,7 @@ func (i *injector) Run(ctx context.Context) {
 
 func (i *injector) handleRequest(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-
+	// sidecar计数+1
 	monitoring.RecordSidecarInjectionRequestsCount()
 
 	var body []byte
@@ -205,6 +205,7 @@ func (i *injector) handleRequest(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Errorf("Can't decode body: %v", err)
 	} else {
+		//authUIDs：system名称空间下各副本控制器的UUID
 		if !(utils.StringSliceContains(ar.Request.UserInfo.UID, i.authUIDs) || utils.StringSliceContains(systemGroup, ar.Request.UserInfo.Groups)) {
 			log.Errorf("service account '%s' not on the list of allowed controller accounts", ar.Request.UserInfo.Username)
 		} else if ar.Request.Kind.Kind != "Pod" {

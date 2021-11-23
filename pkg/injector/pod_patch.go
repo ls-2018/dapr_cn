@@ -25,7 +25,7 @@ import (
 	"github.com/dapr/dapr/pkg/credentials"
 	auth "github.com/dapr/dapr/pkg/runtime/security"
 	"github.com/dapr/dapr/pkg/sentry/certs"
-	"github.com/dapr/dapr/pkg/validation"
+	"github.com/dapr/dapr/pkg/validation" // ok
 	"github.com/dapr/dapr/utils"
 )
 
@@ -104,6 +104,7 @@ const (
 	defaultDaprHTTPStreamRequestBody  = false
 )
 
+// 获取pod的操作类型
 func (i *injector) getPodPatchOperations(ar *v1.AdmissionReview,
 	namespace, image, imagePullPolicy string, kubeClient kubernetes.Interface, daprClient scheme.Interface) ([]PatchOperation, error) {
 	req := ar.Request
@@ -124,12 +125,13 @@ func (i *injector) getPodPatchOperations(ar *v1.AdmissionReview,
 		req.Operation,
 		req.UserInfo,
 	)
-
+	// 是否启用dapr || pod是否包含daprd 容器，通过名字
 	if !isResourceDaprEnabled(pod.Annotations) || podContainsSidecarContainer(&pod) {
 		return nil, nil
 	}
-
+	// 获取 pod 所代表的应用名字
 	id := getAppID(pod)
+	// 验证 app id 是否满足k8s文件规定的格式
 	err := validation.ValidateKubernetesAppID(id)
 	if err != nil {
 		return nil, err
