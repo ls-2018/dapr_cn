@@ -1,0 +1,78 @@
+# ------------------------------------------------------------
+# Copyright (c) Microsoft Corporation and Dapr Contributors.
+# Licensed under the MIT License.
+# ------------------------------------------------------------
+
+FROM golang:1.17-buster
+
+# Optionally install zsh shell.
+ARG INSTALL_ZSH="false"
+
+# This Dockerfile adds a non-root 'dapr' user with sudo access. However, for Linux,
+# this user's GID/UID must match your local user UID/GID to avoid permission issues
+# with bind mounts. Update USER_UID / USER_GID if yours is not 1000. See
+# https://aka.ms/vscode-remote/containers/non-root-user for details.
+ARG USERNAME=dapr
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+
+ARG KUBECTL_VERSION="latest"
+ARG HELM_VERSION="latest"
+ARG MINIKUBE_VERSION="latest"
+ARG DAPR_CLI_VERSION=""
+
+# Configure environment variables and pathing for dev tools.
+# Defaults to bash shell since the Dapr tutorials assume it, but zsh is optionally installed.
+ENV SHELL=/bin/bash \
+    DEBIAN_FRONTEND=noninteractive
+
+# Setup image using library scripts and configure non-root user.
+COPY library-scripts/* custom-scripts/* first-run-notice.txt /tmp/staging/
+RUN apt-get update \
+    #
+    # Install Ubuntu packages for less minimal Codespaces dev environment.
+    && bash /tmp/staging/common-debian.sh "${INSTALL_ZSH}" "${USERNAME}" "${USER_UID}" "${USER_GID}" "true" "true" "true" \
+    #
+    # Additional custom configurations for non-root user.
+    && bash /tmp/staging/setup-user.sh "${USERNAME}" "${PATH}" \
+    #
+    # Install Docker CE CLI and Engine for Docker-in-Docker.
+    && bash /tmp/staging/docker-in-docker-debian.sh "true" "${USERNAME}" "false" \
+    #
+    # Install Kubectl, Helm and Minkikube.
+    && bash /tmp/staging/kubectl-helm-debian.sh "${KUBECTL_VERSION}" "${HELM_VERSION}" "${MINIKUBE_VERSION}" \
+    #
+    # Install Go tools.
+    && bash /tmp/staging/install-go-tools.sh "${USERNAME}" \
+    #
+    # Install protoc compiler.
+    && LATEST_PROTOC_URL=$(curl -s https://api.github.com/repos/protocolbuffers/protobuf/releases/latest | grep -oP '"browser_download_url": "\K(.*)(?=")' | grep "protoc-.*-linux-x86_64") \
+    && wget -q -O /tmp/staging/protoc-latest.zip ${LATEST_PROTOC_URL} \
+    && unzip /tmp/staging/protoc-latest.zip -d /tmp/staging/protoc \
+    && chmod -R 755 /tmp/staging/protoc \
+    && mv /tmp/staging/protoc/include/* /usr/local/include \
+    && mv /tmp/staging/protoc/bin/* /usr/local/bin \
+    #
+    # Install Dapr CLI.
+    && wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s "${DAPR_CLI_VERSION}" \
+    #
+    # Copy devcontainer init, Docker bind-mount and GOPATH setup scripts
+    && mv -f -t /usr/local/share/ /tmp/staging/docker-bind-mount.sh /tmp/staging/devcontainer-init.sh /tmp/staging/setup-gopath.sh \
+    && chmod +x /usr/local/share/docker-bind-mount.sh /usr/local/share/devcontainer-init.sh /usr/local/share/setup-gopath.sh \
+    && chown ${USERNAME}:root /usr/local/share/docker-bind-mount.sh /usr/local/share/devcontainer-init.sh /usr/local/share/setup-gopath.sh \
+    #
+    # Move the first run notice to the correct location for Codespaces.
+    && mkdir -p /usr/local/etc/vscode-dev-containers/ \
+    && mv -f /tmp/staging/first-run-notice.txt /usr/local/etc/vscode-dev-containers/ \
+    #
+    # Clean up packages and the staging folder.
+    && apt-get autoremove -y && apt-get clean -y && rm -rf /tmp/staging
+
+# Mount for docker-in-docker
+VOLUME [ "/var/lib/docker" ]
+
+# Initialize Dapr devcontainer script
+ENTRYPOINT [ "/usr/local/share/devcontainer-init.sh" ]
+CMD [ "sleep", "infinity" ]
+
+USER ${USERNAME}
