@@ -169,7 +169,7 @@ type FeatureSpec struct {
 
 // +kubebuilder:object:root=true
 
-// ConfigurationList is a list of Dapr event sources.
+// ConfigurationList dapr事件列表
 type ConfigurationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`

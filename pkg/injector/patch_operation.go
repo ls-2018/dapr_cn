@@ -14,7 +14,7 @@ type PatchOperation struct {
 
 // 		{
 //            "op": "add",
-//            "path": "/spec/containers/-",
+//            "path": "/spec/containers/-", 固定写法
 //            "value": {
 //                "name": "flask-injector",
 //                "image": "centos:7",

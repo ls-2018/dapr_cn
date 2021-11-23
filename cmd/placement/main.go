@@ -33,7 +33,10 @@ const gracefulTimeout = 10 * time.Second
 // 1. 稳定的路由
 // 2. 状态
 // 3. 处理是单线程
-
+//
+//api: 50005/TCP
+//raft-node: 8201/TCP
+//metrics: 9090/TCP
 func main() {
 	log.Info(os.Getpid())
 	logger.DaprVersion = version.Version()

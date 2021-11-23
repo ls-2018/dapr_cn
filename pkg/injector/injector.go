@@ -211,13 +211,14 @@ func (i *injector) handleRequest(w http.ResponseWriter, r *http.Request) {
 		} else if ar.Request.Kind.Kind != "Pod" {
 			log.Errorf("invalid kind for review: %s", ar.Kind)
 		} else {
+			// 获取到处理之后的所有patch
 			patchOps, err = i.getPodPatchOperations(&ar, i.config.Namespace, i.config.SidecarImage, i.config.SidecarImagePullPolicy, i.kubeClient, i.daprClient)
 			if err == nil {
 				patchedSuccessfully = true
 			}
 		}
 	}
-
+	// 诊断APP ID
 	diagAppID := getAppIDFromRequest(ar.Request)
 
 	if err != nil {
@@ -225,6 +226,7 @@ func (i *injector) handleRequest(w http.ResponseWriter, r *http.Request) {
 		log.Errorf("Sidecar injector failed to inject for app '%s'. Error: %s", diagAppID, err)
 		monitoring.RecordFailedSidecarInjectionCount(diagAppID, "patch")
 	} else if len(patchOps) == 0 {
+		// 不做修改，直接通过
 		admissionResponse = &v1.AdmissionResponse{
 			Allowed: true,
 		}
@@ -238,18 +240,20 @@ func (i *injector) handleRequest(w http.ResponseWriter, r *http.Request) {
 				Allowed: true,
 				Patch:   patchBytes,
 				PatchType: func() *v1.PatchType {
+					// 因为不能返回常量的地址
 					pt := v1.PatchTypeJSONPatch
 					return &pt
 				}(),
 			}
 		}
 	}
-
+ 	//将admissionResponse 封装成admissionReview
 	admissionReview := v1.AdmissionReview{}
 	if admissionResponse != nil {
 		admissionReview.Response = admissionResponse
 		if ar.Request != nil {
 			admissionReview.Response.UID = ar.Request.UID
+			//满足所有嵌入TypeMeta的对象的ObjectKind接口
 			admissionReview.SetGroupVersionKind(*gvk)
 		}
 	}
