@@ -13,7 +13,7 @@ import (
 	k8s "github.com/dapr/dapr/pkg/sentry/kubernetes"
 	"github.com/dapr/dapr/pkg/sentry/monitoring"
 	"github.com/dapr/dapr/pkg/sentry/server"
-	"github.com/dapr/kit/logger"
+	"github.com/dapr/kit/logger" // ok
 )
 
 var log = logger.NewLogger("dapr.sentry")
@@ -28,12 +28,12 @@ type sentry struct {
 	reloading bool
 }
 
-// NewSentryCA returns a new Sentry Certificate Authority instance.
+// NewSentryCA  返回一个Sentry认证的实例
 func NewSentryCA() CertificateAuthority {
 	return &sentry{}
 }
 
-// Run loads the trust anchors and issuer certs, creates a new CA and runs the CA server.
+// Run 加载信任锚和颁发者证书，创建新的CA并运行CA服务器。
 func (s *sentry) Run(ctx context.Context, conf config.SentryConfig, readyCh chan bool) {
 	// Create CA
 	certAuth, err := ca.NewCertificateAuthority(conf)

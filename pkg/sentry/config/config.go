@@ -5,10 +5,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/pkg/errors" // ok
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/dapr/kit/logger"
+	"github.com/dapr/kit/logger" // ok
 
 	scheme "github.com/dapr/dapr/pkg/client/clientset/versioned"
 	dapr_config "github.com/dapr/dapr/pkg/config"
@@ -23,13 +23,13 @@ const (
 	defaultWorkloadCertTTL      = time.Hour * 24
 	defaultAllowedClockSkew     = time.Minute * 15
 
-	// defaultDaprSystemConfigName is the default resource object name for Dapr System Config.
+	// defaultDaprSystemConfigName
 	defaultDaprSystemConfigName = "daprsystem"
 )
 
 var log = logger.NewLogger("dapr.sentry.config")
 
-// SentryConfig holds the configuration for the Certificate Authority.
+// SentryConfig 认证证书配置
 type SentryConfig struct {
 	Port             int
 	TrustDomain      string
@@ -46,11 +46,11 @@ var configGetters = map[string]func(string) (SentryConfig, error){
 	kubernetesConfig: getKubernetesConfig,
 }
 
-// FromConfigName returns a Sentry configuration based on a configuration spec.
-// A default configuration is loaded in case of an error.
+// FromConfigName 返回一个基于配置规范的哨兵配置。在出现错误时，将加载一个默认配置。
 func FromConfigName(configName string) (SentryConfig, error) {
 	var confGetterFn func(string) (SentryConfig, error)
 
+	// 本代码中没有找到 KUBERNETES_SERVICE_HOST 的设置
 	if IsKubernetesHosted() {
 		confGetterFn = configGetters[kubernetesConfig]
 	} else {
@@ -76,6 +76,8 @@ func printConfig(config SentryConfig) {
 	log.Infof("configuration: [port]: %v, [ca store]: %s, [allowed clock skew]: %s, [workload cert ttl]: %s",
 		config.Port, caStore, config.AllowedClockSkew.String(), config.WorkloadCertTTL.String())
 }
+
+// 30
 
 func IsKubernetesHosted() bool {
 	return os.Getenv(kubernetesServiceHostEnvVar) != ""
@@ -136,7 +138,18 @@ func getSelfhostedConfig(configName string) (SentryConfig, error) {
 	return defaultConfig, nil
 }
 
+func GetDefaultConfig(configName string) (SentryConfig, error) {
+	return getKubernetesConfig(configName)
+}
+
 func parseConfiguration(conf SentryConfig, daprConfig *dapr_config.Configuration) (SentryConfig, error) {
+	//spec:
+	//  metric:
+	//    enabled: true
+	//  mtls:
+	//    allowedClockSkew: 15m
+	//    enabled: true
+	//    workloadCertTTL: 24h
 	if daprConfig.Spec.MTLSSpec.WorkloadCertTTL != "" {
 		d, err := time.ParseDuration(daprConfig.Spec.MTLSSpec.WorkloadCertTTL)
 		if err != nil {

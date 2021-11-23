@@ -15,22 +15,24 @@ import (
 
 	"github.com/dapr/kit/logger"
 
-	"github.com/dapr/dapr/pkg/credentials"
-	"github.com/dapr/dapr/pkg/fswatcher"
-	"github.com/dapr/dapr/pkg/health"
-	"github.com/dapr/dapr/pkg/metrics"
+	"github.com/dapr/dapr/pkg/credentials" // ok
+	"github.com/dapr/dapr/pkg/fswatcher"   // ok 获取证书文件
+	"github.com/dapr/dapr/pkg/health"      // ok
+	"github.com/dapr/dapr/pkg/metrics"     // ok
+	// 都没有init方法
 	"github.com/dapr/dapr/pkg/sentry"
 	"github.com/dapr/dapr/pkg/sentry/config"
 	"github.com/dapr/dapr/pkg/sentry/monitoring"
-	"github.com/dapr/dapr/pkg/signals"
-	"github.com/dapr/dapr/pkg/version"
+	"github.com/dapr/dapr/pkg/signals" // ok
+	"github.com/dapr/dapr/pkg/version" // ok
 )
 
 var log = logger.NewLogger("dapr.sentry")
 
 const (
 	defaultCredentialsPath = "/var/run/dapr/credentials"
-	// defaultDaprSystemConfigName is the default resource object name for Dapr System Config.
+	// 自定义资源
+	// defaultDaprSystemConfigName 是Dapr System Config的默认资源对象名称。
 	defaultDaprSystemConfigName = "daprsystem"
 
 	healthzPort = 8080
@@ -49,7 +51,7 @@ func main() {
 
 	flag.Parse()
 
-	// Apply options to all loggers
+	// pass
 	if err := logger.ApplyOptionsToLoggers(&loggerOptions); err != nil {
 		log.Fatal(err)
 	}
@@ -57,11 +59,11 @@ func main() {
 	log.Infof("starting sentry certificate authority -- version %s -- commit %s", version.Version(), version.Commit())
 	log.Infof("log level set to: %s", loggerOptions.OutputLevel)
 
-	// Initialize dapr metrics exporter
+	// pass
 	if err := metricsExporter.Init(); err != nil {
 		log.Fatal(err)
 	}
-
+	// pass
 	if err := monitoring.InitMetrics(); err != nil {
 		log.Fatal(err)
 	}
@@ -69,7 +71,7 @@ func main() {
 	issuerCertPath := filepath.Join(*credsPath, credentials.IssuerCertFilename)
 	issuerKeyPath := filepath.Join(*credsPath, credentials.IssuerKeyFilename)
 	rootCertPath := filepath.Join(*credsPath, credentials.RootCertFilename)
-
+	//_, _ = config.GetDefaultConfig(*configName)
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
