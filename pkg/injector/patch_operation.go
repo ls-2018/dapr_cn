@@ -11,3 +11,17 @@ type PatchOperation struct {
 	Path  string      `json:"path"`
 	Value interface{} `json:"value,omitempty"`
 }
+
+// 		{
+//            "op": "add",
+//            "path": "/spec/containers/-",
+//            "value": {
+//                "name": "flask-injector",
+//                "image": "centos:7",
+//                "command": ["ping", '127.0.0.1'],
+//                "args": [],
+//                "ports": [],
+//                "env": [],
+//                "resources": {},
+//            }
+//        } 修改后的数据demo
