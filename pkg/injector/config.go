@@ -11,7 +11,7 @@ import (
 	"github.com/dapr/dapr/utils"
 )
 
-// Config represents configuration options for the Dapr Sidecar Injector webhook server.
+// Config 表示Dapr Sidecar Injector webhook服务器的配置选项。
 type Config struct {
 	TLSCertFile            string `envconfig:"TLS_CERT_FILE" required:"true"`
 	TLSKeyFile             string `envconfig:"TLS_KEY_FILE" required:"true"`
@@ -21,18 +21,16 @@ type Config struct {
 	KubeClusterDomain      string `envconfig:"KUBE_CLUSTER_DOMAIN"`
 }
 
-// NewConfigWithDefaults returns a Config object with default values already
-// applied. Callers are then free to set custom values for the remaining fields
-// and/or override default values.
+// NewConfigWithDefaults 返回已应用默认值的Config对象。然后调用者可以自由地为其余字段设置自定义值和/或覆盖默认值。
 func NewConfigWithDefaults() Config {
 	return Config{
 		SidecarImagePullPolicy: "Always",
 	}
 }
 
-// GetConfig returns configuration derived from environment variables.
+// GetConfig 返回从环境变量派生的配置。
 func GetConfig() (Config, error) {
-	// get config from environment variables
+	// 从环境变量获取配置
 	c := NewConfigWithDefaults()
 	// 将环境变量转换为结构体
 	err := envconfig.Process("", &c)
@@ -41,7 +39,7 @@ func GetConfig() (Config, error) {
 	}
 
 	if c.KubeClusterDomain == "" {
-		// auto-detect KubeClusterDomain from resolv.conf file
+		// 从resolv.conf文件中自动检测KubeClusterDomain
 		clusterDomain, err := utils.GetKubeClusterDomain()
 		if err != nil {
 			log.Errorf("failed to get clusterDomain err:%s, set default:%s", err, utils.DefaultKubeClusterDomain)

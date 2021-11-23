@@ -74,7 +74,7 @@ func (m *promMetricsExporter) Init() error {
 	return m.startMetricServer()
 }
 
-// startMetricServer starts metrics server.
+// startMetricServer 启动指标服务
 func (m *promMetricsExporter) startMetricServer() error {
 	if !m.exporter.Options().MetricsEnabled {
 		// skip if metrics is not enabled

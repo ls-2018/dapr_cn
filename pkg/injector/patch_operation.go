@@ -5,7 +5,7 @@
 
 package injector
 
-// PatchOperation represents a discreet change to be applied to a Kubernetes resource.
+// PatchOperation 表示要应用于Kubernetes资源的谨慎更改。
 type PatchOperation struct {
 	Op    string      `json:"op"`
 	Path  string      `json:"path"`

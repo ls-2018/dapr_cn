@@ -7,18 +7,18 @@ package main
 
 import (
 	"flag"
+	scheme "github.com/dapr/dapr/pkg/client/clientset/versioned"
+	"os"
 	"time"
 
-	"github.com/dapr/kit/logger"
-
-	scheme "github.com/dapr/dapr/pkg/client/clientset/versioned"
-	"github.com/dapr/dapr/pkg/health"
+	"github.com/dapr/dapr/pkg/health" //ok
 	"github.com/dapr/dapr/pkg/injector"
-	"github.com/dapr/dapr/pkg/injector/monitoring"
-	"github.com/dapr/dapr/pkg/metrics"
-	"github.com/dapr/dapr/pkg/signals"
-	"github.com/dapr/dapr/pkg/version"
-	"github.com/dapr/dapr/utils"
+	"github.com/dapr/dapr/pkg/injector/monitoring" // ok
+	"github.com/dapr/dapr/pkg/metrics"             // ok
+	"github.com/dapr/dapr/pkg/signals"             //ok
+	"github.com/dapr/dapr/pkg/version"             //ok
+	"github.com/dapr/dapr/utils"                   // ok
+	"github.com/dapr/kit/logger"                   // ok
 )
 
 // LIKE
@@ -30,15 +30,11 @@ const (
 
 func main() {
 	logger.DaprVersion = version.Version()
+	log.Info(os.Getpid())
 	log.Infof("starting Dapr Sidecar Injector -- version %s -- commit %s", version.Version(), version.Commit())
 
 	// 处理程序接收kill 信号
 	ctx := signals.Context()
-	// 主要是获取TLS文件以
-	cfg, err := injector.GetConfig()
-	if err != nil {
-		log.Fatalf("error getting config: %s", err)
-	}
 
 	// k8s client
 	kubeClient := utils.GetKubeClient()
@@ -60,7 +56,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to get authentication uids from services accounts: %s", err)
 	}
-
+	time.Sleep(time.Hour) // myself
+	// 主要是获取TLS文件以
+	cfg, err := injector.GetConfig()
+	if err != nil {
+		log.Fatalf("error getting config: %s", err)
+	}
 	injector.NewInjector(uids, cfg, daprClient, kubeClient).Run(ctx)
 
 	// 默认是不会走到此处的，

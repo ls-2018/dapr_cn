@@ -43,28 +43,27 @@ var (
 	failedReasonKey = tag.MustNewKey(failedReason)
 )
 
-// RecordSidecarInjectionRequestsCount records the total number of sidecar injection requests.
+// RecordSidecarInjectionRequestsCount 记录总的注入次数
 func RecordSidecarInjectionRequestsCount() {
 	stats.Record(context.Background(), sidecarInjectionRequestsTotal.M(1))
 }
 
-// RecordSuccessfulSidecarInjectionCount records the number of successful sidecar injections.
+// RecordSuccessfulSidecarInjectionCount 记录注入成功的次数
 func RecordSuccessfulSidecarInjectionCount(appID string) {
 	stats.RecordWithTags(context.Background(), diag_utils.WithTags(appIDKey, appID), succeededSidecarInjectedTotal.M(1))
 }
 
-// RecordFailedSidecarInjectionCount records the number of failed sidecar injections.
+// RecordFailedSidecarInjectionCount 记录失败的注入次数
 func RecordFailedSidecarInjectionCount(appID, reason string) {
 	stats.RecordWithTags(context.Background(), diag_utils.WithTags(appIDKey, appID, failedReasonKey, reason), failedSidecarInjectedTotal.M(1))
 }
 
-// InitMetrics initialize the injector service metrics.
+// InitMetrics 初始化注入服务指标
 func InitMetrics() error {
 	err := view.Register(
 		diag_utils.NewMeasureView(sidecarInjectionRequestsTotal, noKeys, view.Count()),
 		diag_utils.NewMeasureView(succeededSidecarInjectedTotal, []tag.Key{appIDKey}, view.Count()),
 		diag_utils.NewMeasureView(failedSidecarInjectedTotal, []tag.Key{appIDKey, failedReasonKey}, view.Count()),
 	)
-
 	return err
 }
