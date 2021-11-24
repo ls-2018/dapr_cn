@@ -36,7 +36,6 @@ func GetServerOptions(certChain *CertChain) ([]grpc.ServerOption, error) {
 	return opts, nil
 }
 
-
 func GetClientOptions(certChain *CertChain, serverName string) ([]grpc.DialOption, error) {
 	var opts []grpc.DialOption
 	if certChain != nil {

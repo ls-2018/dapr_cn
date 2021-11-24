@@ -112,6 +112,6 @@ func TestStringSliceContains(t *testing.T) {
 	})
 }
 
-func TestMyInitKubeConfig(t *testing.T)  {
+func TestMyInitKubeConfig(t *testing.T) {
 	initKubeConfig()
 }

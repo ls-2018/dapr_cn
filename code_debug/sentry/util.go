@@ -50,8 +50,7 @@ zfCt2fhdjXEK2GGEMAIhAKi0GsyI5b2hkrUkIEZm1kTLbeuw0GIguSvW89yUkXbT
 	_ = ioutil.WriteFile(sentryConfig.IssuerCertPath, []byte(crt), 0644)
 	_ = ioutil.WriteFile(sentryConfig.IssuerKeyPath, []byte(key), 0644)
 
-
-	os.Setenv("NAMESPACE","dapr-system")
+	os.Setenv("NAMESPACE", "dapr-system")
 }
 
 // GetK8s 此处改用加载本地配置文件 ~/.kube/config

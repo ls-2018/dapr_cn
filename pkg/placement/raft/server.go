@@ -34,6 +34,7 @@ type PeerInfo struct {
 	ID      string
 	Address string
 }
+
 //
 // Server raft协议的实现
 type Server struct {

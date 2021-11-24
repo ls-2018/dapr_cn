@@ -150,7 +150,7 @@ func shouldCreateCerts(conf config.SentryConfig) bool {
 //判断根证书是否加载完毕
 func detectCertificates(path string) error {
 	t := time.NewTicker(certDetectInterval) // 一秒
-	timeout := time.After(certLoadTimeout) // 等待证书加载超时时间
+	timeout := time.After(certLoadTimeout)  // 等待证书加载超时时间
 
 	for {
 		select {

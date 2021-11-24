@@ -26,7 +26,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-
 //为了满足数据的高可用性，需要根据一些因子进行复制， 这些因子称为复制因子。
 //假设我们集群的复制因子为2，那么属于'd'节点的数据将会被复制到按顺时针方向与之相隔最近的'b'和'e'节点上。
 //这就保证了如果从'd'节点获取数据失败，这些数据能够从'b'或'e'节点获取。
@@ -53,8 +52,8 @@ type Host struct {
 // Consistent 一致性哈希
 type Consistent struct {
 	hosts     map[uint64]string // todo ,为什么同一个主机名会存在 replicationFactor 这个多份
-	sortedSet []uint64 // 主机名散列值[会重复replicationFactor]
-	loadMap   map[string]*Host // 主机名与主机实例的绑定
+	sortedSet []uint64          // 主机名散列值[会重复replicationFactor]
+	loadMap   map[string]*Host  // 主机名与主机实例的绑定
 	totalLoad int64
 
 	sync.RWMutex
@@ -333,6 +332,7 @@ func (c *Consistent) delSlice(val uint64) {
 		c.sortedSet = append(c.sortedSet[:idx], c.sortedSet[idx+1:]...)
 	}
 }
+
 // 散列函数
 func (c *Consistent) hash(key string) uint64 {
 	out := blake2b.Sum512([]byte(key))

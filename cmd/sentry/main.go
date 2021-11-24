@@ -25,8 +25,8 @@ import (
 	"github.com/dapr/dapr/pkg/sentry" // ok
 	"github.com/dapr/dapr/pkg/sentry/config"
 	"github.com/dapr/dapr/pkg/sentry/monitoring" // ok
-	"github.com/dapr/dapr/pkg/signals" // ok
-	"github.com/dapr/dapr/pkg/version" // ok
+	"github.com/dapr/dapr/pkg/signals"           // ok
+	"github.com/dapr/dapr/pkg/version"           // ok
 	_ "net/http/pprof"
 )
 

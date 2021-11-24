@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-func PRE()  {
+func PRE() {
 	os.Setenv("TLS_CERT_FILE", "/tmp/tls.crt")
 	os.Setenv("TLS_KEY_FILE", "/tmp/tls.key")
 	os.Setenv("NAMESPACE", "cluster.local")

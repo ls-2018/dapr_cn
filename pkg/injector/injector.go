@@ -247,7 +247,7 @@ func (i *injector) handleRequest(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
- 	//将admissionResponse 封装成admissionReview
+	//将admissionResponse 封装成admissionReview
 	admissionReview := v1.AdmissionReview{}
 	if admissionResponse != nil {
 		admissionReview.Response = admissionResponse
