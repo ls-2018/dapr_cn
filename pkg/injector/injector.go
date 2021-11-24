@@ -159,7 +159,9 @@ func (i *injector) Run(ctx context.Context) {
 	}()
 
 	log.Infof("Sidecar injector is listening on %s, patching Dapr-enabled pods", i.server.Addr)
-	err := i.server.ListenAndServeTLS(i.config.TLSCertFile, i.config.TLSKeyFile)
+	//err := i.server.ListenAndServeTLS(i.config.TLSCertFile, i.config.TLSKeyFile)
+	// ls change to http
+	err := i.server.ListenAndServe()
 	if err != http.ErrServerClosed {
 		log.Errorf("Sidecar injector error: %s", err)
 	}
@@ -178,6 +180,7 @@ func (i *injector) handleRequest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(body) == 0 {
+		// 非POST这里不会有数据
 		log.Error("empty body")
 		http.Error(w, "empty body", http.StatusBadRequest)
 		return
