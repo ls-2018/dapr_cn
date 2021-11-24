@@ -29,9 +29,8 @@ const (
 
 var log = logger.NewLogger("dapr.sentry.ca")
 
-// CertificateAuthority represents an interface for a compliant Certificate Authority.
-// Responsibilities include loading trust anchors and issuer certs, providing safe access to the trust bundle,
-// Validating and signing CSRs.
+// CertificateAuthority 代表一个符合要求的证书颁发机构的接口。
+// 其职责包括加载信任锚和发行人的证书，提供对信任包的安全访问。 验证和签署CSR。
 type CertificateAuthority interface {
 	LoadOrStoreTrustBundle() error
 	GetCACertBundle() TrustRootBundler
@@ -40,7 +39,7 @@ type CertificateAuthority interface {
 }
 
 func NewCertificateAuthority(config config.SentryConfig) (CertificateAuthority, error) {
-	// Load future external CAs from components-contrib.
+	// 从contrib组件加载外部CAs
 	switch config.CAStore {
 	default:
 		return &defaultCA{
@@ -61,9 +60,10 @@ type SignedCertificate struct {
 	CertPEM     []byte
 }
 
-// LoadOrStoreTrustBundle loads the root cert and issuer cert from the configured secret store.
-// Validation is performed and a protected trust bundle is created holding the trust anchors
-// and issuer credentials. If successful, a watcher is launched to keep track of the issuer expiration.
+// LoadOrStoreTrustBundle
+// 从配置的秘密存储区加载根证书和颁发者证书。
+// 执行验证，并创建一个受保护的信任包，其中包含信任锚和颁发者凭据。
+// 如果成功，将启动一个观察程序来跟踪发行者的到期日。
 func (c *defaultCA) LoadOrStoreTrustBundle() error {
 	bundle, err := c.validateAndBuildTrustBundle()
 	if err != nil {
@@ -74,14 +74,13 @@ func (c *defaultCA) LoadOrStoreTrustBundle() error {
 	return nil
 }
 
-// GetCACertBundle returns the Trust Root Bundle.
+// GetCACertBundle 返回根证书绑定。
 func (c *defaultCA) GetCACertBundle() TrustRootBundler {
 	return c.bundle
 }
 
-// SignCSR signs a request with a PEM encoded CSR cert and duration.
-// If isCA is set to true, a CA cert will be issued. If isCA is set to false, a workload
-// Certificate will be issued instead.
+// SignCSR 用一个PEM编码的CSR证书和持续时间来签署请求。
+//如果 isCA 被设置为 true，将签发一个 CA 证书。如果isCA被设置为false，则将签发一个工作量证书。
 func (c *defaultCA) SignCSR(csrPem []byte, subject string, identity *identity.Bundle, ttl time.Duration, isCA bool) (*SignedCertificate, error) {
 	c.issuerLock.RLock()
 	defer c.issuerLock.RUnlock()
@@ -148,9 +147,10 @@ func shouldCreateCerts(conf config.SentryConfig) bool {
 	return false
 }
 
+//判断根证书是否加载完毕
 func detectCertificates(path string) error {
-	t := time.NewTicker(certDetectInterval)
-	timeout := time.After(certLoadTimeout)
+	t := time.NewTicker(certDetectInterval) // 一秒
+	timeout := time.After(certLoadTimeout) // 等待证书加载超时时间
 
 	for {
 		select {
@@ -174,6 +174,7 @@ func (c *defaultCA) validateAndBuildTrustBundle() (*trustRootBundle, error) {
 	)
 
 	// certs exist on disk or getting created, load them when ready
+	// 证书存在于磁盘上或正在创建中，准备好时加载它们
 	if !shouldCreateCerts(c.config) {
 		err := detectCertificates(c.config.RootCertPath)
 		if err != nil {
@@ -204,7 +205,7 @@ func (c *defaultCA) validateAndBuildTrustBundle() (*trustRootBundle, error) {
 		log.Info("self signed certs generated and persisted successfully")
 	}
 
-	// load trust anchors
+	// 加载信任锚
 	trustAnchors, err := certs.CertPoolFromPEM(rootCertBytes)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing cert pool for trust anchors")

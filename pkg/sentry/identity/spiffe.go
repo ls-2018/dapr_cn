@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// CreateSPIFFEID returns a SPIFFE standard unique id for the given trust domain, namespace and appID.
+// CreateSPIFFEID 返回给定信任域、命名空间和appID的SPIFFE标准唯一ID。
 func CreateSPIFFEID(trustDomain, namespace, appID string) (string, error) {
 	if trustDomain == "" {
 		return "", errors.New("can't create spiffe id: trust domain is empty")
@@ -19,7 +19,7 @@ func CreateSPIFFEID(trustDomain, namespace, appID string) (string, error) {
 		return "", errors.New("can't create spiffe id: app id is empty")
 	}
 
-	// Validate according to the SPIFFE spec
+	// 根据SPIFFE规范进行验证
 	if strings.Contains(trustDomain, ":") {
 		return "", errors.New("trust domain cannot contain the : character")
 	}

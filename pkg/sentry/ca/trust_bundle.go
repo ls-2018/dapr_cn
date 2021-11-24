@@ -7,8 +7,7 @@ import (
 	"github.com/dapr/dapr/pkg/sentry/certs"
 )
 
-// TrustRootBundle represents the root certificate, issuer certificate and their
-// Respective expiry dates.
+// TrustRootBundle  代表根证书、签发人证书和它们各自的到期日。
 type TrustRootBundler interface {
 	GetIssuerCertPem() []byte
 	GetRootCertPem() []byte

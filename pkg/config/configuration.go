@@ -194,17 +194,17 @@ type FeatureSpec struct {
 	Enabled bool    `json:"enabled" yaml:"enabled"`
 }
 
-// LoadDefaultConfiguration returns the default config.
+// LoadDefaultConfiguration 返回默认配置。
 func LoadDefaultConfiguration() *Configuration {
 	return &Configuration{
 		Spec: ConfigurationSpec{
-			TracingSpec: TracingSpec{
+			TracingSpec: TracingSpec{ // 追踪
 				SamplingRate: "",
 			},
-			MetricSpec: MetricSpec{
+			MetricSpec: MetricSpec{ // 指标监控
 				Enabled: true,
 			},
-			AccessControlSpec: AccessControlSpec{
+			AccessControlSpec: AccessControlSpec{ //访问控制
 				DefaultAction: AllowAccess,
 				TrustDomain:   "public",
 			},
@@ -212,7 +212,7 @@ func LoadDefaultConfiguration() *Configuration {
 	}
 }
 
-// LoadStandaloneConfiguration gets the path to a config file and loads it into a configuration.
+// LoadStandaloneConfiguration 获得一个配置文件的路径，并将其加载到一个配置中。
 func LoadStandaloneConfiguration(config string) (*Configuration, string, error) {
 	_, err := os.Stat(config)
 	if err != nil {
@@ -224,14 +224,16 @@ func LoadStandaloneConfiguration(config string) (*Configuration, string, error) 
 		return nil, "", err
 	}
 
-	// Parse environment variables from yaml
+	// 从yaml中解析环境变量
 	b = []byte(os.ExpandEnv(string(b)))
 
+	// 加载默认配置
 	conf := LoadDefaultConfiguration()
 	err = yaml.Unmarshal(b, conf)
 	if err != nil {
 		return nil, string(b), err
 	}
+	// 验证secret的配置，如果存在的话，对允许和拒绝的列表进行排序。
 	err = sortAndValidateSecretsConfiguration(conf)
 	if err != nil {
 		return nil, string(b), err
@@ -266,7 +268,7 @@ func LoadKubernetesConfiguration(config, namespace string, operatorClient operat
 	return conf, nil
 }
 
-// Validate the secrets configuration and sort to the allowed and denied lists if present.
+// 验证secret的配置，如果存在的话，对允许和拒绝的列表进行排序。
 func sortAndValidateSecretsConfiguration(conf *Configuration) error {
 	scopes := conf.Spec.Secrets.Scopes
 	set := sets.NewString()
@@ -314,7 +316,7 @@ func (c SecretsScope) IsSecretAllowed(key string) bool {
 	return access == AllowAccess
 }
 
-// Runs Binary Search on a sorted list of strings to find a key.
+// 在一个排序的字符串列表上运行二进制搜索，以找到一个键。
 func containsKey(s []string, key string) bool {
 	index := sort.SearchStrings(s, key)
 

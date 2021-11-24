@@ -12,7 +12,7 @@ import (
 
 	scheme "github.com/dapr/dapr/pkg/client/clientset/versioned"
 	dapr_config "github.com/dapr/dapr/pkg/config"
-	"github.com/dapr/dapr/utils"
+	"github.com/dapr/dapr/utils" // ok
 )
 
 const (
@@ -127,6 +127,7 @@ func getKubernetesConfig(configName string) (SentryConfig, error) {
 
 func getSelfhostedConfig(configName string) (SentryConfig, error) {
 	defaultConfig := getDefaultConfig()
+
 	daprConfig, _, err := dapr_config.LoadStandaloneConfiguration(configName)
 	if err != nil {
 		return defaultConfig, err

@@ -28,7 +28,7 @@ const (
 
 var log = logger.NewLogger("dapr.sentry.server")
 
-// CAServer is an interface for the Certificate Authority server.
+// CAServer 是证书颁发机构服务器的一个接口。
 type CAServer interface {
 	Run(port int, trustBundle ca.TrustRootBundler) error
 	Shutdown()
@@ -41,7 +41,7 @@ type server struct {
 	validator   identity.Validator
 }
 
-// NewCAServer returns a new CA Server running a gRPC server.
+// NewCAServer 返回一个运行gRPC服务器的新CA服务器。
 func NewCAServer(ca ca.CertificateAuthority, validator identity.Validator) CAServer {
 	return &server{
 		certAuth:  ca,
@@ -49,8 +49,8 @@ func NewCAServer(ca ca.CertificateAuthority, validator identity.Validator) CASer
 	}
 }
 
-// Run starts a secured gRPC server for the Sentry Certificate Authority.
-// It enforces client side cert validation using the trust root cert.
+// Run 为Sentry证书颁发机构启动一个安全的gRPC服务器。
+// 它使用信任的根证书强制执行客户端的证书验证。
 func (s *server) Run(port int, trustBundler ca.TrustRootBundler) error {
 	addr := fmt.Sprintf(":%v", port)
 	lis, err := net.Listen("tcp", addr)
@@ -119,9 +119,8 @@ func (s *server) getServerCertificate() (*tls.Certificate, error) {
 	return &cert, nil
 }
 
-// SignCertificate handles CSR requests originating from Dapr sidecars.
-// The method receives a request with an identity and initial cert and returns
-// A signed certificate including the trust chain to the caller along with an expiry date.
+// SignCertificate 处理来自Dapr sidecar 的CSR请求。
+// 该方法接收一个带有身份和初始证书的请求 并返回一个包括信任链的签名证书给调用者，并附上一个到期日。
 func (s *server) SignCertificate(ctx context.Context, req *sentryv1pb.SignCertificateRequest) (*sentryv1pb.SignCertificateResponse, error) {
 	monitoring.CertSignRequestReceived()
 
@@ -200,6 +199,6 @@ func needsRefresh(cert *tls.Certificate, expiryBuffer time.Duration) bool {
 		return true
 	}
 
-	// Check if the leaf certificate is about to expire.
+	//检查叶子证书是否即将过期。
 	return leaf.NotAfter.Add(-serverCertExpiryBuffer).Before(time.Now().UTC())
 }

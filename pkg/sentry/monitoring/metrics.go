@@ -15,27 +15,27 @@ var (
 	// Metrics definitions.
 	csrReceivedTotal = stats.Int64(
 		"sentry/cert/sign/request_received_total",
-		"The number of CSRs received.",
+		"收到的CSR的数量。",
 		stats.UnitDimensionless)
 	certSignSuccessTotal = stats.Int64(
 		"sentry/cert/sign/success_total",
-		"The number of certificates issuances that have succeeded.",
+		"已成功发行的证书数量。",
 		stats.UnitDimensionless)
 	certSignFailedTotal = stats.Int64(
 		"sentry/cert/sign/failure_total",
-		"The number of errors occurred when signing the CSR.",
+		"签署CSR时发生的错误数量。",
 		stats.UnitDimensionless)
 	serverTLSCertIssueFailedTotal = stats.Int64(
 		"sentry/servercert/issue_failed_total",
-		"The number of server TLS certificate issuance failures.",
+		"服务器TLS证书发放失败的次数。",
 		stats.UnitDimensionless)
 	issuerCertChangedTotal = stats.Int64(
 		"sentry/issuercert/changed_total",
-		"The number of issuer cert updates, when issuer cert or key is changed",
+		"当签发人的证书或钥匙被改变时，签发人证书更新的数量",
 		stats.UnitDimensionless)
 	issuerCertExpiryTimestamp = stats.Int64(
 		"sentry/issuercert/expiry_timestamp",
-		"The unix timestamp, in seconds, when issuer/root cert will expire.",
+		"发行人/根证书过期的unix时间戳，单位是秒。",
 		stats.UnitDimensionless)
 
 	// Metrics Tags.
@@ -43,17 +43,17 @@ var (
 	noKeys          = []tag.Key{}
 )
 
-// CertSignRequestReceived counts when CSR received.
+// CertSignRequestReceived 收到CSR的计数。
 func CertSignRequestReceived() {
 	stats.Record(context.Background(), csrReceivedTotal.M(1))
 }
 
-// CertSignSucceed counts succeeded cert issuance.
+// CertSignSucceed  成功签发了证书的数目
 func CertSignSucceed() {
 	stats.Record(context.Background(), certSignSuccessTotal.M(1))
 }
 
-// CertSignFailed counts succeeded cert issuance.
+// CertSignFailed 失败签发了证书的数目
 func CertSignFailed(reason string) {
 	stats.RecordWithTags(
 		context.Background(),
@@ -61,22 +61,22 @@ func CertSignFailed(reason string) {
 		certSignFailedTotal.M(1))
 }
 
-// IssuerCertExpiry records root cert expiry.
+// IssuerCertExpiry 记录根证书的到期情况。
 func IssuerCertExpiry(expiry time.Time) {
 	stats.Record(context.Background(), issuerCertExpiryTimestamp.M(expiry.Unix()))
 }
 
-// ServerCertIssueFailed records server cert issue failure.
+// ServerCertIssueFailed 记录服务器证书问题失败。
 func ServerCertIssueFailed(reason string) {
 	stats.Record(context.Background(), serverTLSCertIssueFailedTotal.M(1))
 }
 
-// IssuerCertChanged records issuer credential change.
+// IssuerCertChanged 记录发行人凭证变更。
 func IssuerCertChanged() {
 	stats.Record(context.Background(), issuerCertChangedTotal.M(1))
 }
 
-// InitMetrics initializes metrics.
+// InitMetrics 初始化指标
 func InitMetrics() error {
 	return view.Register(
 		diag_utils.NewMeasureView(csrReceivedTotal, noKeys, view.Count()),

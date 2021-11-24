@@ -7,24 +7,27 @@ package main
 
 import (
 	"flag"
+	sentry_debug "github.com/dapr/dapr/code_debug/sentry"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
 	"time"
 
-	"github.com/dapr/kit/logger"
+	"github.com/dapr/kit/logger" //ok
 
 	"github.com/dapr/dapr/pkg/credentials" // ok
 	"github.com/dapr/dapr/pkg/fswatcher"   // ok 获取证书文件
 	"github.com/dapr/dapr/pkg/health"      // ok
 	"github.com/dapr/dapr/pkg/metrics"     // ok
 	// 都没有init方法
-	"github.com/dapr/dapr/pkg/sentry"
+	"github.com/dapr/dapr/pkg/sentry" // ok
 	"github.com/dapr/dapr/pkg/sentry/config"
-	"github.com/dapr/dapr/pkg/sentry/monitoring"
+	"github.com/dapr/dapr/pkg/sentry/monitoring" // ok
 	"github.com/dapr/dapr/pkg/signals" // ok
 	"github.com/dapr/dapr/pkg/version" // ok
+	_ "net/http/pprof"
 )
 
 var log = logger.NewLogger("dapr.sentry")
@@ -39,6 +42,16 @@ const (
 )
 
 func main() {
+	go func() {
+		err := http.ListenAndServe("127.0.0.1:9999", nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+	err := os.Setenv("KUBERNETES_SERVICE_HOST", "1123213")
+	if err != nil {
+		log.Error(err)
+	}
 	configName := flag.String("config", defaultDaprSystemConfigName, "Path to config file, or name of a configuration object")
 	credsPath := flag.String("issuer-credentials", defaultCredentialsPath, "Path to the credentials directory holding the issuer data")
 	trustDomain := flag.String("trust-domain", "localhost", "The CA trust domain")
@@ -76,7 +89,7 @@ func main() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	ctx := signals.Context()
-	config, err := config.FromConfigName(*configName)
+	config, err := config.FromConfigName(*configName) // 会定义 kubeconfig 的环境变量 与  ca.Run 【更改获取k8s客户端】 会重复定义
 	if err != nil {
 		log.Warn(err)
 	}
@@ -84,7 +97,7 @@ func main() {
 	config.IssuerKeyPath = issuerKeyPath
 	config.RootCertPath = rootCertPath
 	config.TrustDomain = *trustDomain
-
+	sentry_debug.PRE(&config)
 	watchDir := filepath.Dir(config.IssuerCertPath)
 
 	ca := sentry.NewSentryCA()
@@ -93,16 +106,17 @@ func main() {
 	issuerEvent := make(chan struct{})
 	ready := make(chan bool)
 
+	// 启动CA服务 grpc通信
 	go ca.Run(ctx, config, ready)
 
 	<-ready
-
 	go fswatcher.Watch(ctx, watchDir, issuerEvent)
 
 	go func() {
 		for range issuerEvent {
+			// 指标变更
 			monitoring.IssuerCertChanged()
-			log.Warn("issuer credentials changed. reloading")
+			log.Warn("发行人证书已更改。 重新加载")
 			ca.Restart(ctx, config)
 		}
 	}()
@@ -116,9 +130,14 @@ func main() {
 			log.Fatalf("failed to start healthz server: %s", err)
 		}
 	}()
-
 	<-stop
+	// 收到终止信号，直接等5秒 等其他goroutinue关闭
+	// code_debug/sentry/signal_test.go:13
 	shutdownDuration := 5 * time.Second
 	log.Infof("allowing %s for graceful shutdown to complete", shutdownDuration)
 	<-time.After(shutdownDuration)
 }
+
+// 8080 健康检查
+// 50001
+// 9090 指标采集

@@ -18,20 +18,19 @@ const (
 	PKCS8PrivateKey = "PRIVATE KEY"
 )
 
-// PrivateKey wraps a EC or RSA private key.
+// PrivateKey 包裹一个EC或RSA私钥。
 type PrivateKey struct {
 	Type string
 	Key  interface{}
 }
 
-// Credentials holds a certificate, private key and trust chain.
+// Credentials 持有一个证书、私钥和信任链。
 type Credentials struct {
 	PrivateKey  *PrivateKey
 	Certificate *x509.Certificate
 }
 
-// DecodePEMKey takes a key PEM byte array and returns a PrivateKey that represents
-// Either an RSA or EC private key.
+// DecodePEMKey 接收一个密钥PEM字节数组，并返回一个代表PrivateKey的密钥。RSA或EC私钥。
 func DecodePEMKey(key []byte) (*PrivateKey, error) {
 	block, _ := pem.Decode(key)
 	if block == nil {
@@ -61,8 +60,7 @@ func DecodePEMKey(key []byte) (*PrivateKey, error) {
 	}
 }
 
-// DecodePEMCertificates takes a PEM encoded x509 certificates byte array and returns
-// A x509 certificate and the block byte array.
+// DecodePEMCertificates 接收一个PEM编码的x509证书字节数组，并返回 一个x509证书和区块字节数组。
 func DecodePEMCertificates(crtb []byte) ([]*x509.Certificate, error) {
 	certs := []*x509.Certificate{}
 	for len(crtb) > 0 {
@@ -93,7 +91,7 @@ func decodeCertificatePEM(crtb []byte) (*x509.Certificate, []byte, error) {
 	return c, crtb, err
 }
 
-// PEMCredentialsFromFiles takes a path for a key/cert pair and returns a validated Credentials wrapper with a trust chain.
+// PEMCredentialsFromFiles 接收一个密钥/证书对的数据，并返回一个带有信任链的有效Credentials包装器。
 func PEMCredentialsFromFiles(certPem, keyPem []byte) (*Credentials, error) {
 	pk, err := DecodePEMKey(keyPem)
 	if err != nil {
@@ -145,7 +143,7 @@ func certPoolFromCertificates(certs []*x509.Certificate) *x509.CertPool {
 	return pool
 }
 
-// CertPoolFromPEMString returns a CertPool from a PEM encoded certificates string.
+// CertPoolFromPEMString 从PEM编码的证书字符串中返回一个CertPool。
 func CertPoolFromPEM(certPem []byte) (*x509.CertPool, error) {
 	certs, err := DecodePEMCertificates(certPem)
 	if err != nil {
@@ -158,8 +156,7 @@ func CertPoolFromPEM(certPem []byte) (*x509.CertPool, error) {
 	return certPoolFromCertificates(certs), nil
 }
 
-// ParsePemCSR constructs a x509 Certificate Request using the
-// given PEM-encoded certificate signing request.
+// ParsePemCSR 构建一个x509证书请求，使用 给定的PEM编码的证书签署请求。
 func ParsePemCSR(csrPem []byte) (*x509.CertificateRequest, error) {
 	block, _ := pem.Decode(csrPem)
 	if block == nil {
@@ -172,7 +169,10 @@ func ParsePemCSR(csrPem []byte) (*x509.CertificateRequest, error) {
 	return csr, nil
 }
 
-// GenerateECPrivateKey returns a new EC Private Key.
+// GenerateECPrivateKey 返回一个新的EC私钥。
 func GenerateECPrivateKey() (*ecdsa.PrivateKey, error) {
 	return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 }
+
+
+//todo 关于证书这方面的知识不是很熟悉

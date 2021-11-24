@@ -19,16 +19,16 @@ import (
 )
 
 const (
-	blockTypeECPrivateKey = "EC PRIVATE KEY" // EC private key
-	blockTypePrivateKey   = "PRIVATE KEY"    // PKCS#8 plain private key
+	blockTypeECPrivateKey = "EC PRIVATE KEY" // EC 类型秘钥
+	blockTypePrivateKey   = "PRIVATE KEY"    // PKCS# 8个普通私钥
 	encodeMsgCSR          = "CERTIFICATE REQUEST"
 	encodeMsgCert         = "CERTIFICATE"
 )
 
-// The OID for the SAN extension (http://www.alvestrand.no/objectid/2.5.29.17.html)
+// SAN扩展的OID (http://www.alvestrand.no/objectid/2.5.29.17.html)
 var oidSubjectAlternativeName = asn1.ObjectIdentifier{2, 5, 29, 17}
 
-// GenerateCSR creates a X.509 certificate sign request and private key.
+// GenerateCSR 创建一个X.509证书签名请求和私钥。
 func GenerateCSR(org string, pkcs8 bool) ([]byte, []byte, error) {
 	key, err := certs.GenerateECPrivateKey()
 	if err != nil {
@@ -57,8 +57,7 @@ func genCSRTemplate(org string) (*x509.CertificateRequest, error) {
 	}, nil
 }
 
-// generateBaseCert returns a base non-CA cert that can be made a workload or CA cert
-// By adding subjects, key usage and additional proerties.
+// generateBaseCert  返回一个基本的非CA证书，该证书可以成为一个工作负载或CA证书。通过添加主体、密钥使用和附加属性。
 func generateBaseCert(ttl, skew time.Duration, publicKey interface{}) (*x509.Certificate, error) {
 	serNum, err := newSerialNumber()
 	if err != nil {
@@ -66,7 +65,7 @@ func generateBaseCert(ttl, skew time.Duration, publicKey interface{}) (*x509.Cer
 	}
 
 	now := time.Now().UTC()
-	// Allow for clock skew with the NotBefore validity bound.
+	// 允许在NotBefore有效期内出现时钟偏移。
 	notBefore := now.Add(-1 * skew)
 	notAfter := now.Add(ttl)
 
@@ -95,7 +94,7 @@ func GenerateIssuerCertCSR(cn string, publicKey interface{}, ttl, skew time.Dura
 	return cert, nil
 }
 
-// GenerateRootCertCSR returns a CA root cert x509 Certificate.
+// GenerateRootCertCSR 返回一个CA根证书 x509证书。
 func GenerateRootCertCSR(org, cn string, publicKey interface{}, ttl, skew time.Duration) (*x509.Certificate, error) {
 	cert, err := generateBaseCert(ttl, skew, publicKey)
 	if err != nil {
@@ -115,7 +114,7 @@ func GenerateRootCertCSR(org, cn string, publicKey interface{}, ttl, skew time.D
 	return cert, nil
 }
 
-// GenerateCSRCertificate returns an x509 Certificate from a CSR, signing cert, public key, signing private key and duration.
+// GenerateCSRCertificate 返回来自CSR、签名证书、公钥、签名私钥和有期限的x509证书。
 func GenerateCSRCertificate(csr *x509.CertificateRequest, subject string, identityBundle *identity.Bundle, signingCert *x509.Certificate, publicKey interface{}, signingKey crypto.PrivateKey,
 	ttl, skew time.Duration, isCA bool) ([]byte, error) {
 	cert, err := generateBaseCert(ttl, skew, publicKey)
