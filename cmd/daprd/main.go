@@ -12,18 +12,17 @@ import (
 	"syscall"
 
 	"github.com/valyala/fasthttp"
-	_ "go.uber.org/automaxprocs"
+	_ "go.uber.org/automaxprocs" // runtime.GOMAXPROCS(0)
 
 	"github.com/dapr/dapr/pkg/runtime"
 	"github.com/dapr/dapr/pkg/version"
-	"github.com/dapr/kit/logger"
+	"github.com/dapr/kit/logger" // ok
 
 	// 在编译的daprd中包含组件。
 	// 秘钥存储
 	"github.com/dapr/components-contrib/secretstores"
 	"github.com/dapr/components-contrib/secretstores/aws/parameterstore"
 	"github.com/dapr/components-contrib/secretstores/aws/secretmanager"
-	"github.com/dapr/components-contrib/secretstores/azure/keyvault"
 	gcp_secretmanager "github.com/dapr/components-contrib/secretstores/gcp/secretmanager"
 	"github.com/dapr/components-contrib/secretstores/hashicorp/vault"
 	sercetstores_kubernetes "github.com/dapr/components-contrib/secretstores/kubernetes"
@@ -36,9 +35,6 @@ import (
 	"github.com/dapr/components-contrib/state"
 	"github.com/dapr/components-contrib/state/aerospike"
 	state_dynamodb "github.com/dapr/components-contrib/state/aws/dynamodb"
-	state_azure_blobstorage "github.com/dapr/components-contrib/state/azure/blobstorage"
-	state_cosmosdb "github.com/dapr/components-contrib/state/azure/cosmosdb"
-	state_azure_tablestorage "github.com/dapr/components-contrib/state/azure/tablestorage"
 	"github.com/dapr/components-contrib/state/cassandra"
 	"github.com/dapr/components-contrib/state/cloudstate"
 	"github.com/dapr/components-contrib/state/couchbase"
@@ -59,8 +55,6 @@ import (
 	// Pub/Sub.
 	pubs "github.com/dapr/components-contrib/pubsub"
 	pubsub_snssqs "github.com/dapr/components-contrib/pubsub/aws/snssqs"
-	pubsub_eventhubs "github.com/dapr/components-contrib/pubsub/azure/eventhubs"
-	"github.com/dapr/components-contrib/pubsub/azure/servicebus"
 	pubsub_gcp "github.com/dapr/components-contrib/pubsub/gcp/pubsub"
 	pubsub_hazelcast "github.com/dapr/components-contrib/pubsub/hazelcast"
 	pubsub_inmemory "github.com/dapr/components-contrib/pubsub/in-memory"
@@ -95,14 +89,6 @@ import (
 	"github.com/dapr/components-contrib/bindings/aws/ses"
 	"github.com/dapr/components-contrib/bindings/aws/sns"
 	"github.com/dapr/components-contrib/bindings/aws/sqs"
-	"github.com/dapr/components-contrib/bindings/azure/blobstorage"
-	bindings_cosmosdb "github.com/dapr/components-contrib/bindings/azure/cosmosdb"
-	bindings_cosmosdbgremlinapi "github.com/dapr/components-contrib/bindings/azure/cosmosdbgremlinapi"
-	"github.com/dapr/components-contrib/bindings/azure/eventgrid"
-	"github.com/dapr/components-contrib/bindings/azure/eventhubs"
-	"github.com/dapr/components-contrib/bindings/azure/servicebusqueues"
-	"github.com/dapr/components-contrib/bindings/azure/signalr"
-	"github.com/dapr/components-contrib/bindings/azure/storagequeues"
 	"github.com/dapr/components-contrib/bindings/cron"
 	"github.com/dapr/components-contrib/bindings/gcp/bucket"
 	"github.com/dapr/components-contrib/bindings/gcp/pubsub"
@@ -150,6 +136,8 @@ var (
 	logContrib = logger.NewLogger("dapr.contrib")
 )
 
+// todo azure不熟悉，先不看了。
+
 func main() {
 	logger.DaprVersion = version.Version()
 	rt, err := runtime.FromFlags()
@@ -157,14 +145,16 @@ func main() {
 		log.Fatal(err)
 	}
 
+	//  func(o *runtimeOpts)
 	err = rt.Run(
+		// 存储秘钥的地方
 		runtime.WithSecretStores(
 			secretstores_loader.New("kubernetes", func() secretstores.SecretStore {
 				return sercetstores_kubernetes.NewKubernetesSecretStore(logContrib)
 			}),
-			secretstores_loader.New("azure.keyvault", func() secretstores.SecretStore {
-				return keyvault.NewAzureKeyvaultSecretStore(logContrib)
-			}),
+			//secretstores_loader.New("azure.keyvault", func() secretstores.SecretStore {
+			//	return keyvault.NewAzureKeyvaultSecretStore(logContrib)
+			//}),
 			secretstores_loader.New("hashicorp.vault", func() secretstores.SecretStore {
 				return vault.NewHashiCorpVaultSecretStore(logContrib)
 			}),
@@ -184,6 +174,7 @@ func main() {
 				return secretstore_env.NewEnvSecretStore(logContrib)
 			}),
 		),
+		//状态存储
 		runtime.WithStates(
 			state_loader.New("redis", func() state.Store {
 				return state_redis.NewRedisStateStore(logContrib)
@@ -191,15 +182,15 @@ func main() {
 			state_loader.New("consul", func() state.Store {
 				return consul.NewConsulStateStore(logContrib)
 			}),
-			state_loader.New("azure.blobstorage", func() state.Store {
-				return state_azure_blobstorage.NewAzureBlobStorageStore(logContrib)
-			}),
-			state_loader.New("azure.cosmosdb", func() state.Store {
-				return state_cosmosdb.NewCosmosDBStateStore(logContrib)
-			}),
-			state_loader.New("azure.tablestorage", func() state.Store {
-				return state_azure_tablestorage.NewAzureTablesStateStore(logContrib)
-			}),
+			//state_loader.New("azure.blobstorage", func() state.Store {
+			//	return state_azure_blobstorage.NewAzureBlobStorageStore(logContrib)
+			//}),
+			//state_loader.New("azure.cosmosdb", func() state.Store {
+			//	return state_cosmosdb.NewCosmosDBStateStore(logContrib)
+			//}),
+			//state_loader.New("azure.tablestorage", func() state.Store {
+			//	return state_azure_tablestorage.NewAzureTablesStateStore(logContrib)
+			//}),
 			state_loader.New("cassandra", func() state.Store {
 				return cassandra.NewCassandraStateStore(logContrib)
 			}),
@@ -241,18 +232,20 @@ func main() {
 				return state_mysql.NewMySQLStateStore(logContrib)
 			}),
 		),
+		// 配置管理
 		runtime.WithConfigurations(
 			configuration_loader.New("redis", func() configuration.Store {
 				return configuration_redis.NewRedisConfigurationStore(logContrib)
 			}),
 		),
+		// 发布订阅
 		runtime.WithPubSubs(
-			pubsub_loader.New("azure.eventhubs", func() pubs.PubSub {
-				return pubsub_eventhubs.NewAzureEventHubs(logContrib)
-			}),
-			pubsub_loader.New("azure.servicebus", func() pubs.PubSub {
-				return servicebus.NewAzureServiceBus(logContrib)
-			}),
+			//pubsub_loader.New("azure.eventhubs", func() pubs.PubSub {
+			//	return pubsub_eventhubs.NewAzureEventHubs(logContrib)
+			//}),
+			//pubsub_loader.New("azure.servicebus", func() pubs.PubSub {
+			//	return servicebus.NewAzureServiceBus(logContrib)
+			//}),
 			pubsub_loader.New("gcp.pubsub", func() pubs.PubSub {
 				return pubsub_gcp.NewGCPPubSub(logContrib)
 			}),
@@ -287,6 +280,7 @@ func main() {
 				return pubsub_inmemory.New(logContrib)
 			}),
 		),
+		// todo 名称解析
 		runtime.WithNameResolutions(
 			nr_loader.New("mdns", func() nr.Resolver {
 				return nr_mdns.NewResolver(logContrib)
@@ -298,6 +292,7 @@ func main() {
 				return nr_consul.NewResolver(logContrib)
 			}),
 		),
+		// 消息的接收端
 		runtime.WithInputBindings(
 			bindings_loader.NewInput("aws.sqs", func() bindings.InputBinding {
 				return sqs.NewAWSSQS(logContrib)
@@ -305,18 +300,18 @@ func main() {
 			bindings_loader.NewInput("aws.kinesis", func() bindings.InputBinding {
 				return kinesis.NewAWSKinesis(logContrib)
 			}),
-			bindings_loader.NewInput("azure.eventgrid", func() bindings.InputBinding {
-				return eventgrid.NewAzureEventGrid(logContrib)
-			}),
-			bindings_loader.NewInput("azure.eventhubs", func() bindings.InputBinding {
-				return eventhubs.NewAzureEventHubs(logContrib)
-			}),
-			bindings_loader.NewInput("azure.servicebusqueues", func() bindings.InputBinding {
-				return servicebusqueues.NewAzureServiceBusQueues(logContrib)
-			}),
-			bindings_loader.NewInput("azure.storagequeues", func() bindings.InputBinding {
-				return storagequeues.NewAzureStorageQueues(logContrib)
-			}),
+			//bindings_loader.NewInput("azure.eventgrid", func() bindings.InputBinding {
+			//	return eventgrid.NewAzureEventGrid(logContrib)
+			//}),
+			//bindings_loader.NewInput("azure.eventhubs", func() bindings.InputBinding {
+			//	return eventhubs.NewAzureEventHubs(logContrib)
+			//}),
+			//bindings_loader.NewInput("azure.servicebusqueues", func() bindings.InputBinding {
+			//	return servicebusqueues.NewAzureServiceBusQueues(logContrib)
+			//}),
+			//bindings_loader.NewInput("azure.storagequeues", func() bindings.InputBinding {
+			//	return storagequeues.NewAzureStorageQueues(logContrib)
+			//}),
 			bindings_loader.NewInput("cron", func() bindings.InputBinding {
 				return cron.NewCron(logContrib)
 			}),
@@ -348,6 +343,7 @@ func main() {
 				return bindings_zeebe_jobworker.NewZeebeJobWorker(logContrib)
 			}),
 		),
+		// 消息发送到哪里
 		runtime.WithOutputBindings(
 			bindings_loader.NewOutput("alicloud.oss", func() bindings.OutputBinding {
 				return oss.NewAliCloudOSS(logContrib)
@@ -376,30 +372,30 @@ func main() {
 			bindings_loader.NewOutput("aws.dynamodb", func() bindings.OutputBinding {
 				return dynamodb.NewDynamoDB(logContrib)
 			}),
-			bindings_loader.NewOutput("azure.blobstorage", func() bindings.OutputBinding {
-				return blobstorage.NewAzureBlobStorage(logContrib)
-			}),
-			bindings_loader.NewOutput("azure.cosmosdb", func() bindings.OutputBinding {
-				return bindings_cosmosdb.NewCosmosDB(logContrib)
-			}),
-			bindings_loader.NewOutput("azure.cosmosdb.gremlinapi", func() bindings.OutputBinding {
-				return bindings_cosmosdbgremlinapi.NewCosmosDBGremlinAPI(logContrib)
-			}),
-			bindings_loader.NewOutput("azure.eventgrid", func() bindings.OutputBinding {
-				return eventgrid.NewAzureEventGrid(logContrib)
-			}),
-			bindings_loader.NewOutput("azure.eventhubs", func() bindings.OutputBinding {
-				return eventhubs.NewAzureEventHubs(logContrib)
-			}),
-			bindings_loader.NewOutput("azure.servicebusqueues", func() bindings.OutputBinding {
-				return servicebusqueues.NewAzureServiceBusQueues(logContrib)
-			}),
-			bindings_loader.NewOutput("azure.signalr", func() bindings.OutputBinding {
-				return signalr.NewSignalR(logContrib)
-			}),
-			bindings_loader.NewOutput("azure.storagequeues", func() bindings.OutputBinding {
-				return storagequeues.NewAzureStorageQueues(logContrib)
-			}),
+			//bindings_loader.NewOutput("azure.blobstorage", func() bindings.OutputBinding {
+			//	return blobstorage.NewAzureBlobStorage(logContrib)
+			//}),
+			//bindings_loader.NewOutput("azure.cosmosdb", func() bindings.OutputBinding {
+			//	return bindings_cosmosdb.NewCosmosDB(logContrib)
+			//}),
+			//bindings_loader.NewOutput("azure.cosmosdb.gremlinapi", func() bindings.OutputBinding {
+			//	return bindings_cosmosdbgremlinapi.NewCosmosDBGremlinAPI(logContrib)
+			//}),
+			//bindings_loader.NewOutput("azure.eventgrid", func() bindings.OutputBinding {
+			//	return eventgrid.NewAzureEventGrid(logContrib)
+			//}),
+			//bindings_loader.NewOutput("azure.eventhubs", func() bindings.OutputBinding {
+			//	return eventhubs.NewAzureEventHubs(logContrib)
+			//}),
+			//bindings_loader.NewOutput("azure.servicebusqueues", func() bindings.OutputBinding {
+			//	return servicebusqueues.NewAzureServiceBusQueues(logContrib)
+			//}),
+			//bindings_loader.NewOutput("azure.signalr", func() bindings.OutputBinding {
+			//	return signalr.NewSignalR(logContrib)
+			//}),
+			//bindings_loader.NewOutput("azure.storagequeues", func() bindings.OutputBinding {
+			//	return storagequeues.NewAzureStorageQueues(logContrib)
+			//}),
 			bindings_loader.NewOutput("cron", func() bindings.OutputBinding {
 				return cron.NewCron(logContrib)
 			}),
@@ -461,6 +457,7 @@ func main() {
 				return graphql.NewGraphQL(logContrib)
 			}),
 		),
+		// http中间件
 		runtime.WithHTTPMiddleware(
 			http_middleware_loader.New("uppercase", func(metadata middleware.Metadata) (http_middleware.Middleware, error) {
 				return func(h fasthttp.RequestHandler) fasthttp.RequestHandler {

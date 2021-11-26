@@ -7,7 +7,7 @@ package grpc
 
 import "net"
 
-// GetFreePort returns a free port from the OS.
+// GetFreePort  返回一个来自操作系统的空闲端口。
 func GetFreePort() (int, error) {
 	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
 	if err != nil {

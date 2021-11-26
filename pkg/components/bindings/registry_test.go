@@ -6,20 +6,21 @@
 package bindings_test
 
 import (
-	"strings"
-	"testing"
-
+	b "github.com/dapr/components-contrib/bindings"
+	"github.com/dapr/dapr/pkg/components/bindings" // ok
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-
-	b "github.com/dapr/components-contrib/bindings"
-
-	"github.com/dapr/dapr/pkg/components/bindings"
+	"strings"
+	"testing"
 )
 
 type (
 	mockInputBinding struct {
 		b.InputBinding
+		// 匿名字段
+		//目的是当前结构体实例可以用所有实现了
+		//该接口的其他结构体来初始化（即使他们的属性不完全一致）
+
 	}
 
 	mockOutputBinding struct {
@@ -37,11 +38,11 @@ func TestRegistry(t *testing.T) {
 			componentName      = "bindings." + inputBindingName
 		)
 
-		// Initiate mock object
+		// 初始化mock对象,但是由于里边 接口字段为nil，因此不能调用那些方法
 		mockInput := &mockInputBinding{}
 		mockInputV2 := &mockInputBinding{}
 
-		// act
+		// 注册绑定时，会在name前添加  bindings.
 		testRegistry.RegisterInputBindings(bindings.NewInput(inputBindingName, func() b.InputBinding {
 			return mockInput
 		}))

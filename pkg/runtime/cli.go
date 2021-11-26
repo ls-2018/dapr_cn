@@ -14,7 +14,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/dapr/kit/logger"
+	"github.com/dapr/kit/logger" // ok
 
 	"github.com/dapr/dapr/pkg/acl"
 	global_config "github.com/dapr/dapr/pkg/config"
@@ -25,8 +25,8 @@ import (
 	"github.com/dapr/dapr/pkg/modes"
 	"github.com/dapr/dapr/pkg/operator/client"
 	"github.com/dapr/dapr/pkg/runtime/security"
-	"github.com/dapr/dapr/pkg/version"
-	"github.com/dapr/dapr/utils"
+	"github.com/dapr/dapr/pkg/version" // ok
+	"github.com/dapr/dapr/utils"       // ok
 )
 
 // FromFlags 解析命令行参数, 返回DaprRuntime 实例
@@ -87,6 +87,7 @@ func FromFlags() (*DaprRuntime, error) {
 	}
 
 	if *waitCommand {
+		//等待，直到Dapr 输出绑定 就绪
 		waitUntilDaprOutboundReady(*daprHTTPPort)
 		os.Exit(0)
 	}
@@ -95,8 +96,10 @@ func FromFlags() (*DaprRuntime, error) {
 		return nil, errors.New("app-id parameter cannot be empty")
 	}
 
-	// Apply options to all loggers
+	// 设置应用ID
 	loggerOptions.SetAppID(*appID)
+	//将配置应用到所有注册的logger上 ，都在全局变量初始化好了
+
 	if err := logger.ApplyOptionsToLoggers(&loggerOptions); err != nil {
 		return nil, err
 	}
@@ -104,10 +107,19 @@ func FromFlags() (*DaprRuntime, error) {
 	log.Infof("starting Dapr Runtime -- version %s -- commit %s", version.Version(), version.Commit())
 	log.Infof("log level set to: %s", loggerOptions.OutputLevel)
 
-	// Initialize dapr metrics exporter
+	// 启动指标暴露程序  9090端口
 	if err := metricsExporter.Init(); err != nil {
 		log.Fatal(err)
 	}
+	//dapr-http: 3500/TCP
+	//dapr-grpc: 50001/TCP
+	//dapr-internal: 50002/TCP
+	//dapr-metrics: 9090/TCP
+	//requests.get("http://localhost:9090").text 获取指标
+
+
+	// http   ------>    daprd 3500 <----->  app appPort
+	// grpc  ------->   50001 daprd 50002 <-------> app appPort
 
 	daprHTTP, err := strconv.Atoi(*daprHTTPPort)
 	if err != nil {
@@ -119,6 +131,7 @@ func FromFlags() (*DaprRuntime, error) {
 		return nil, errors.Wrap(err, "error parsing dapr-grpc-port flag")
 	}
 
+	// 默认7777
 	profPort, err := strconv.Atoi(*profilePort)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing profile-port flag")
@@ -131,6 +144,7 @@ func FromFlags() (*DaprRuntime, error) {
 			return nil, errors.Wrap(err, "error parsing dapr-internal-grpc-port")
 		}
 	} else {
+		//返回一个来自操作系统的空闲端口。
 		daprInternalGRPC, err = grpc.GetFreePort()
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to get free port for internal grpc server")
@@ -148,6 +162,7 @@ func FromFlags() (*DaprRuntime, error) {
 
 	var applicationPort int
 	if *appPort != "" {
+		//appPort
 		applicationPort, err = strconv.Atoi(*appPort)
 		if err != nil {
 			return nil, errors.Wrap(err, "error parsing app-port")
