@@ -22,24 +22,26 @@ import (
 // To track the metrics for fasthttp using opencensus, this implementation is inspired by
 // https://github.com/census-instrumentation/opencensus-go/tree/master/plugin/ochttp
 
-// Tag key definitions for http requests.
+// http请求指标的tagkey
 var (
 	httpStatusCodeKey = tag.MustNewKey("status")
 	httpPathKey       = tag.MustNewKey("path")
 	httpMethodKey     = tag.MustNewKey("method")
 )
 
-// Default distributions.
+// 默认分布
 var (
-	defaultSizeDistribution    = view.Distribution(1024, 2048, 4096, 16384, 65536, 262144, 1048576, 4194304, 16777216, 67108864, 268435456, 1073741824, 4294967296)
+	// 大小分布
+	defaultSizeDistribution = view.Distribution(1024, 2048, 4096, 16384, 65536, 262144, 1048576, 4194304, 16777216, 67108864, 268435456, 1073741824, 4294967296)
+	// 延迟分布
 	defaultLatencyDistribution = view.Distribution(1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 30, 40, 50, 65, 80, 100, 130, 160, 200, 250, 300, 400, 500, 650, 800, 1000, 2000, 5000, 10000, 20000, 50000, 100000)
 )
 
 type httpMetrics struct {
-	serverRequestCount  *stats.Int64Measure
-	serverRequestBytes  *stats.Int64Measure
-	serverResponseBytes *stats.Int64Measure
-	serverLatency       *stats.Float64Measure
+	serverRequestCount  *stats.Int64Measure // 服务器中启动的HTTP请求的数量。
+	serverRequestBytes  *stats.Int64Measure // 如果在服务器中设置为ContentLength（未压缩），则为HTTP请求体大小。
+	serverResponseBytes *stats.Int64Measure // 服务器中的HTTP响应体大小（未压缩）。
+	serverLatency       *stats.Float64Measure // 服务器中的HTTP请求端到端延迟
 	serverResponseCount *stats.Int64Measure
 
 	clientSentBytes        *stats.Int64Measure

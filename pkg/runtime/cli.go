@@ -8,6 +8,8 @@ package runtime
 import (
 	"flag"
 	"fmt"
+	daprd_debug "github.com/dapr/dapr/code_debug/daprd"
+	"github.com/dapr/dapr/pkg/operator/client"
 	"os"
 	"strconv"
 	"strings"
@@ -23,7 +25,6 @@ import (
 	"github.com/dapr/dapr/pkg/grpc"
 	"github.com/dapr/dapr/pkg/metrics"
 	"github.com/dapr/dapr/pkg/modes"
-	"github.com/dapr/dapr/pkg/operator/client"
 	"github.com/dapr/dapr/pkg/runtime/security"
 	"github.com/dapr/dapr/pkg/version" // ok
 	"github.com/dapr/dapr/utils"       // ok
@@ -66,13 +67,26 @@ func FromFlags() (*DaprRuntime, error) {
 	daprHTTPReadBufferSize := flag.Int("dapr-http-read-buffer-size", -1, "Increasing max size of read buffer in KB to handle sending multi-KB headers. By default 4 KB.")
 	//在http服务器上启用请求正文流
 	daprHTTPStreamRequestBody := flag.Bool("dapr-http-stream-request-body", false, "Enables request body streaming on http server")
-
 	loggerOptions := logger.DefaultOptions()
 	loggerOptions.AttachCmdFlags(flag.StringVar, flag.BoolVar)
 
 	metricsExporter := metrics.NewExporter(metrics.DefaultMetricNamespace)
 
 	metricsExporter.Options().AttachCmdFlags(flag.StringVar, flag.BoolVar)
+	daprd_debug.PRE(
+		// *string
+		mode, daprHTTPPort, daprAPIGRPCPort,
+		appPort, appID, controlPlaneAddress, appProtocol, placementServiceHostAddr, config,
+		sentryAddress, &loggerOptions.OutputLevel,
+		&metricsExporter.Options().Port,
+		daprInternalGRPCPort,
+		//*int
+		appMaxConcurrency,
+		daprHTTPMaxRequestSize,
+		//*bool
+		&metricsExporter.Options().MetricsEnabled,
+		enableMTLS,
+	)
 
 	flag.Parse()
 
@@ -116,7 +130,6 @@ func FromFlags() (*DaprRuntime, error) {
 	//dapr-internal: 50002/TCP
 	//dapr-metrics: 9090/TCP
 	//requests.get("http://localhost:9090").text 获取指标
-
 
 	// http   ------>    daprd 3500 <----->  app appPort
 	// grpc  ------->   50001 daprd 50002 <-------> app appPort
@@ -183,8 +196,10 @@ func FromFlags() (*DaprRuntime, error) {
 		readBufferSize = DefaultReadBufferSize
 	}
 
+	//
 	placementAddresses := []string{}
 	if *placementServiceHostAddr != "" {
+		// dapr-placement-server.dapr.svc.cluster.local:50005
 		placementAddresses = parsePlacementAddr(*placementServiceHostAddr)
 	}
 
@@ -197,21 +212,26 @@ func FromFlags() (*DaprRuntime, error) {
 	if *appProtocol != string(HTTPProtocol) {
 		appPrtcl = *appProtocol
 	}
-
+	// [::1],127.0.0.1
 	daprAPIListenAddressList := strings.Split(*daprAPIListenAddresses, ",")
 	if len(daprAPIListenAddressList) == 0 {
 		daprAPIListenAddressList = []string{DefaultAPIListenAddress}
 	}
-	runtimeConfig := NewRuntimeConfig(*appID, placementAddresses, *controlPlaneAddress, *allowedOrigins, *config, *componentsPath,
-		appPrtcl, *mode, daprHTTP, daprInternalGRPC, daprAPIGRPC, daprAPIListenAddressList, publicPort, applicationPort, profPort, *enableProfiling, concurrency, *enableMTLS, *sentryAddress, *appSSL, maxRequestBodySize, *unixDomainSocket, readBufferSize, *daprHTTPStreamRequestBody)
+	runtimeConfig := NewRuntimeConfig(*appID, placementAddresses, *controlPlaneAddress,
+		*allowedOrigins, *config, *componentsPath,
+		appPrtcl, *mode, daprHTTP, daprInternalGRPC, daprAPIGRPC, daprAPIListenAddressList,
+		publicPort, applicationPort, profPort, *enableProfiling, concurrency, *enableMTLS,
+		*sentryAddress, *appSSL, maxRequestBodySize, *unixDomainSocket, readBufferSize,
+		*daprHTTPStreamRequestBody)
 
-	// set environment variables
-	// TODO - consider adding host address to runtime config and/or caching result in utils package
+	// 设置环境变量
+	// TODO - 考虑在运行时配置中添加主机地址或在实用程序包中缓存结果
 	host, err := utils.GetHostAddress()
 	if err != nil {
 		log.Warnf("failed to get host address, env variable %s will not be set", env.HostAddress)
 	}
 
+	// 变量存储
 	variables := map[string]string{
 		env.AppID:           *appID,
 		env.AppPort:         *appPort,
@@ -230,25 +250,35 @@ func FromFlags() (*DaprRuntime, error) {
 	var globalConfig *global_config.Configuration
 	var configErr error
 
+	// daprd之间是否加密通信，enableMTLS 默认false
+	// k8s模式一定要加密
 	if *enableMTLS || *mode == string(modes.KubernetesMode) {
+		//  从环境变量中 获取根证书、证书、私钥
 		runtimeConfig.CertChain, err = security.GetCertChain()
 		if err != nil {
 			return nil, err
 		}
 	}
-
+	//访问控制列表
 	var accessControlList *global_config.AccessControlList
 	var namespace string
 
 	if *config != "" {
 		switch modes.DaprMode(*mode) {
 		case modes.KubernetesMode:
-			client, conn, clientErr := client.GetOperatorClient(*controlPlaneAddress, security.TLSServerName, runtimeConfig.CertChain)
+			//controlPlaneAddress=dapr-api.dapr-system.svc.cluster.local:80
+
+			// 建立一个 控制面的链接   链接的是
+			// 将这个服务的80端口 映射到本地6500端口
+			// kubectl port-forward svc/dapr-api -n dapr-system 6500:80 &
+			client, conn, clientErr := client.GetOperatorClient(*controlPlaneAddress,
+				security.TLSServerName, runtimeConfig.CertChain)
 			if clientErr != nil {
 				return nil, clientErr
 			}
 			defer conn.Close()
 			namespace = os.Getenv("NAMESPACE")
+			//去拿k8s里dapr自定义资源Configuration  appconfig
 			globalConfig, configErr = global_config.LoadKubernetesConfiguration(*config, namespace, client)
 		case modes.StandaloneMode:
 			globalConfig, _, configErr = global_config.LoadStandaloneConfiguration(*config)
@@ -263,6 +293,7 @@ func FromFlags() (*DaprRuntime, error) {
 		globalConfig = global_config.LoadDefaultConfiguration()
 	}
 
+	log.Info("loading daprd accessControlList")
 	accessControlList, err = acl.ParseAccessControlSpec(globalConfig.Spec.AccessControlSpec, string(runtimeConfig.ApplicationProtocol))
 	if err != nil {
 		log.Fatalf(err.Error())
@@ -270,6 +301,7 @@ func FromFlags() (*DaprRuntime, error) {
 	return NewDaprRuntime(runtimeConfig, globalConfig, accessControlList), nil
 }
 
+// ok
 func setEnvVariables(variables map[string]string) error {
 	for key, value := range variables {
 		err := os.Setenv(key, value)
@@ -280,7 +312,9 @@ func setEnvVariables(variables map[string]string) error {
 	return nil
 }
 
+// ok
 func parsePlacementAddr(val string) []string {
+	// dapr-placement-server.dapr.svc.cluster.local:50005
 	parsed := []string{}
 	p := strings.Split(val, ",")
 	for _, addr := range p {

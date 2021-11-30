@@ -5,7 +5,7 @@
 
 package config
 
-// StandaloneConfig is the configuration for standalone mode.
+// StandaloneConfig 定义了单机模式的配置。
 type StandaloneConfig struct {
 	ComponentsPath string
 }

@@ -5,7 +5,7 @@
 
 package config
 
-// KubernetesConfig defines the configuration for Kubernetes mode.
+// KubernetesConfig 定义了Kubernetes模式的配置。
 type KubernetesConfig struct {
 	ControlPlaneAddress string
 }

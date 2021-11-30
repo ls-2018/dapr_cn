@@ -31,16 +31,17 @@ var (
 	KeyClientStatus = tag.MustNewKey("grpc_client_status")
 )
 
+// grpc 指标
 type grpcMetrics struct {
-	serverReceivedBytes *stats.Int64Measure
-	serverSentBytes     *stats.Int64Measure
-	serverLatency       *stats.Float64Measure
-	serverCompletedRpcs *stats.Int64Measure
+	serverReceivedBytes *stats.Int64Measure   // 每个RPC的所有消息中收到的总字节数。
+	serverSentBytes     *stats.Int64Measure   // 每个RPC的所有响应信息中发送的总字节数。
+	serverLatency       *stats.Float64Measure // 从收到请求的第一个字节到发送响应的最后一个字节之间的时间，或终端错误。
+	serverCompletedRpcs *stats.Int64Measure   // 每个RPC发送的字节数分布，按方法划分。
 
-	clientSentBytes        *stats.Int64Measure
-	clientReceivedBytes    *stats.Int64Measure
-	clientRoundtripLatency *stats.Float64Measure
-	clientCompletedRpcs    *stats.Int64Measure
+	clientSentBytes        *stats.Int64Measure   // 每个RPC的所有请求信息中发送的总字节数。
+	clientReceivedBytes    *stats.Int64Measure   // 每个RPC的所有响应信息中收到的总字节数。
+	clientRoundtripLatency *stats.Float64Measure // 从发送请求的第一个字节到收到响应的最后一个字节的时间，或终端错误。
+	clientCompletedRpcs    *stats.Int64Measure   // 按方法和状态计算的RPC数量。
 
 	appID   string
 	enabled bool

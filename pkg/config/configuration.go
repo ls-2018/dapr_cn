@@ -42,7 +42,7 @@ const (
 
 type Feature string
 
-// Configuration is an internal (and duplicate) representation of Dapr's Configuration CRD.
+// Configuration 是Dapr的配置CRD的内部（和重复）表示。
 type Configuration struct {
 	metav1.TypeMeta `json:",inline" yaml:",inline"`
 	// See https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#metadata
@@ -136,12 +136,12 @@ type TracingSpec struct {
 	Zipkin       ZipkinSpec `json:"zipkin" yaml:"zipkin"`
 }
 
-// ZipkinSpec defines Zipkin trace configurations.
+// ZipkinSpec 定义了zipkin的配置
 type ZipkinSpec struct {
 	EndpointAddress string `json:"endpointAddress" yaml:"endpointAddress"`
 }
 
-// MetricSpec configuration for metrics.
+// MetricSpec 监控是否开启
 type MetricSpec struct {
 	Enabled bool `json:"enabled" yaml:"enabled"`
 }
@@ -242,25 +242,45 @@ func LoadStandaloneConfiguration(config string) (*Configuration, string, error) 
 	return conf, string(b), nil
 }
 
-// LoadKubernetesConfiguration gets configuration from the Kubernetes operator with a given name.
+// LoadKubernetesConfiguration 从Kubernetes运营商那里获得配置，并给定一个名称
 func LoadKubernetesConfiguration(config, namespace string, operatorClient operatorv1pb.OperatorClient) (*Configuration, error) {
-	resp, err := operatorClient.GetConfiguration(context.Background(), &operatorv1pb.GetConfigurationRequest{
-		Name:      config,
-		Namespace: namespace,
-	}, grpc_retry.WithMax(operatorMaxRetries), grpc_retry.WithPerRetryTimeout(operatorCallTimeout))
+	// todo 这个文件到底有什么功能啊,都找不到在哪里创建的
+	//apiVersion: dapr.io/v1alpha1
+	//kind: Configuration
+	//metadata:
+	//  annotations:
+	//      manager: kubectl-client-side-apply
+	//      operation: Update
+	//  name: appconfig
+	//  namespace: mesoid
+	//spec:
+	//  metric:
+	//    enabled: true
+	//  tracing:
+	//    samplingRate: '1'
+	//    zipkin:
+	//      endpointAddress: 'http://zipkin.mesoid.svc.cluster.local:9411/api/v2/spans'
+
+	resp, err := operatorClient.GetConfiguration(context.Background(),
+		&operatorv1pb.GetConfigurationRequest{
+			Name:      config,
+			Namespace: namespace,
+		},
+		grpc_retry.WithMax(operatorMaxRetries), grpc_retry.WithPerRetryTimeout(operatorCallTimeout),
+	)
 	if err != nil {
 		return nil, err
 	}
 	if resp.GetConfiguration() == nil {
 		return nil, errors.Errorf("configuration %s not found", config)
 	}
-	conf := LoadDefaultConfiguration()
-	err = json.Unmarshal(resp.GetConfiguration(), conf)
+	conf := LoadDefaultConfiguration()                  // 加载默认配置
+	err = json.Unmarshal(resp.GetConfiguration(), conf) // 会覆写
 	if err != nil {
 		return nil, err
 	}
 
-	err = sortAndValidateSecretsConfiguration(conf)
+	err = sortAndValidateSecretsConfiguration(conf) // 排序和验证 秘钥 配置
 	if err != nil {
 		return nil, err
 	}

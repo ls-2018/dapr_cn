@@ -5,15 +5,12 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"os"
-
-	"github.com/pkg/errors"
-
-	"github.com/dapr/kit/logger"
-
 	"github.com/dapr/dapr/pkg/credentials"
 	diag "github.com/dapr/dapr/pkg/diagnostics"
 	"github.com/dapr/dapr/pkg/sentry/certs"
+	"github.com/dapr/kit/logger"
+	"github.com/pkg/errors"
+	"os"
 )
 
 const (
@@ -31,6 +28,7 @@ func CertPool(certPem []byte) (*x509.CertPool, error) {
 	return cp, nil
 }
 
+// GetCertChain 从环境变量中 获取根证书、证书、私钥
 func GetCertChain() (*credentials.CertChain, error) {
 	trustAnchors := os.Getenv(certs.TrustAnchorsEnvVar)
 	if trustAnchors == "" {

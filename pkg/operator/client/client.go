@@ -14,8 +14,7 @@ import (
 	operatorv1pb "github.com/dapr/dapr/pkg/proto/operator/v1"
 )
 
-// GetOperatorClient returns a new k8s operator client and the underlying connection.
-// If a cert chain is given, a TLS connection will be established.
+// GetOperatorClient 返回一个新的k8s操作客户端和底层连接。如果给出了一个证书链，将建立一个TLS连接。
 func GetOperatorClient(address, serverName string, certChain *dapr_credentials.CertChain) (operatorv1pb.OperatorClient, *grpc.ClientConn, error) {
 	if certChain == nil {
 		return nil, nil, errors.New("certificate chain cannot be nil")

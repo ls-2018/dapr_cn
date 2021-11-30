@@ -25,11 +25,12 @@ import (
 
 var log = logger.NewLogger("dapr.acl")
 
-// ParseAccessControlSpec creates an in-memory copy of the Access Control Spec for fast lookup.
+// ParseAccessControlSpec 在内存中创建访问控制规范的副本，以便快速查找。
+// 主要是控制同一名称空间下，不同应用间的访问规则
+// 因为accessControlSpec是从该namespace的自定义规则的appconfig里拿到的
 func ParseAccessControlSpec(accessControlSpec config.AccessControlSpec, protocol string) (*config.AccessControlList, error) {
-	if accessControlSpec.TrustDomain == "" &&
-		accessControlSpec.DefaultAction == "" &&
-		(accessControlSpec.AppPolicies == nil || len(accessControlSpec.AppPolicies) == 0) {
+
+	if accessControlSpec.TrustDomain == "" && accessControlSpec.DefaultAction == "" && (accessControlSpec.AppPolicies == nil || len(accessControlSpec.AppPolicies) == 0) {
 		// No ACL has been specified
 		log.Debugf("No Access control policy specified")
 		return nil, nil
@@ -47,11 +48,11 @@ func ParseAccessControlSpec(accessControlSpec config.AccessControlSpec, protocol
 	accessControlList.DefaultAction = accessControlSpec.DefaultAction
 	if accessControlSpec.DefaultAction == "" {
 		if accessControlSpec.AppPolicies == nil || len(accessControlSpec.AppPolicies) > 0 {
-			// Some app level policies have been specified but not default global action is set. Default to more secure option - Deny
+			// 一些应用程序级别的策略已被指定，但没有设置默认的全局行动。默认为更安全的选项 - 拒绝
 			log.Warnf("No global default action has been specified. Setting default global action as Deny")
 			accessControlList.DefaultAction = config.DenyAccess
 		} else {
-			// An empty ACL has been specified. Set default global action to Allow
+			// 已经指定了一个空的ACL。设置默认的全局动作为允许
 			accessControlList.DefaultAction = config.AllowAccess
 		}
 	}

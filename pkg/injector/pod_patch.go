@@ -148,7 +148,7 @@ func (i *injector) getPodPatchOperations(ar *v1.AdmissionReview,
 	placementAddress := getServiceAddress(placementService, namespace, i.config.KubeClusterDomain, placementServicePort)
 	// "dapr-sentry.dapr.svc.cluster.local:80"
 	sentryAddress := getServiceAddress(sentryService, namespace, i.config.KubeClusterDomain, sentryServicePort)
-	//"dapr-api.dapr.svc.cluster.local:80"
+	//"dapr-api.dapr.svc.cluster.local:80"    就是operator
 	apiSvcAddress := getServiceAddress(apiAddress, namespace, i.config.KubeClusterDomain, apiPort)
 
 	var trustAnchors string

@@ -6,38 +6,40 @@
 package runtime
 
 import (
-	config "github.com/dapr/dapr/pkg/config/modes"
-	"github.com/dapr/dapr/pkg/credentials"
-	"github.com/dapr/dapr/pkg/modes"
+	config "github.com/dapr/dapr/pkg/config/modes" // ok
+	"github.com/dapr/dapr/pkg/credentials"         // ok
+	"github.com/dapr/dapr/pkg/modes"               // ok
 )
 
-// Protocol is a communications protocol.
+// Protocol 是一种通信协议。
 type Protocol string
 
+//pkg/config/env/env_variables.go:4
+
 const (
-	// GRPCProtocol is a gRPC communication protocol.
+	// GRPCProtocol 是一个gRPC通信协议。
 	GRPCProtocol Protocol = "grpc"
-	// HTTPProtocol is a HTTP communication protocol.
+	// HTTPProtocol 是一个http通信协议。
 	HTTPProtocol Protocol = "http"
-	// DefaultDaprHTTPPort is the default http port for Dapr.
+	// DefaultDaprHTTPPort 是Dapr的默认http端口。
 	DefaultDaprHTTPPort = 3500
-	// DefaultDaprPublicPort is the default http port for Dapr.
+	// DefaultDaprPublicPort 是Dapr的默认http端口。
 	DefaultDaprPublicPort = 3501
-	// DefaultDaprAPIGRPCPort is the default API gRPC port for Dapr.
+	// DefaultDaprAPIGRPCPort 是Dapr的默认API gRPC端口。
 	DefaultDaprAPIGRPCPort = 50001
-	// DefaultProfilePort is the default port for profiling endpoints.
+	// DefaultProfilePort 性能分析的默认端口。
 	DefaultProfilePort = 7777
-	// DefaultMetricsPort is the default port for metrics endpoints.
+	// DefaultMetricsPort 指标监控的默认端口
 	DefaultMetricsPort = 9090
-	// DefaultMaxRequestBodySize is the default option for the maximum body size in MB for Dapr HTTP servers.
+	// DefaultMaxRequestBodySize 是Dapr HTTP服务器的最大请求体大小的默认选项，单位是MB。
 	DefaultMaxRequestBodySize = 4
-	// DefaultAPIListenAddress is which address to listen for the Dapr HTTP and GRPC APIs. Empty string is all addresses.
+	// DefaultAPIListenAddress 是监听Dapr HTTP和GRPC APIs的地址。空字符串是所有地址。
 	DefaultAPIListenAddress = ""
-	// DefaultReadBufferSize is the default option for the maximum header size in KB for Dapr HTTP servers.
+	// DefaultReadBufferSize  是Dapr HTTP服务器最大header大小的默认选项，单位为KB。
 	DefaultReadBufferSize = 4
 )
 
-// Config holds the Dapr Runtime configuration.
+// Config 持有Dapr Runtime配置。
 type Config struct {
 	ID                   string
 	HTTPPort             int
@@ -66,7 +68,7 @@ type Config struct {
 	StreamRequestBody    bool
 }
 
-// NewRuntimeConfig returns a new runtime config.
+// NewRuntimeConfig 返回运行时配置
 func NewRuntimeConfig(
 	id string, placementAddresses []string,
 	controlPlaneAddress, allowedOrigins, globalConfig, componentsPath, appProtocol, mode string,

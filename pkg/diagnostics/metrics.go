@@ -12,22 +12,22 @@ import (
 	"go.opencensus.io/tag"
 )
 
-// appIDKey is a tag key for App ID.
+// appIDKey 类型转换
 var appIDKey = tag.MustNewKey("app_id")
 
 var (
-	// DefaultReportingPeriod is the default view reporting period.
+	// DefaultReportingPeriod 汇报周期
 	DefaultReportingPeriod = 1 * time.Minute
 
-	// DefaultMonitoring holds service monitoring metrics definitions.
+	// DefaultMonitoring  持有服务监控指标的定义。
 	DefaultMonitoring = newServiceMetrics()
-	// DefaultGRPCMonitoring holds default gRPC monitoring handlers and middlewares.
+	// DefaultGRPCMonitoring 持有默认的gRPC监控处理程序和中间件。
 	DefaultGRPCMonitoring = newGRPCMetrics()
-	// DefaultHTTPMonitoring holds default HTTP monitoring handlers and middlewares.
+	// DefaultHTTPMonitoring 持有默认的HTTP监控处理程序和中间件。
 	DefaultHTTPMonitoring = newHTTPMetrics()
 )
 
-// InitMetrics initializes metrics.
+// InitMetrics 初始化指标
 func InitMetrics(appID string) error {
 	if err := DefaultMonitoring.Init(appID); err != nil {
 		return err

@@ -18,8 +18,8 @@ func NewMeasureView(measure stats.Measure, keys []tag.Key, aggregation *view.Agg
 	return &view.View{
 		Name:        measure.Name(),
 		Description: measure.Description(),
-		Measure:     measure,
-		TagKeys:     keys,
+		Measure:     measure, // 指标
+		TagKeys:     keys,// 标签
 		Aggregation: aggregation,
 	}
 }

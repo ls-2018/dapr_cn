@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -23,4 +24,5 @@ func TestGetHostAdress(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotEmpty(t, address)
 	})
+	fmt.Println(GetHostAddress())
 }

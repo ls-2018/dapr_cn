@@ -21,20 +21,20 @@ var (
 	policyActionKey = tag.MustNewKey("policyAction")
 )
 
-// serviceMetrics holds dapr runtime metric monitoring methods.
+// serviceMetrics 持有dapr运行时度量监测方法。
 type serviceMetrics struct {
-	// component metrics
+	// 组件 指标
 	componentLoaded        *stats.Int64Measure
 	componentInitCompleted *stats.Int64Measure
 	componentInitFailed    *stats.Int64Measure
 
-	// mTLS metrics
+	// mTLS 指标
 	mtlsInitCompleted             *stats.Int64Measure
 	mtlsInitFailed                *stats.Int64Measure
 	mtlsWorkloadCertRotated       *stats.Int64Measure
 	mtlsWorkloadCertRotatedFailed *stats.Int64Measure
 
-	// Actor metrics
+	// Actor 指标
 	actorStatusReportTotal       *stats.Int64Measure
 	actorStatusReportFailedTotal *stats.Int64Measure
 	actorTableOperationRecvTotal *stats.Int64Measure
@@ -43,7 +43,7 @@ type serviceMetrics struct {
 	actorDeactivationFailedTotal *stats.Int64Measure
 	actorPendingCalls            *stats.Int64Measure
 
-	// Access Control Lists for Service Invocation metrics
+	//访问控制列表和服务调用指标
 	appPolicyActionAllowed    *stats.Int64Measure
 	globalPolicyActionAllowed *stats.Int64Measure
 	appPolicyActionBlocked    *stats.Int64Measure
@@ -54,88 +54,34 @@ type serviceMetrics struct {
 	enabled bool
 }
 
-// newServiceMetrics returns serviceMetrics instance with default service metric stats.
+// newServiceMetrics 返回带有默认服务指标统计信息的serviceMetrics实例。
 func newServiceMetrics() *serviceMetrics {
 	return &serviceMetrics{
-		// Runtime Component metrics
-		componentLoaded: stats.Int64(
-			"runtime/component/loaded",
-			"The number of successfully loaded components.",
-			stats.UnitDimensionless),
-		componentInitCompleted: stats.Int64(
-			"runtime/component/init_total",
-			"The number of initialized components.",
-			stats.UnitDimensionless),
-		componentInitFailed: stats.Int64(
-			"runtime/component/init_fail_total",
-			"The number of component initialization failures.",
-			stats.UnitDimensionless),
+		// 运行时组件指标
+		componentLoaded:        stats.Int64("runtime/component/loaded", "The number of successfully loaded components.", stats.UnitDimensionless),
+		componentInitCompleted: stats.Int64("runtime/component/init_total", "The number of initialized components.", stats.UnitDimensionless),
+		componentInitFailed:    stats.Int64("runtime/component/init_fail_total", "The number of component initialization failures.", stats.UnitDimensionless),
 
 		// mTLS
-		mtlsInitCompleted: stats.Int64(
-			"runtime/mtls/init_total",
-			"The number of successful mTLS authenticator initialization.",
-			stats.UnitDimensionless),
-		mtlsInitFailed: stats.Int64(
-			"runtime/mtls/init_fail_total",
-			"The number of mTLS authenticator init failures.",
-			stats.UnitDimensionless),
-		mtlsWorkloadCertRotated: stats.Int64(
-			"runtime/mtls/workload_cert_rotated_total",
-			"The number of the successful workload certificate rotations.",
-			stats.UnitDimensionless),
-		mtlsWorkloadCertRotatedFailed: stats.Int64(
-			"runtime/mtls/workload_cert_rotated_fail_total",
-			"The number of the failed workload certificate rotations.",
-			stats.UnitDimensionless),
+		mtlsInitCompleted:             stats.Int64("runtime/mtls/init_total", "The number of successful mTLS authenticator initialization.", stats.UnitDimensionless),
+		mtlsInitFailed:                stats.Int64("runtime/mtls/init_fail_total", "The number of mTLS authenticator init failures.", stats.UnitDimensionless),
+		mtlsWorkloadCertRotated:       stats.Int64("runtime/mtls/workload_cert_rotated_total", "The number of the successful workload certificate rotations.", stats.UnitDimensionless),
+		mtlsWorkloadCertRotatedFailed: stats.Int64("runtime/mtls/workload_cert_rotated_fail_total", "The number of the failed workload certificate rotations.", stats.UnitDimensionless),
 
 		// Actor
-		actorStatusReportTotal: stats.Int64(
-			"runtime/actor/status_report_total",
-			"The number of the successful status reports to placement service.",
-			stats.UnitDimensionless),
-		actorStatusReportFailedTotal: stats.Int64(
-			"runtime/actor/status_report_fail_total",
-			"The number of the failed status reports to placement service.",
-			stats.UnitDimensionless),
-		actorTableOperationRecvTotal: stats.Int64(
-			"runtime/actor/table_operation_recv_total",
-			"The number of the received actor placement table operations.",
-			stats.UnitDimensionless),
-		actorRebalancedTotal: stats.Int64(
-			"runtime/actor/rebalanced_total",
-			"The number of the actor rebalance requests.",
-			stats.UnitDimensionless),
-		actorDeactivationTotal: stats.Int64(
-			"runtime/actor/deactivated_total",
-			"The number of the successful actor deactivation.",
-			stats.UnitDimensionless),
-		actorDeactivationFailedTotal: stats.Int64(
-			"runtime/actor/deactivated_failed_total",
-			"The number of the failed actor deactivation.",
-			stats.UnitDimensionless),
-		actorPendingCalls: stats.Int64(
-			"runtime/actor/pending_actor_calls",
-			"The number of pending actor calls waiting to acquire the per-actor lock.",
-			stats.UnitDimensionless),
+		actorStatusReportTotal:       stats.Int64("runtime/actor/status_report_total", "The number of the successful status reports to placement service.", stats.UnitDimensionless),
+		actorStatusReportFailedTotal: stats.Int64("runtime/actor/status_report_fail_total", "The number of the failed status reports to placement service.", stats.UnitDimensionless),
+		actorTableOperationRecvTotal: stats.Int64("runtime/actor/table_operation_recv_total", "The number of the received actor placement table operations.", stats.UnitDimensionless),
+		actorRebalancedTotal:         stats.Int64("runtime/actor/rebalanced_total", "The number of the actor rebalance requests.", stats.UnitDimensionless),
+		actorDeactivationTotal:       stats.Int64("runtime/actor/deactivated_total", "The number of the successful actor deactivation.", stats.UnitDimensionless),
+		actorDeactivationFailedTotal: stats.Int64("runtime/actor/deactivated_failed_total", "The number of the failed actor deactivation.", stats.UnitDimensionless),
+		actorPendingCalls:            stats.Int64("runtime/actor/pending_actor_calls", "The number of pending actor calls waiting to acquire the per-actor lock.", stats.UnitDimensionless),
 
 		// Access Control Lists for service invocation
-		appPolicyActionAllowed: stats.Int64(
-			"runtime/acl/app_policy_action_allowed_total",
-			"The number of requests allowed by the app specific action specified in the access control policy.",
-			stats.UnitDimensionless),
-		globalPolicyActionAllowed: stats.Int64(
-			"runtime/acl/global_policy_action_allowed_total",
-			"The number of requests allowed by the global action specified in the access control policy.",
-			stats.UnitDimensionless),
-		appPolicyActionBlocked: stats.Int64(
-			"runtime/acl/app_policy_action_blocked_total",
-			"The number of requests blocked by the app specific action specified in the access control policy.",
-			stats.UnitDimensionless),
-		globalPolicyActionBlocked: stats.Int64(
-			"runtime/acl/global_policy_action_blocked_total",
-			"The number of requests blocked by the global action specified in the access control policy.",
-			stats.UnitDimensionless),
+		appPolicyActionAllowed:    stats.Int64("runtime/acl/app_policy_action_allowed_total", "The number of requests allowed by the app specific action specified in the access control policy.", stats.UnitDimensionless),
+		globalPolicyActionAllowed: stats.Int64("runtime/acl/global_policy_action_allowed_total", "The number of requests allowed by the global action specified in the access control policy.", stats.UnitDimensionless),
+		appPolicyActionBlocked:    stats.Int64("runtime/acl/app_policy_action_blocked_total", "The number of requests blocked by the app specific action specified in the access control policy.", stats.UnitDimensionless),
+		globalPolicyActionBlocked: stats.Int64("runtime/acl/global_policy_action_blocked_total", "The number of requests blocked by the global action specified in the access control policy.", stats.UnitDimensionless),
 
 		// TODO: use the correct context for each request
 		ctx:     context.Background(),
@@ -143,7 +89,8 @@ func newServiceMetrics() *serviceMetrics {
 	}
 }
 
-// Init initialize metrics views for metrics.
+// Init
+// 初始化度量指标
 func (s *serviceMetrics) Init(appID string) error {
 	s.appID = appID
 	s.enabled = true
@@ -172,14 +119,14 @@ func (s *serviceMetrics) Init(appID string) error {
 	)
 }
 
-// ComponentLoaded records metric when component is loaded successfully.
+// ComponentLoaded 当组件被成功加载时记录指标。
 func (s *serviceMetrics) ComponentLoaded() {
 	if s.enabled {
 		stats.RecordWithTags(s.ctx, diag_utils.WithTags(appIDKey, s.appID), s.componentLoaded.M(1))
 	}
 }
 
-// ComponentInitialized records metric when component is initialized.
+// ComponentInitialized 当组件被成功初始化记录指标。
 func (s *serviceMetrics) ComponentInitialized(component string) {
 	if s.enabled {
 		stats.RecordWithTags(
@@ -189,7 +136,7 @@ func (s *serviceMetrics) ComponentInitialized(component string) {
 	}
 }
 
-// ComponentInitFailed records metric when component initialization is failed.
+// ComponentInitFailed 当组件失败加载时记录指标
 func (s *serviceMetrics) ComponentInitFailed(component string, reason string) {
 	if s.enabled {
 		stats.RecordWithTags(
@@ -199,14 +146,14 @@ func (s *serviceMetrics) ComponentInitFailed(component string, reason string) {
 	}
 }
 
-// MTLSInitCompleted records metric when component is initialized.
+// MTLSInitCompleted 当组件被成功初始化记录指标
 func (s *serviceMetrics) MTLSInitCompleted() {
 	if s.enabled {
 		stats.RecordWithTags(s.ctx, diag_utils.WithTags(appIDKey, s.appID), s.mtlsInitCompleted.M(1))
 	}
 }
 
-// MTLSInitFailed records metric when component initialization is failed.
+// MTLSInitFailed 当组件失败加载时记录指标
 func (s *serviceMetrics) MTLSInitFailed(reason string) {
 	if s.enabled {
 		stats.RecordWithTags(
@@ -215,14 +162,14 @@ func (s *serviceMetrics) MTLSInitFailed(reason string) {
 	}
 }
 
-// MTLSWorkLoadCertRotationCompleted records metric when workload certificate rotation is succeeded.
+// MTLSWorkLoadCertRotationCompleted 当工作负载证书轮换成功后，记录指标。
 func (s *serviceMetrics) MTLSWorkLoadCertRotationCompleted() {
 	if s.enabled {
 		stats.RecordWithTags(s.ctx, diag_utils.WithTags(appIDKey, s.appID), s.mtlsWorkloadCertRotated.M(1))
 	}
 }
 
-// MTLSWorkLoadCertRotationFailed records metric when workload certificate rotation is failed.
+// MTLSWorkLoadCertRotationFailed 当工作负载证书轮换失败后，记录指标。
 func (s *serviceMetrics) MTLSWorkLoadCertRotationFailed(reason string) {
 	if s.enabled {
 		stats.RecordWithTags(
@@ -231,7 +178,7 @@ func (s *serviceMetrics) MTLSWorkLoadCertRotationFailed(reason string) {
 	}
 }
 
-// ActorStatusReported records metrics when status is reported to placement service.
+// ActorStatusReported 向placement报告状态时，记录指标。
 func (s *serviceMetrics) ActorStatusReported(operation string) {
 	if s.enabled {
 		stats.RecordWithTags(
@@ -240,7 +187,7 @@ func (s *serviceMetrics) ActorStatusReported(operation string) {
 	}
 }
 
-// ActorStatusReportFailed records metrics when status report to placement service is failed.
+// ActorStatusReportFailed 当向placement状态报告失败时，记录指标。
 func (s *serviceMetrics) ActorStatusReportFailed(operation string, reason string) {
 	if s.enabled {
 		stats.RecordWithTags(
@@ -249,7 +196,7 @@ func (s *serviceMetrics) ActorStatusReportFailed(operation string, reason string
 	}
 }
 
-// ActorPlacementTableOperationReceived records metric when runtime receives table operation.
+// ActorPlacementTableOperationReceived 当运行时收到表操作时，记录度量。
 func (s *serviceMetrics) ActorPlacementTableOperationReceived(operation string) {
 	if s.enabled {
 		stats.RecordWithTags(
@@ -258,7 +205,7 @@ func (s *serviceMetrics) ActorPlacementTableOperationReceived(operation string) 
 	}
 }
 
-// ActorRebalanced records metric when actors are drained.
+// ActorRebalanced 当actors被榨干时，记录度量。
 func (s *serviceMetrics) ActorRebalanced(actorType string) {
 	if s.enabled {
 		stats.RecordWithTags(
@@ -268,7 +215,7 @@ func (s *serviceMetrics) ActorRebalanced(actorType string) {
 	}
 }
 
-// ActorDeactivated records metric when actor is deactivated.
+// ActorDeactivated 当actor被停用时，记录指标。
 func (s *serviceMetrics) ActorDeactivated(actorType string) {
 	if s.enabled {
 		stats.RecordWithTags(
@@ -278,7 +225,7 @@ func (s *serviceMetrics) ActorDeactivated(actorType string) {
 	}
 }
 
-// ActorDeactivationFailed records metric when actor deactivation is failed.
+// ActorDeactivationFailed 当actor停用失败时，记录指标。
 func (s *serviceMetrics) ActorDeactivationFailed(actorType, reason string) {
 	if s.enabled {
 		stats.RecordWithTags(
@@ -288,7 +235,7 @@ func (s *serviceMetrics) ActorDeactivationFailed(actorType, reason string) {
 	}
 }
 
-// ReportActorPendingCalls records the current pending actor locks.
+// ReportActorPendingCalls 记录当前阻塞中的actor
 func (s *serviceMetrics) ReportActorPendingCalls(actorType string, pendingLocks int32) {
 	if s.enabled {
 		stats.RecordWithTags(
@@ -298,7 +245,7 @@ func (s *serviceMetrics) ReportActorPendingCalls(actorType string, pendingLocks 
 	}
 }
 
-// RequestAllowedByAppAction records the requests allowed due to a match with the action specified in the access control policy for the app.
+// RequestAllowedByAppAction 记录由于与应用程序的访问控制策略中指定的行动相匹配而允许的请求。
 func (s *serviceMetrics) RequestAllowedByAppAction(appID, trustDomain, namespace, operation, httpverb string, policyAction bool) {
 	if s.enabled {
 		stats.RecordWithTags(
@@ -314,7 +261,7 @@ func (s *serviceMetrics) RequestAllowedByAppAction(appID, trustDomain, namespace
 	}
 }
 
-// RequestBlockedByAppAction records the requests blocked due to a match with the action specified in the access control policy for the app.
+// RequestBlockedByAppAction 记录由于与应用程序的访问控制策略中指定的行动相匹配而拒绝的请求
 func (s *serviceMetrics) RequestBlockedByAppAction(appID, trustDomain, namespace, operation, httpverb string, policyAction bool) {
 	if s.enabled {
 		stats.RecordWithTags(
@@ -330,7 +277,7 @@ func (s *serviceMetrics) RequestBlockedByAppAction(appID, trustDomain, namespace
 	}
 }
 
-// RequestAllowedByGlobalAction records the requests allowed due to a match with the global action in the access control policy.
+// RequestAllowedByGlobalAction 记录由于与全局的行动相匹配而允许的请求
 func (s *serviceMetrics) RequestAllowedByGlobalAction(appID, trustDomain, namespace, operation, httpverb string, policyAction bool) {
 	if s.enabled {
 		stats.RecordWithTags(
@@ -346,7 +293,7 @@ func (s *serviceMetrics) RequestAllowedByGlobalAction(appID, trustDomain, namesp
 	}
 }
 
-// RequestBlockedByGlobalAction records the requests blocked due to a match with the global action in the access control policy.
+// RequestBlockedByGlobalAction 记录由于与全局的行动相匹配而允许的请求
 func (s *serviceMetrics) RequestBlockedByGlobalAction(appID, trustDomain, namespace, operation, httpverb string, policyAction bool) {
 	if s.enabled {
 		stats.RecordWithTags(

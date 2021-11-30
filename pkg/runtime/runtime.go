@@ -82,7 +82,7 @@ import (
 const (
 	actorStateStore = "actorStateStore"
 
-	// output bindings concurrency.
+	// 输出绑定的并发性。
 	bindingsConcurrencyParallel   = "parallel"
 	bindingsConcurrencySequential = "sequential"
 	pubsubName                    = "pubsubName"
@@ -205,12 +205,12 @@ type pubsubSubscribedMessage struct {
 	path       string
 }
 
-// NewDaprRuntime returns a new runtime with the given runtime config and global config.
+// NewDaprRuntime 返回一个具有给定运行时配置和全局配置的新运行时。
 func NewDaprRuntime(runtimeConfig *Config, globalConfig *config.Configuration, accessControlList *config.AccessControlList) *DaprRuntime {
 	return &DaprRuntime{
-		runtimeConfig:          runtimeConfig,
-		globalConfig:           globalConfig,
-		accessControlList:      accessControlList,
+		runtimeConfig:          runtimeConfig, // 传递过来的参数
+		globalConfig:           globalConfig, // k8s 的appconfig
+		accessControlList:      accessControlList, // 访问控制列表，公司场景为nil
 		componentsLock:         &sync.RWMutex{},
 		components:             make([]components_v1alpha1.Component, 0),
 		grpc:                   grpc.NewGRPCManager(runtimeConfig.Mode),
@@ -243,6 +243,7 @@ func NewDaprRuntime(runtimeConfig *Config, globalConfig *config.Configuration, a
 }
 
 // Run performs initialization of the runtime with the runtime and global configurations.
+// 用运行时和全局配置执行运行时的初始化。
 func (a *DaprRuntime) Run(opts ...Option) error {
 	start := time.Now().UTC()
 	log.Infof("%s mode configured", a.runtimeConfig.Mode)
@@ -306,8 +307,9 @@ func (a *DaprRuntime) setupTracing(hostAddress string, exporters traceExporterSt
 }
 
 func (a *DaprRuntime) initRuntime(opts *runtimeOpts) error {
-	// Initialize metrics only if MetricSpec is enabled.
+	// 只有当MetricSpec被启用时，才会初始化度量指标，默认为true
 	if a.globalConfig.Spec.MetricSpec.Enabled {
+		//dp-618b5e4aa5ebc3924db86860-executorapp
 		if err := diag.InitMetrics(a.runtimeConfig.ID); err != nil {
 			log.Errorf("failed to initialize metrics: %v", err)
 		}
