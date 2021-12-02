@@ -33,7 +33,8 @@ type KubernetesComponents struct {
 	namespace string
 }
 
-// NewKubernetesComponents returns a new kubernetes loader.
+// NewKubernetesComponents 返回k8s组件的加载器  【ControlPlaneAddress ，127.0.0.1：6500】
+// mesoid, ControlPlaneAddress连接的客户端
 func NewKubernetesComponents(configuration config.KubernetesConfig, namespace string, operatorClient operatorv1pb.OperatorClient) *KubernetesComponents {
 	return &KubernetesComponents{
 		config:    configuration,
@@ -42,11 +43,19 @@ func NewKubernetesComponents(configuration config.KubernetesConfig, namespace st
 	}
 }
 
-// LoadComponents returns components from a given control plane address.
+// LoadComponents // 返回一个给定控制面地址的客户端。
 func (k *KubernetesComponents) LoadComponents() ([]components_v1alpha1.Component, error) {
-	resp, err := k.client.ListComponents(context.Background(), &operatorv1pb.ListComponentsRequest{
-		Namespace: k.namespace,
-	}, grpc_retry.WithMax(operatorMaxRetries), grpc_retry.WithPerRetryTimeout(operatorCallTimeout))
+	// 获取所有自定义资源
+	// dapr.io/Components
+	// operator 客户端
+	resp, err := k.client.ListComponents(
+		context.Background(),
+		&operatorv1pb.ListComponentsRequest{
+			Namespace: k.namespace,
+		},
+		grpc_retry.WithMax(operatorMaxRetries),
+		grpc_retry.WithPerRetryTimeout(operatorCallTimeout),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -65,3 +74,19 @@ func (k *KubernetesComponents) LoadComponents() ([]components_v1alpha1.Component
 	}
 	return components, nil
 }
+//apiVersion: dapr.io/v1alpha1
+//kind: Component
+//metadata:
+//  name: statestore
+//  namespace: liushuo
+//  uid: 91d1b0a0-684f-4f1e-814d-8240bc7f24f3
+//spec:
+//  metadata:
+//    - name: redisHost
+//      value: 'redis:6379'
+//    - name: redisPassword
+//      value: ''
+//  type: state.redis
+//  version: v1
+//auth:
+//  secretStore: kubernetes

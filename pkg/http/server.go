@@ -34,7 +34,7 @@ var log = logger.NewLogger("dapr.runtime.http")
 
 const protocol = "http"
 
-// Server is an interface for the Dapr HTTP server.
+// Server dapr http 服务器接口
 type Server interface {
 	io.Closer
 	StartNonBlocking() error

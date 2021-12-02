@@ -90,7 +90,7 @@ type SecretsSpec struct {
 	Scopes []SecretsScope `json:"scopes"`
 }
 
-// SecretsScope defines the scope for secrets.
+// SecretsScope defines the scope for secrets.   定义了secret的范围。
 type SecretsScope struct {
 	DefaultAccess  string   `json:"defaultAccess,omitempty" yaml:"defaultAccess,omitempty"`
 	StoreName      string   `json:"storeName" yaml:"storeName"`
@@ -261,12 +261,16 @@ func LoadKubernetesConfiguration(config, namespace string, operatorClient operat
 	//    zipkin:
 	//      endpointAddress: 'http://zipkin.mesoid.svc.cluster.local:9411/api/v2/spans'
 
+	// 这里与 operator 进行了通信
+	// controlPlaneAddress dapr-api.dapr-system.svc.cluster.local:80
+	// todo 待看
 	resp, err := operatorClient.GetConfiguration(context.Background(),
 		&operatorv1pb.GetConfigurationRequest{
 			Name:      config,
 			Namespace: namespace,
 		},
-		grpc_retry.WithMax(operatorMaxRetries), grpc_retry.WithPerRetryTimeout(operatorCallTimeout),
+		grpc_retry.WithMax(operatorMaxRetries),              // 重试次数
+		grpc_retry.WithPerRetryTimeout(operatorCallTimeout), // 每次连接超时时间
 	)
 	if err != nil {
 		return nil, err

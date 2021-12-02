@@ -59,7 +59,7 @@ func (p *httpMiddlewareRegistry) Register(components ...Middleware) {
 	}
 }
 
-// Create instantiates a HTTP middleware based on `name`.
+// Create 通过name实例化一个http中间件
 func (p *httpMiddlewareRegistry) Create(name, version string, metadata middleware.Metadata) (http_middleware.Middleware, error) {
 	if method, ok := p.getMiddleware(name, version); ok {
 		mid, err := method(metadata)

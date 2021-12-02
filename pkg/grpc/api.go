@@ -50,7 +50,7 @@ const (
 	daprHTTPStatusHeader = "dapr-http-status"
 )
 
-// API is the gRPC interface for the Dapr gRPC API. It implements both the internal and external proto definitions.
+// API 是Dapr gRPC API的gRPC接口。它同时实现了内部和外部proto的定义。
 type API interface {
 	// DaprInternal Service methods
 	CallActor(ctx context.Context, in *internalv1pb.InternalInvokeRequest) (*internalv1pb.InternalInvokeResponse, error)

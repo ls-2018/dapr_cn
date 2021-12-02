@@ -117,7 +117,7 @@ else
   LDFLAGS:="$(DEFAULT_LDFLAGS)"
   $(info Build with debugger information)
 endif
-
+# ./dist/darwin_amd64/release
 DAPR_OUT_DIR := $(OUT_DIR)/$(GOOS)_$(GOARCH)/$(BUILDTYPE_DIR)
 DAPR_LINUX_OUT_DIR := $(OUT_DIR)/linux_$(GOARCH)/$(BUILDTYPE_DIR)
 

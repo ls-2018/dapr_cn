@@ -182,6 +182,7 @@ func (g *grpcMetrics) UnaryServerInterceptor() func(ctx context.Context, req int
 }
 
 // UnaryClientInterceptor is a gRPC client-side interceptor for Unary RPCs.
+// 是一个用于RPC的gRPC客户端拦截器。
 func (g *grpcMetrics) UnaryClientInterceptor() func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		start := g.ClientRequestSent(ctx, method, int64(g.getPayloadSize(req)))

@@ -38,7 +38,7 @@ const (
 	defaultMaxConnectionAgeSeconds = 30
 )
 
-// Server is an interface for the dapr gRPC server.
+// Server dapr grpc 服务器接口
 type Server interface {
 	io.Closer
 	StartNonBlocking() error
@@ -68,7 +68,7 @@ var (
 	internalServerLogger = logger.NewLogger("dapr.runtime.grpc.internal")
 )
 
-// NewAPIServer returns a new user facing gRPC API server.
+// NewAPIServer 返回一个新的面向用户的gRPC API服务器。
 func NewAPIServer(api API, config ServerConfig, tracingSpec config.TracingSpec, metricSpec config.MetricSpec, apiSpec config.APISpec, proxy messaging.Proxy) Server {
 	return &server{
 		api:         api,
@@ -83,7 +83,7 @@ func NewAPIServer(api API, config ServerConfig, tracingSpec config.TracingSpec, 
 	}
 }
 
-// NewInternalServer returns a new gRPC server for Dapr to Dapr communications.
+// NewInternalServer 返回一个dapr间通信的grpc服务端
 func NewInternalServer(api API, config ServerConfig, tracingSpec config.TracingSpec, metricSpec config.MetricSpec, authenticator auth.Authenticator, proxy messaging.Proxy) Server {
 	return &server{
 		api:              api,
@@ -104,7 +104,7 @@ func getDefaultMaxAgeDuration() *time.Duration {
 	return &d
 }
 
-// StartNonBlocking starts a new server in a goroutine.
+// StartNonBlocking 在goroutine里启动服务
 func (s *server) StartNonBlocking() error {
 	var listeners []net.Listener
 	if s.config.UnixDomainSocket != "" && s.kind == apiServer {
@@ -115,6 +115,7 @@ func (s *server) StartNonBlocking() error {
 		}
 		listeners = append(listeners, l)
 	} else {
+		// 在多个ip上同时监听某个port
 		for _, apiListenAddress := range s.config.APIListenAddresses {
 			l, err := net.Listen("tcp", fmt.Sprintf("%s:%v", apiListenAddress, s.config.Port))
 			if err != nil {
@@ -130,8 +131,8 @@ func (s *server) StartNonBlocking() error {
 	}
 
 	for _, listener := range listeners {
-		// server is created in a loop because each instance
-		// has a handle on the underlying listener.
+
+		// 服务器是在一个循环中创建的，因为每个实例 都有一个底层监听器的句柄。
 		server, err := s.getGRPCServer()
 		if err != nil {
 			return err
@@ -180,7 +181,7 @@ func (s *server) generateWorkloadCert() error {
 	s.signedCertDuration = signedCert.Expiry.Sub(time.Now().UTC())
 	return nil
 }
-
+// 获取dapr之间 通信时需要的中间件
 func (s *server) getMiddlewareOptions() []grpc_go.ServerOption {
 	opts := []grpc_go.ServerOption{}
 	intr := []grpc_go.UnaryServerInterceptor{}
@@ -195,7 +196,7 @@ func (s *server) getMiddlewareOptions() []grpc_go.ServerOption {
 		s.logger.Info("enabled token authentication on gRPC server")
 		intr = append(intr, setAPIAuthenticationMiddlewareUnary(s.authToken, auth.APITokenHeader))
 	}
-
+	// todo
 	if diag_utils.IsTracingEnabled(s.tracingSpec.SamplingRate) {
 		s.logger.Info("enabled gRPC tracing middleware")
 		intr = append(intr, diag.GRPCTraceUnaryServerInterceptor(s.config.AppID, s.tracingSpec))

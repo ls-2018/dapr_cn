@@ -24,11 +24,11 @@ import (
 )
 
 const (
-	// GRPCFeatureName is the feature name for the Dapr configuration required to enable the proxy.
+	// GRPCFeatureName 是启用代理所需的Dapr配置的功能名称。
 	GRPCFeatureName = "proxy.grpc"
 )
 
-// Proxy is the interface for a gRPC transparent proxy.
+// Proxy 是一个gRPC透明代理的接口。
 type Proxy interface {
 	Handler() grpc.StreamHandler
 	SetRemoteAppFn(func(string) (remoteApp, error))
@@ -56,7 +56,7 @@ func NewProxy(connectionFactory messageClientConnection, appID string, localAppA
 	}
 }
 
-// Handler returns a Stream Handler for handling requests that arrive for services that are not recognized by the server.
+// Handler 返回一个流处理程序，用于处理到达的、不被服务器识别的服务的请求。
 func (p *proxy) Handler() grpc.StreamHandler {
 	return grpc_proxy.TransparentHandler(p.intercept)
 }

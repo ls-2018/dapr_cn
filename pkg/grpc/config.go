@@ -5,7 +5,7 @@
 
 package grpc
 
-// ServerConfig is the config object for a grpc server.
+// ServerConfig grpc服务配置
 type ServerConfig struct {
 	AppID              string
 	HostAddress        string
@@ -18,7 +18,7 @@ type ServerConfig struct {
 	ReadBufferSize     int
 }
 
-// NewServerConfig returns a new grpc server config.
+// NewServerConfig 返回一个新的grpc服务器配置。
 func NewServerConfig(appID string, hostAddress string, port int, apiListenAddresses []string, namespace string, trustDomain string, maxRequestBodySize int, unixDomainSocket string, readBufferSize int) ServerConfig {
 	return ServerConfig{
 		AppID:              appID,

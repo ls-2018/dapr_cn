@@ -162,3 +162,5 @@ func (b *bindingsRegistry) HasOutputBinding(name, version string) bool {
 // eg
 //  save     mockInputBinding/v2   				-->   bindings.mockInputBinding/v2
 //  search   bindings.mockInputBinding   v2     -->   bindings.mockInputBinding/v2
+
+

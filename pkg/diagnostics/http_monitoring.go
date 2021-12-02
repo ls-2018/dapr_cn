@@ -38,16 +38,16 @@ var (
 )
 
 type httpMetrics struct {
-	serverRequestCount  *stats.Int64Measure // 服务器中启动的HTTP请求的数量。
-	serverRequestBytes  *stats.Int64Measure // 如果在服务器中设置为ContentLength（未压缩），则为HTTP请求体大小。
-	serverResponseBytes *stats.Int64Measure // 服务器中的HTTP响应体大小（未压缩）。
+	serverRequestCount  *stats.Int64Measure   // 服务器中启动的HTTP请求的数量。
+	serverRequestBytes  *stats.Int64Measure   // 如果在服务器中设置为ContentLength（未压缩），则为HTTP请求体大小。
+	serverResponseBytes *stats.Int64Measure   // 服务器中的HTTP响应体大小（未压缩）。
 	serverLatency       *stats.Float64Measure // 服务器中的HTTP请求端到端延迟
-	serverResponseCount *stats.Int64Measure
+	serverResponseCount *stats.Int64Measure   // HTTP响应的数量
 
-	clientSentBytes        *stats.Int64Measure
-	clientReceivedBytes    *stats.Int64Measure
-	clientRoundtripLatency *stats.Float64Measure
-	clientCompletedCount   *stats.Int64Measure
+	clientSentBytes        *stats.Int64Measure   // 请求正文中发送的总字节数（不包括头信息）。
+	clientReceivedBytes    *stats.Int64Measure   // 响应体中收到的总字节数（不包括头信息，但包括响应体中的错误响应）。
+	clientRoundtripLatency *stats.Float64Measure // 整个请求生命周期的时间 从发送请求头的第一个字节到收到响应的最后一个字节的时间，或终端错误
+	clientCompletedCount   *stats.Int64Measure   // 已完成的请求数
 
 	appID   string
 	enabled bool
@@ -96,10 +96,12 @@ func newHTTPMetrics() *httpMetrics {
 	}
 }
 
+// IsEnabled 是否启用指标监控
 func (h *httpMetrics) IsEnabled() bool {
 	return h.enabled
 }
 
+// ServerRequestReceived 记录指标
 func (h *httpMetrics) ServerRequestReceived(ctx context.Context, method, path string, contentSize int64) {
 	if h.enabled {
 		stats.RecordWithTags(
@@ -112,6 +114,7 @@ func (h *httpMetrics) ServerRequestReceived(ctx context.Context, method, path st
 	}
 }
 
+// ServerRequestCompleted 记录指标
 func (h *httpMetrics) ServerRequestCompleted(ctx context.Context, method, path, status string, contentSize int64, elapsed float64) {
 	if h.enabled {
 		stats.RecordWithTags(
@@ -128,6 +131,7 @@ func (h *httpMetrics) ServerRequestCompleted(ctx context.Context, method, path, 
 	}
 }
 
+// ClientRequestStarted 记录指标
 func (h *httpMetrics) ClientRequestStarted(ctx context.Context, method, path string, contentSize int64) {
 	if h.enabled {
 		stats.RecordWithTags(
@@ -137,6 +141,7 @@ func (h *httpMetrics) ClientRequestStarted(ctx context.Context, method, path str
 	}
 }
 
+// ClientRequestCompleted 记录指标
 func (h *httpMetrics) ClientRequestCompleted(ctx context.Context, method, path, status string, contentSize int64, elapsed float64) {
 	if h.enabled {
 		stats.RecordWithTags(
@@ -153,6 +158,7 @@ func (h *httpMetrics) ClientRequestCompleted(ctx context.Context, method, path, 
 	}
 }
 
+// Init 添加暴露指标
 func (h *httpMetrics) Init(appID string) error {
 	h.appID = appID
 	h.enabled = true
@@ -171,7 +177,7 @@ func (h *httpMetrics) Init(appID string) error {
 	)
 }
 
-// FastHTTPMiddleware is the middleware to track http server-side requests.
+// FastHTTPMiddleware 是跟踪http服务器端请求的中间件。
 func (h *httpMetrics) FastHTTPMiddleware(next fasthttp.RequestHandler) fasthttp.RequestHandler {
 	return func(ctx *fasthttp.RequestCtx) {
 		reqContentSize := ctx.Request.Header.ContentLength()
@@ -182,6 +188,7 @@ func (h *httpMetrics) FastHTTPMiddleware(next fasthttp.RequestHandler) fasthttp.
 		method := string(ctx.Method())
 		path := h.convertPathToMetricLabel(string(ctx.Path()))
 
+		// 记录指标
 		h.ServerRequestReceived(ctx, method, path, int64(reqContentSize))
 
 		start := time.Now()
@@ -191,11 +198,12 @@ func (h *httpMetrics) FastHTTPMiddleware(next fasthttp.RequestHandler) fasthttp.
 		status := strconv.Itoa(ctx.Response.StatusCode())
 		elapsed := float64(time.Since(start) / time.Millisecond)
 		respSize := int64(len(ctx.Response.Body()))
+		// 记录指标
 		h.ServerRequestCompleted(ctx, method, path, status, respSize, elapsed)
 	}
 }
 
-// convertPathToMetricLabel removes the variant parameters in URL path for low cardinality label space
+// convertPathToMetricLabel 移除URL路径中的变量参数，用于标签空间
 // For example, it removes {keys} param from /v1/state/statestore/{keys}.
 func (h *httpMetrics) convertPathToMetricLabel(path string) string {
 	if path == "" {
@@ -203,18 +211,19 @@ func (h *httpMetrics) convertPathToMetricLabel(path string) string {
 	}
 
 	p := path
+	//    v1/state/statestore/{keys}
 	if p[0] == '/' {
 		p = path[1:]
 	}
 
-	// Split up to 6 delimiters in 'v1/actors/DemoActor/1/timer/name'
+	// 最多可以分出6个分隔符， 'v1/actors/DemoActor/1/timer/name'
 	parsedPath := strings.SplitN(p, "/", 6)
 
 	if len(parsedPath) < 3 {
 		return path
 	}
 
-	// Replace actor id with {id} for appcallback url - 'actors/DemoActor/1/method/method1'
+	// 用{id}替换 actor ID  - 'actors/DemoActor/1/method/method1'
 	if parsedPath[0] == "actors" {
 		parsedPath[2] = "{id}"
 		return strings.Join(parsedPath, "/")
@@ -222,17 +231,17 @@ func (h *httpMetrics) convertPathToMetricLabel(path string) string {
 
 	switch parsedPath[1] {
 	case "state", "secrets":
-		// state api: Concat 3 items(v1, state, statestore) in /v1/state/statestore/key
-		// secrets api: Concat 3 items(v1, secrets, keyvault) in /v1/secrets/keyvault/name
+		// state api: 拼接 3 个元素(v1, state, statestore)   /v1/state/statestore/key
+		// secrets api: 拼接 3 个元素(v1, secrets, keyvault)   /v1/secrets/keyvault/name
 		return "/" + strings.Join(parsedPath[0:3], "/")
 
 	case "actors":
 		if len(parsedPath) < 5 {
 			return path
 		}
-		// ignore id part
+		// 忽略id部分
 		parsedPath[3] = "{id}"
-		// Concat 5 items(v1, actors, DemoActor, {id}, timer) in /v1/actors/DemoActor/1/timer/name
+		// 拼接 5 个元素(v1, actors, DemoActor, {id}, timer) in /v1/actors/DemoActor/1/timer/name
 		return "/" + strings.Join(parsedPath[0:5], "/")
 	}
 

@@ -32,7 +32,7 @@ func CertPool(certPem []byte) (*x509.CertPool, error) {
 func GetCertChain() (*credentials.CertChain, error) {
 	trustAnchors := os.Getenv(certs.TrustAnchorsEnvVar)
 	if trustAnchors == "" {
-		return nil, errors.Errorf("couldn't find trust anchors in environment variable %s", certs.TrustAnchorsEnvVar)
+		return nil, errors.Errorf(" %s", certs.TrustAnchorsEnvVar)
 	}
 	cert := os.Getenv(certs.CertChainEnvVar)
 	if cert == "" {
@@ -49,7 +49,7 @@ func GetCertChain() (*credentials.CertChain, error) {
 	}, nil
 }
 
-// GetSidecarAuthenticator returns a new authenticator with the extracted trust anchors.
+// GetSidecarAuthenticator 从信任链中创建一个新的验证器
 func GetSidecarAuthenticator(sentryAddress string, certChain *credentials.CertChain) (Authenticator, error) {
 	trustAnchors, err := CertPool(certChain.RootCA)
 	if err != nil {
@@ -60,6 +60,7 @@ func GetSidecarAuthenticator(sentryAddress string, certChain *credentials.CertCh
 	return newAuthenticator(sentryAddress, trustAnchors, certChain.Cert, certChain.Key, generateCSRAndPrivateKey), nil
 }
 
+//todo 看不懂
 func generateCSRAndPrivateKey(id string) ([]byte, []byte, error) {
 	if id == "" {
 		return nil, nil, errors.New("id must not be empty")

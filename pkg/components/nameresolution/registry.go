@@ -16,13 +16,13 @@ import (
 )
 
 type (
-	// NameResolution is a name resolution component definition.
+	// NameResolution 是一个名称解析组件的定义。
 	NameResolution struct {
 		Name          string
 		FactoryMethod func() nr.Resolver
 	}
 
-	// Registry handles registering and creating name resolution components.
+	// Registry 处理注册和创建名称解析组件。
 	Registry interface {
 		Register(components ...NameResolution)
 		Create(name, version string) (nr.Resolver, error)
@@ -33,7 +33,7 @@ type (
 	}
 )
 
-// New creates a NameResolution.
+// New 创建一个名称解析
 func New(name string, factoryMethod func() nr.Resolver) NameResolution {
 	return NameResolution{
 		Name:          name,
@@ -41,21 +41,21 @@ func New(name string, factoryMethod func() nr.Resolver) NameResolution {
 	}
 }
 
-// NewRegistry creates a name resolution registry.
+// NewRegistry 创建一个名称解析仓库.
 func NewRegistry() Registry {
 	return &nameResolutionRegistry{
 		resolvers: map[string]func() nr.Resolver{},
 	}
 }
 
-// Register adds one or many name resolution components to the registry.
+// Register 将一个或多个名称解析组件添加到注册表。
 func (s *nameResolutionRegistry) Register(components ...NameResolution) {
 	for _, component := range components {
 		s.resolvers[createFullName(component.Name)] = component.FactoryMethod
 	}
 }
 
-// Create instantiates a name resolution resolver based on `name`.
+// Create 基于`name`实例化一个名字解析解析器。
 func (s *nameResolutionRegistry) Create(name, version string) (nr.Resolver, error) {
 	if method, ok := s.getResolver(createFullName(name), version); ok {
 		return method(), nil
@@ -79,3 +79,12 @@ func (s *nameResolutionRegistry) getResolver(name, version string) (func() nr.Re
 func createFullName(name string) string {
 	return strings.ToLower("nameresolution." + name)
 }
+
+//res   why?
+// 1、存储   以nameresolution.{name} 存储
+// 2、以{nameLower}/{versionLower} 查找
+// 2.1 以{nameLower} 查找
+
+// eg
+//  save     mockResolver/v2   				-->   nameresolution.mockResolver/v2
+//  search   nameresolution.mockResolver   v2     -->   nameresolution.mockResolver/v2

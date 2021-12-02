@@ -13,11 +13,11 @@ import (
 )
 
 const (
-	// DefaultChannelAddress is the address that user application listen to.
+	// DefaultChannelAddress 是用户应用程序收听的地址。
 	DefaultChannelAddress = "127.0.0.1"
 )
 
-// AppChannel is an abstraction over communications with user code.
+// AppChannel 是对与用户代码通信的一种抽象。
 type AppChannel interface {
 	GetBaseAddress() string
 	GetAppConfig() (*config.ApplicationConfig, error)

@@ -41,7 +41,7 @@ func InitMetrics(appID string) error {
 		return err
 	}
 
-	// Set reporting period of views
+	// 设置汇报周期
 	view.SetReportingPeriod(DefaultReportingPeriod)
 
 	return nil

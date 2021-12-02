@@ -21,8 +21,12 @@ Dapr是一种可移植的、无服务器的、事件驱动的运行时，它使�
 
 Please refer to our [Dapr Community Code of Conduct](https://github.com/dapr/community/blob/master/CODE-OF-CONDUCT.md)
 
+operator = controlPlaneAddress = dapr-api.dapr-system.svc.cluster.local:80
+
 
 - daprd sidecar负责流量代理、etc
+  - 启动过程中会拿着从环境变量获取到ca,cert,key 与 operator 建立grpc连接 ;去获取dapr的全局配置
+  - 
 - injector 负责将daprd注入到副本集中
 
 

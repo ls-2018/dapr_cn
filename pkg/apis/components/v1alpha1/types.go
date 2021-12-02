@@ -16,7 +16,7 @@ import (
 // +genclient:noStatus
 // +kubebuilder:object:root=true
 
-// Component describes an Dapr component type.
+// Component dapr组件的描述
 type Component struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
@@ -40,7 +40,7 @@ type ComponentSpec struct {
 	InitTimeout string `json:"initTimeout"`
 }
 
-// MetadataItem is a name/value pair for a metadata.
+// MetadataItem 是一个元数据的名/值对。
 type MetadataItem struct {
 	Name string `json:"name"`
 	// +optional
@@ -55,7 +55,7 @@ type SecretKeyRef struct {
 	Key  string `json:"key"`
 }
 
-// Auth represents authentication details for the component.
+// Auth 代表该组件的认证细节。
 type Auth struct {
 	SecretStore string `json:"secretStore"`
 }

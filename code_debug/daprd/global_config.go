@@ -64,6 +64,7 @@ func main() {
 				TrustDomain:   "",
 				AppPolicies:   nil,
 			},
+			// 会根据这里进行名称解析组件的初始化
 			NameResolutionSpec: config.NameResolutionSpec{
 				Component:     "",
 				Version:       "",

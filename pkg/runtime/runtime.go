@@ -126,7 +126,7 @@ type TopicRoute struct {
 	routes map[string]Route
 }
 
-// DaprRuntime holds all the core components of the runtime.
+// DaprRuntime 持有运行时的所有核心组件。
 type DaprRuntime struct {
 	runtimeConfig          *Config
 	globalConfig           *config.Configuration
@@ -161,7 +161,7 @@ type DaprRuntime struct {
 	scopedPublishings      map[string][]string
 	allowedTopics          map[string][]string
 	daprHTTPAPI            http.API
-	operatorClient         operatorv1pb.OperatorClient
+	operatorClient         operatorv1pb.OperatorClient // operator = controlPlaneAddress = dapr-api.dapr-system.svc.cluster.local:80 == localhost:6500
 	topicRoutes            map[string]TopicRoute
 	inputBindingRoutes     map[string]string
 	shutdownC              chan error
@@ -172,8 +172,8 @@ type DaprRuntime struct {
 	configurationStoreRegistry configuration_loader.Registry
 	configurationStores        map[string]configuration.Store
 
-	pendingComponents          chan components_v1alpha1.Component
-	pendingComponentDependents map[string][]components_v1alpha1.Component
+	pendingComponents          chan components_v1alpha1.Component         // 等待初始化的组件
+	pendingComponentDependents map[string][]components_v1alpha1.Component // 组件依赖前置, 当该组件就绪后，会主动从此map去掉
 
 	proxy messaging.Proxy
 
@@ -208,8 +208,8 @@ type pubsubSubscribedMessage struct {
 // NewDaprRuntime 返回一个具有给定运行时配置和全局配置的新运行时。
 func NewDaprRuntime(runtimeConfig *Config, globalConfig *config.Configuration, accessControlList *config.AccessControlList) *DaprRuntime {
 	return &DaprRuntime{
-		runtimeConfig:          runtimeConfig, // 传递过来的参数
-		globalConfig:           globalConfig, // k8s 的appconfig
+		runtimeConfig:          runtimeConfig,     // 传递过来的参数
+		globalConfig:           globalConfig,      // k8s 的appconfig
 		accessControlList:      accessControlList, // 访问控制列表，公司场景为nil
 		componentsLock:         &sync.RWMutex{},
 		components:             make([]components_v1alpha1.Component, 0),
@@ -274,8 +274,11 @@ func (a *DaprRuntime) getNamespace() string {
 	return os.Getenv("NAMESPACE")
 }
 
+// 生成dapr-api服务的链接=客户端
 func (a *DaprRuntime) getOperatorClient() (operatorv1pb.OperatorClient, error) {
 	if a.runtimeConfig.Mode == modes.KubernetesMode {
+		//dapr-api.dapr-system.svc.cluster.local:80
+		//"cluster.local"
 		client, _, err := client.GetOperatorClient(a.runtimeConfig.Kubernetes.ControlPlaneAddress, security.TLSServerName, a.runtimeConfig.CertChain)
 		if err != nil {
 			return nil, errors.Wrap(err, "error creating operator client")
@@ -285,20 +288,24 @@ func (a *DaprRuntime) getOperatorClient() (operatorv1pb.OperatorClient, error) {
 	return nil, nil
 }
 
-// setupTracing set up the trace exporters. Technically we don't need to pass `hostAddress` in,
-// but we do so here to explicitly call out the dependency on having `hostAddress` computed.
+// setupTracing
+// 设置跟踪输出程序。技术上来说，我们不需要传递`hostAddress`
+// 但我们在这里这样做是为了明确指出对`hostAddress`计算的依赖性。
 func (a *DaprRuntime) setupTracing(hostAddress string, exporters traceExporterStore) error {
-	// Register stdout trace exporter if user wants to debug requests or log as Info level.
+	// 如果用户想对请求进行调试或作为信息级别的日志，注册stdout跟踪输出器。
 	if a.globalConfig.Spec.TracingSpec.Stdout {
+		// 全局的,也是opencensus的,span信息也会打印到终端
 		exporters.RegisterExporter(&diag_utils.StdoutExporter{})
 	}
 
-	// Register zipkin trace exporter if ZipkinSpec is specified
+	// 如果指定了ZipkinSpec，则注册zipkin跟踪输出器 http://zipkin.mesoid.svc.cluster.local:9411/api/v2/spans
 	if a.globalConfig.Spec.TracingSpec.Zipkin.EndpointAddress != "" {
-		localEndpoint, err := openzipkin.NewEndpoint(a.runtimeConfig.ID, hostAddress)
+		// 简单判断一下传入的ip是否合规
+		localEndpoint, err := openzipkin.NewEndpoint(a.runtimeConfig.ID, hostAddress) // dp-618b5e4aa5ebc3924db86860-executorapp,10.10.16.115
 		if err != nil {
 			return err
 		}
+		// zipkin span接收器, 启动了goroutinue 用于往zipkin发信息
 		reporter := zipkinreporter.NewReporter(a.globalConfig.Spec.TracingSpec.Zipkin.EndpointAddress)
 		exporter := zipkin.NewExporter(reporter, localEndpoint)
 		exporters.RegisterExporter(exporter)
@@ -309,29 +316,34 @@ func (a *DaprRuntime) setupTracing(hostAddress string, exporters traceExporterSt
 func (a *DaprRuntime) initRuntime(opts *runtimeOpts) error {
 	// 只有当MetricSpec被启用时，才会初始化度量指标，默认为true
 	if a.globalConfig.Spec.MetricSpec.Enabled {
-		//dp-618b5e4aa5ebc3924db86860-executorapp
+		// 初始化各种指标 grpc|http|runtime
 		if err := diag.InitMetrics(a.runtimeConfig.ID); err != nil {
 			log.Errorf("failed to initialize metrics: %v", err)
 		}
 	}
-
+	// dapr-sentry.dapr-system.svc.cluster.local:80
+	// grpc 通信设置证书
 	err := a.establishSecurity(a.runtimeConfig.SentryServiceAddress)
 	if err != nil {
 		return err
 	}
+	// 环境变量中获取
 	a.namespace = a.getNamespace()
+	// kubectl port-forward svc/dapr-api -n dapr-system 6500:80 &
+	// operator = controlPlaneAddress = dapr-api.dapr-system.svc.cluster.local:80 == localhost:6500
 	a.operatorClient, err = a.getOperatorClient()
 	if err != nil {
 		return err
 	}
-
+	// 获取本机的IP
 	if a.hostAddress, err = utils.GetHostAddress(); err != nil {
 		return errors.Wrap(err, "failed to determine host address")
 	}
+	// 会启动到zipkin的导出器
 	if err = a.setupTracing(a.hostAddress, openCensusExporterStore{}); err != nil {
 		return errors.Wrap(err, "failed to setup tracing")
 	}
-	// Register and initialize name resolution for service discovery.
+	// 注册并初始化用于服务发现的名称解析。,默认是注册了三个 ，mdns,k8s,consul
 	a.nameResolutionRegistry.Register(opts.nameResolutions...)
 	err = a.initNameResolution()
 	if err != nil {
@@ -346,33 +358,35 @@ func (a *DaprRuntime) initRuntime(opts *runtimeOpts) error {
 	a.bindingsRegistry.RegisterOutputBindings(opts.outputBindings...)
 	a.httpMiddlewareRegistry.Register(opts.httpMiddleware...)
 
-	go a.processComponents()
+	// 怎么保证这个go在appendBuiltinSecretStore 添加了k8s secret组件后执行, 因为它是chan
+	go a.processComponents() // 遍历 pendingComponents
+	// 处理来自operator的事件流，开始组件更新,
 	err = a.beginComponentsUpdates()
 	if err != nil {
 		log.Warnf("failed to watch component updates: %s", err)
 	}
-	a.appendBuiltinSecretStore()
-	err = a.loadComponents(opts)
+	a.appendBuiltinSecretStore() //向 pendingComponents 添加内置的secret存储, k8s才会触发
+	err = a.loadComponents(opts) // 使用不同的loader加载不同的组件， 主要是获取 认证组件，并将其发往 pendingComponents
 	if err != nil {
 		log.Warnf("failed to load components: %s", err)
 	}
-
+	//等待所有未完成的组件被处理
 	a.flushOutstandingComponents()
-
-	pipeline, err := a.buildHTTPPipeline()
+	//构建用于fasthttp的中间件
+	pipeline, err := a.buildHTTPPipeline() // 大多数都是有关认证的组件
 	if err != nil {
 		log.Warnf("failed to build HTTP pipeline: %s", err)
 	}
 
-	// Setup allow/deny list for secrets
+	// 设置 allow/deny list for secrets
 	a.populateSecretsConfiguration()
 
 	// Start proxy
-	a.initProxy()
+	a.initProxy() //
 
-	// Create and start internal and external gRPC servers
+	// 创建和启动内部和外部gRPC服务器
 	grpcAPI := a.getGRPCAPI()
-
+	// 50001
 	err = a.startGRPCAPIServer(grpcAPI, a.runtimeConfig.APIGRPCPort)
 	if err != nil {
 		log.Fatalf("failed to start API gRPC server: %s", err)
@@ -456,11 +470,13 @@ func (a *DaprRuntime) initRuntime(opts *runtimeOpts) error {
 
 func (a *DaprRuntime) populateSecretsConfiguration() {
 	// Populate in a map for easy lookup by store name.
+	// 填充在map中，便于按store名称查找。
 	for _, scope := range a.globalConfig.Spec.Secrets.Scopes {
 		a.secretsConfiguration[scope.StoreName] = scope
 	}
 }
 
+// 构建用于fasthttp的中间件
 func (a *DaprRuntime) buildHTTPPipeline() (http_middleware.Pipeline, error) {
 	var handlers []http_middleware.Middleware
 
@@ -659,10 +675,14 @@ func (a *DaprRuntime) initDirectMessaging(resolver nr.Resolver) {
 
 func (a *DaprRuntime) initProxy() {
 	// TODO: remove feature check once stable
+	// 稳定后取消功能检查 , 是否对proxy.grpc设置了代理
 	if config.IsFeatureEnabled(a.globalConfig.Spec.Features, messaging.GRPCFeatureName) {
 		a.proxy = messaging.NewProxy(a.grpc.GetGRPCConnection, a.runtimeConfig.ID,
-			fmt.Sprintf("%s:%d", channel.DefaultChannelAddress, a.runtimeConfig.ApplicationPort), a.runtimeConfig.InternalGRPCPort, a.accessControlList)
-
+			fmt.Sprintf("%s:%d", channel.DefaultChannelAddress, a.runtimeConfig.ApplicationPort),
+			a.runtimeConfig.InternalGRPCPort, a.accessControlList,
+		)
+		//   127.0.0.1:3001
+		//  50002
 		log.Info("gRPC proxy enabled")
 	}
 }
@@ -693,9 +713,9 @@ func (a *DaprRuntime) beginComponentsUpdates() error {
 		for {
 			var stream operatorv1pb.Operator_ComponentUpdateClient
 
-			// Retry on stream error.
+			// 在流错误时重试。 指数退避
 			backoff.Retry(func() error {
-				var err error
+				var err error //在组件发生变化时，向Dapr sidecar发送事件。
 				stream, err = a.operatorClient.ComponentUpdate(context.Background(), &operatorv1pb.ComponentUpdateRequest{
 					Namespace: a.namespace,
 				})
@@ -704,10 +724,10 @@ func (a *DaprRuntime) beginComponentsUpdates() error {
 					return err
 				}
 				return nil
-			}, backoff.NewExponentialBackOff())
+			}, backoff.NewExponentialBackOff()) //  使用默认值创建一个ExponentialBackOff的实例。
 
 			if needList {
-				// We should get all components again to avoid missing any updates during the failure time.
+				// 我们应该再次获得所有的组件，以避免在故障时间内错过任何更新。
 				backoff.Retry(func() error {
 					resp, err := a.operatorClient.ListComponents(context.Background(), &operatorv1pb.ListComponentsRequest{
 						Namespace: a.namespace,
@@ -730,7 +750,7 @@ func (a *DaprRuntime) beginComponentsUpdates() error {
 			}
 
 			for {
-				c, err := stream.Recv()
+				c, err := stream.Recv() // 接收到来自operator的消息，阻塞
 				if err != nil {
 					// Retry on stream error.
 					needList = true
@@ -985,8 +1005,7 @@ func (a *DaprRuntime) startGRPCAPIServer(api grpc.API, port int) error {
 }
 
 func (a *DaprRuntime) getNewServerConfig(apiListenAddresses []string, port int) grpc.ServerConfig {
-	// Use the trust domain value from the access control policy spec to generate the cert
-	// If no access control policy has been specified, use a default value
+	// 使用访问控制策略规范中的信任域值来生成证书 如果没有指定访问控制策略，使用默认值
 	trustDomain := config.DefaultTrustDomain
 	if a.accessControlList != nil {
 		trustDomain = a.accessControlList.TrustDomain
@@ -995,9 +1014,16 @@ func (a *DaprRuntime) getNewServerConfig(apiListenAddresses []string, port int) 
 }
 
 func (a *DaprRuntime) getGRPCAPI() grpc.API {
-	return grpc.NewAPI(a.runtimeConfig.ID, a.appChannel, a.stateStores, a.secretStores, a.secretsConfiguration, a.configurationStores,
+	// dp-618b5e4aa5ebc3924db86860-executorapp, nil,map,map,map,map
+	//nil,nil,nil
+	//func,zipkin,nil,http
+	// func,func  创建了一个结构体
+	return grpc.NewAPI(
+		a.runtimeConfig.ID, a.appChannel, a.stateStores, a.secretStores, a.secretsConfiguration, a.configurationStores,
 		a.getPublishAdapter(), a.directMessaging, a.actor,
-		a.sendToOutputBinding, a.globalConfig.Spec.TracingSpec, a.accessControlList, string(a.runtimeConfig.ApplicationProtocol), a.getComponents, a.ShutdownWithWait)
+		a.sendToOutputBinding, a.globalConfig.Spec.TracingSpec, a.accessControlList, string(a.runtimeConfig.ApplicationProtocol),
+		a.getComponents, a.ShutdownWithWait,
+	)
 }
 
 func (a *DaprRuntime) getPublishAdapter() runtime_pubsub.Adapter {
@@ -1400,25 +1426,26 @@ func (a *DaprRuntime) initNameResolution() error {
 		resolverVersion = components.FirstStableVersion
 	}
 
-	resolver, err = a.nameResolutionRegistry.Create(resolverName, resolverVersion)
+	resolver, err = a.nameResolutionRegistry.Create(resolverName, resolverVersion) // 只创建结构
 	resolverMetadata.Configuration = a.globalConfig.Spec.NameResolutionSpec.Configuration
 	resolverMetadata.Properties = map[string]string{
-		nr.DaprHTTPPort: strconv.Itoa(a.runtimeConfig.HTTPPort),
-		nr.DaprPort:     strconv.Itoa(a.runtimeConfig.InternalGRPCPort),
-		nr.AppPort:      strconv.Itoa(a.runtimeConfig.ApplicationPort),
-		nr.HostAddress:  a.hostAddress,
-		nr.AppID:        a.runtimeConfig.ID,
+		nr.DaprHTTPPort: strconv.Itoa(a.runtimeConfig.HTTPPort),         // 3500
+		nr.DaprPort:     strconv.Itoa(a.runtimeConfig.InternalGRPCPort), // 50002
+		nr.AppPort:      strconv.Itoa(a.runtimeConfig.ApplicationPort),  //3001
+		nr.HostAddress:  a.hostAddress,                                  // 10.10.16.115
+		nr.AppID:        a.runtimeConfig.ID,                             // dp-618b5e4aa5ebc3924db86860-executorapp
 		// TODO - change other nr components to use above properties (specifically MDNS component)
-		nr.MDNSInstanceName:    a.runtimeConfig.ID,
-		nr.MDNSInstanceAddress: a.hostAddress,
-		nr.MDNSInstancePort:    strconv.Itoa(a.runtimeConfig.InternalGRPCPort),
+		//改变其他nr组件以使用上述属性（特别是MDNS组件）。
+		nr.MDNSInstanceName:    a.runtimeConfig.ID,                             // dp-618b5e4aa5ebc3924db86860-executorapp
+		nr.MDNSInstanceAddress: a.hostAddress,                                  // 10.10.16.115
+		nr.MDNSInstancePort:    strconv.Itoa(a.runtimeConfig.InternalGRPCPort), // 3500
 	}
 
 	if err != nil {
 		log.Warnf("error creating name resolution resolver %s: %s", resolverName, err)
 		return err
 	}
-
+	// 只是更改clusterDomain属性
 	if err = resolver.Init(resolverMetadata); err != nil {
 		log.Errorf("failed to initialize name resolution resolver %s: %s", resolverName, err)
 		return err
@@ -1649,12 +1676,31 @@ func (a *DaprRuntime) getAuthorizedComponents(components []components_v1alpha1.C
 	return authorized
 }
 
+// 判断组件有没有经过认证
+//apiVersion: dapr.io/v1alpha1
+//kind: Component
+//metadata:
+//  name: statestore
+//  namespace: liushuo
+//  uid: 91d1b0a0-684f-4f1e-814d-8240bc7f24f3
+//spec:
+//  metadata:
+//    - name: redisHost
+//      value: 'redis:6379'
+//    - name: redisPassword
+//      value: ''
+//  type: state.redis
+//  version: v1
+//auth:
+//  secretStore: kubernetes
+
 func (a *DaprRuntime) isComponentAuthorized(component components_v1alpha1.Component) bool {
+	// mesoid
 	if a.namespace == "" || (a.namespace != "" && component.ObjectMeta.Namespace == a.namespace) {
 		if len(component.Scopes) == 0 {
 			return true
 		}
-
+		// 定义了作用域，确保这个运行时ID被授权。
 		// scopes are defined, make sure this runtime ID is authorized
 		for _, s := range component.Scopes {
 			if s == a.runtimeConfig.ID {
@@ -1666,6 +1712,7 @@ func (a *DaprRuntime) isComponentAuthorized(component components_v1alpha1.Compon
 	return false
 }
 
+//  只有一个入口
 func (a *DaprRuntime) loadComponents(opts *runtimeOpts) error {
 	var loader components.ComponentLoader
 
@@ -1701,6 +1748,7 @@ func (a *DaprRuntime) loadComponents(opts *runtimeOpts) error {
 	return nil
 }
 
+// 添加或替换组件
 func (a *DaprRuntime) appendOrReplaceComponents(component components_v1alpha1.Component) {
 	a.componentsLock.Lock()
 	defer a.componentsLock.Unlock()
@@ -1719,6 +1767,7 @@ func (a *DaprRuntime) appendOrReplaceComponents(component components_v1alpha1.Co
 	}
 }
 
+//提取组件类别
 func (a *DaprRuntime) extractComponentCategory(component components_v1alpha1.Component) ComponentCategory {
 	for _, category := range componentCategoriesNeedProcess {
 		if strings.HasPrefix(component.Spec.Type, fmt.Sprintf("%s.", category)) {
@@ -1748,34 +1797,48 @@ func (a *DaprRuntime) processComponents() {
 }
 
 func (a *DaprRuntime) flushOutstandingComponents() {
-	log.Info("waiting for all outstanding components to be processed")
-	// We flush by sending a no-op component. Since the processComponents goroutine only reads one component at a time,
-	// We know that once the no-op component is read from the channel, all previous components will have been fully processed.
+	log.Info("等待所有未完成的组件被处理")
+	// 我们通过发送一个无操作的组件进行冲洗。由于processComponents程序一次只能读取一个组件。
+	// 我们知道，一旦从通道中读出no-op组件，之前的所有组件将被完全处理。
+	//  pkg/runtime/runtime.go:239
+	//pendingComponents 容量为0 ,者执行过去，说明之前的组件全部初始完毕
 	a.pendingComponents <- components_v1alpha1.Component{}
-	log.Info("all outstanding components processed")
+	log.Info("所有未完成的部分都已处理")
 }
+
+// 被依赖项就绪后，会依次调用会调用注册在pendingComponentDependents的下游组件
+// 没有依赖项 被主动调用
+/*
+go processComponents(){
+	for comp := range a.pendingComponents {
+		a.processComponentAndDependents(comp)
+	}
+}
+
+*
+*/
 
 func (a *DaprRuntime) processComponentAndDependents(comp components_v1alpha1.Component) error {
 	log.Debugf("loading component. name: %s, type: %s/%s", comp.ObjectMeta.Name, comp.Spec.Type, comp.Spec.Version)
-	res := a.preprocessOneComponent(&comp)
+	res := a.preprocessOneComponent(&comp) // 预处理组件,demo中组件没有元信息;故对此处没什么逻辑
 	if res.unreadyDependency != "" {
 		a.pendingComponentDependents[res.unreadyDependency] = append(a.pendingComponentDependents[res.unreadyDependency], comp)
 		return nil
 	}
 
-	compCategory := a.extractComponentCategory(comp)
+	compCategory := a.extractComponentCategory(comp) // 提取组件的类型
 	if compCategory == "" {
 		// the category entered is incorrect, return error
 		return errors.Errorf("incorrect type %s", comp.Spec.Type)
 	}
 
 	ch := make(chan error, 1)
-
+	// 解析时间字符串,返回Duration类型
 	timeout, err := time.ParseDuration(comp.Spec.InitTimeout)
 	if err != nil {
-		timeout = defaultComponentInitTimeout
+		timeout = defaultComponentInitTimeout // 默认5秒
 	}
-
+	// 判断组件初始超时
 	go func() {
 		ch <- a.doProcessOneComponent(compCategory, comp)
 	}()
@@ -1791,9 +1854,10 @@ func (a *DaprRuntime) processComponentAndDependents(comp components_v1alpha1.Com
 
 	log.Infof("component loaded. name: %s, type: %s/%s", comp.ObjectMeta.Name, comp.Spec.Type, comp.Spec.Version)
 	a.appendOrReplaceComponents(comp)
+	// 记录指标
 	diag.DefaultMonitoring.ComponentLoaded()
 
-	dependency := componentDependency(compCategory, comp.Name)
+	dependency := componentDependency(compCategory, comp.Name) // secretstores:kubernetes
 	if deps, ok := a.pendingComponentDependents[dependency]; ok {
 		delete(a.pendingComponentDependents, dependency)
 		for _, dependent := range deps {
@@ -1806,6 +1870,8 @@ func (a *DaprRuntime) processComponentAndDependents(comp components_v1alpha1.Com
 	return nil
 }
 
+// 程序初始化时，会根据全局配置 遍历每一个组件，进行初始化组件
+// params 组件类型,组件本身
 func (a *DaprRuntime) doProcessOneComponent(category ComponentCategory, comp components_v1alpha1.Component) error {
 	switch category {
 	case bindingsComponent:
@@ -1900,9 +1966,9 @@ func (a *DaprRuntime) shutdownComponents() error {
 	return merr
 }
 
-// ShutdownWithWait will gracefully stop runtime and wait outstanding operations.
+// ShutdownWithWait 将优雅地停止runtime，等待未完成的操作。
 func (a *DaprRuntime) ShutdownWithWait() {
-	a.Shutdown(defaultGracefulShutdownDuration)
+	a.Shutdown(defaultGracefulShutdownDuration) // 5 秒
 	os.Exit(0)
 }
 
@@ -1936,6 +2002,7 @@ func (a *DaprRuntime) WaitUntilShutdown() error {
 	return <-a.shutdownC
 }
 
+// 处理组件secret
 func (a *DaprRuntime) processComponentSecrets(component components_v1alpha1.Component) (components_v1alpha1.Component, string) {
 	cache := map[string]secretstores.GetSecretResponse{}
 
@@ -2097,7 +2164,7 @@ func (a *DaprRuntime) appendBuiltinSecretStore() {
 }
 
 func (a *DaprRuntime) builtinSecretStore() []components_v1alpha1.Component {
-	// Preload Kubernetes secretstore
+	// 预加载k8s的secret
 	switch a.runtimeConfig.Mode {
 	case modes.KubernetesMode:
 		return []components_v1alpha1.Component{{
@@ -2114,7 +2181,8 @@ func (a *DaprRuntime) builtinSecretStore() []components_v1alpha1.Component {
 }
 
 func (a *DaprRuntime) initSecretStore(c components_v1alpha1.Component) error {
-	secretStore, err := a.secretStoresRegistry.Create(c.Spec.Type, c.Spec.Version)
+	// 会调用组件注册时，配置的工厂函数
+	secretStore, err := a.secretStoresRegistry.Create(c.Spec.Type, c.Spec.Version) // secretstores.kubernetes  v1
 	if err != nil {
 		log.Warnf("failed to create secret store %s/%s: %s", c.Spec.Type, c.Spec.Version, err)
 		diag.DefaultMonitoring.ComponentInitFailed(c.Spec.Type, "creation")
@@ -2129,8 +2197,9 @@ func (a *DaprRuntime) initSecretStore(c components_v1alpha1.Component) error {
 		diag.DefaultMonitoring.ComponentInitFailed(c.Spec.Type, "init")
 		return err
 	}
-
+	//       pkg/runtime/runtime.go:2110
 	a.secretStores[c.ObjectMeta.Name] = secretStore
+	// 记录指标
 	diag.DefaultMonitoring.ComponentInitialized(c.Spec.Type)
 	return nil
 }
@@ -2168,29 +2237,33 @@ func (a *DaprRuntime) getComponents() []components_v1alpha1.Component {
 	return comps
 }
 
+// 确立安全
 func (a *DaprRuntime) establishSecurity(sentryAddress string) error {
 	if !a.runtimeConfig.mtlsEnabled {
-		log.Info("mTLS is disabled. Skipping certificate request and tls validation")
+		log.Info("mTLS被禁用。跳过证书请求和tls验证")
 		return nil
 	}
 	if sentryAddress == "" {
-		return errors.New("sentryAddress cannot be empty")
+		return errors.New("sentryAddress不能为空")
 	}
-	log.Info("mTLS enabled. creating sidecar authenticator")
-
+	log.Info("启用mTLS，创建sidecar认证器")
+	// daprd 运行时的证书，从sidecar环境变量中获取的
+	// code_debug/daprd/daprd_debug.go:57
+	// dapr-sentry.dapr-system.svc.cluster.local:80
 	auth, err := security.GetSidecarAuthenticator(sentryAddress, a.runtimeConfig.CertChain)
 	if err != nil {
 		return err
 	}
 	a.authenticator = auth
 	a.grpc.SetAuthenticator(auth)
+	log.Info("创建认证器")
 
-	log.Info("authenticator created")
-
+	// 记录指标
 	diag.DefaultMonitoring.MTLSInitCompleted()
 	return nil
 }
 
+// 拼接组件依赖性键值
 func componentDependency(compCategory ComponentCategory, name string) string {
 	return fmt.Sprintf("%s:%s", compCategory, name)
 }
