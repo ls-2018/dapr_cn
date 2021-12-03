@@ -111,7 +111,7 @@ type api struct {
 	shutdown                   func()
 }
 
-// NewAPI returns a new gRPC API.
+// NewAPI 返回 gRPC API.
 func NewAPI(
 	appID string, appChannel channel.AppChannel,
 	stateStores map[string]state.Store,

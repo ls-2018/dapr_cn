@@ -384,18 +384,19 @@ func (a *DaprRuntime) initRuntime(opts *runtimeOpts) error {
 	// Start proxy
 	a.initProxy() //
 
-	// 创建和启动内部和外部gRPC服务器
-	grpcAPI := a.getGRPCAPI()
+	// 创建和启动内部和外部gRPC服务器 、struct
+	grpcAPI := a.getGRPCAPI() // 承接app流量的实现
 	// 50001
 	err = a.startGRPCAPIServer(grpcAPI, a.runtimeConfig.APIGRPCPort)
 	if err != nil {
 		log.Fatalf("failed to start API gRPC server: %s", err)
 	}
 	if a.runtimeConfig.UnixDomainSocket != "" {
-		log.Info("API gRPC server is running on a unix domain socket")
+		log.Info("API gRPC server is 运行在了unix域套接字")
 	} else {
 		log.Infof("API gRPC server is running on port %v", a.runtimeConfig.APIGRPCPort)
 	}
+
 
 	// Start HTTP Server
 	err = a.startHTTPServer(a.runtimeConfig.HTTPPort, a.runtimeConfig.PublicPort, a.runtimeConfig.ProfilePort, a.runtimeConfig.AllowedOrigins, pipeline)
@@ -403,7 +404,7 @@ func (a *DaprRuntime) initRuntime(opts *runtimeOpts) error {
 		log.Fatalf("failed to start HTTP server: %s", err)
 	}
 	if a.runtimeConfig.UnixDomainSocket != "" {
-		log.Info("http server is running on a unix domain socket")
+		log.Info("http server is 运行在了unix域套接字")
 	} else {
 		log.Infof("http server is running on port %v", a.runtimeConfig.HTTPPort)
 	}
@@ -973,6 +974,7 @@ func (a *DaprRuntime) startHTTPServer(port int, publicPort *int, profilePort int
 	serverConf := http.NewServerConfig(a.runtimeConfig.ID, a.hostAddress, port, a.runtimeConfig.APIListenAddresses, publicPort, profilePort, allowedOrigins, a.runtimeConfig.EnableProfiling, a.runtimeConfig.MaxRequestBodySize, a.runtimeConfig.UnixDomainSocket, a.runtimeConfig.ReadBufferSize, a.runtimeConfig.StreamRequestBody)
 
 	server := http.NewServer(a.daprHTTPAPI, serverConf, a.globalConfig.Spec.TracingSpec, a.globalConfig.Spec.MetricSpec, pipeline, a.globalConfig.Spec.APISpec)
+	//pkg/http/server.go:67
 	if err := server.StartNonBlocking(); err != nil {
 		return err
 	}
@@ -981,9 +983,10 @@ func (a *DaprRuntime) startHTTPServer(port int, publicPort *int, profilePort int
 	return nil
 }
 
+// daprd 间通信的服务
 func (a *DaprRuntime) startGRPCInternalServer(api grpc.API, port int) error {
-	// Since GRPCInteralServer is encrypted & authenticated, it is safe to listen on *
-	serverConf := a.getNewServerConfig([]string{""}, port)
+	// 由于GRPCInteralServer是经过加密和认证的，所以它是安全的，可以监听*。
+	serverConf := a.getNewServerConfig([]string{""}, port) // 对外暴露
 	server := grpc.NewInternalServer(api, serverConf, a.globalConfig.Spec.TracingSpec, a.globalConfig.Spec.MetricSpec, a.authenticator, a.proxy)
 	if err := server.StartNonBlocking(); err != nil {
 		return err
@@ -993,8 +996,10 @@ func (a *DaprRuntime) startGRPCInternalServer(api grpc.API, port int) error {
 	return nil
 }
 
+// 对app暴露的服务
 func (a *DaprRuntime) startGRPCAPIServer(api grpc.API, port int) error {
-	serverConf := a.getNewServerConfig(a.runtimeConfig.APIListenAddresses, port)
+	serverConf := a.getNewServerConfig(a.runtimeConfig.APIListenAddresses, port) // 只对本地暴露
+	// struct
 	server := grpc.NewAPIServer(api, serverConf, a.globalConfig.Spec.TracingSpec, a.globalConfig.Spec.MetricSpec, a.globalConfig.Spec.APISpec, a.proxy)
 	if err := server.StartNonBlocking(); err != nil {
 		return err

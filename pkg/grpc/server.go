@@ -100,7 +100,7 @@ func NewInternalServer(api API, config ServerConfig, tracingSpec config.TracingS
 }
 
 func getDefaultMaxAgeDuration() *time.Duration {
-	d := time.Second * defaultMaxConnectionAgeSeconds
+	d := time.Second * defaultMaxConnectionAgeSeconds // 30秒
 	return &d
 }
 
@@ -133,15 +133,23 @@ func (s *server) StartNonBlocking() error {
 	for _, listener := range listeners {
 
 		// 服务器是在一个循环中创建的，因为每个实例 都有一个底层监听器的句柄。
+		// 通过官方的grpc创建服务实例
 		server, err := s.getGRPCServer()
 		if err != nil {
 			return err
 		}
 		s.servers = append(s.servers, server)
 
+		// dapr间通信
 		if s.kind == internalServer {
+			// 注册服务调用服务的 结构体实现
+			// 将数据信息封装到了 pkg/proto/internals/v1/service_invocation.pb.go:94
+			// 这个结构体里
+			// 功能抽象.注册(grpc服务,功能实现)
 			internalv1pb.RegisterServiceInvocationServer(server, s.api)
+			// app 和 daprd之间通信
 		} else if s.kind == apiServer {
+			// 功能抽象.注册(grpc服务,功能实现)
 			runtimev1pb.RegisterDaprServer(server, s.api)
 		}
 
@@ -181,6 +189,7 @@ func (s *server) generateWorkloadCert() error {
 	s.signedCertDuration = signedCert.Expiry.Sub(time.Now().UTC())
 	return nil
 }
+
 // 获取dapr之间 通信时需要的中间件
 func (s *server) getMiddlewareOptions() []grpc_go.ServerOption {
 	opts := []grpc_go.ServerOption{}
@@ -230,12 +239,14 @@ func (s *server) getMiddlewareOptions() []grpc_go.ServerOption {
 	return opts
 }
 
+// 将一些配置，应用到链接上
 func (s *server) getGRPCServer() (*grpc_go.Server, error) {
 	opts := s.getMiddlewareOptions()
+	// 超时时间
 	if s.maxConnectionAge != nil {
 		opts = append(opts, grpc_go.KeepaliveParams(keepalive.ServerParameters{MaxConnectionAge: *s.maxConnectionAge}))
 	}
-
+	// 验证器
 	if s.authenticator != nil {
 		err := s.generateWorkloadCert()
 		if err != nil {
@@ -256,9 +267,16 @@ func (s *server) getGRPCServer() (*grpc_go.Server, error) {
 		go s.startWorkloadCertRotation()
 	}
 
-	opts = append(opts, grpc_go.MaxRecvMsgSize(s.config.MaxRequestBodySize*1024*1024), grpc_go.MaxSendMsgSize(s.config.MaxRequestBodySize*1024*1024), grpc_go.MaxHeaderListSize(uint32(s.config.ReadBufferSize*1024)))
+	opts = append(opts,
+		grpc_go.MaxRecvMsgSize(s.config.MaxRequestBodySize*1024*1024),   // 最大可接收的消息量
+		grpc_go.MaxSendMsgSize(s.config.MaxRequestBodySize*1024*1024),   // 最大可发送的消息量
+		grpc_go.MaxHeaderListSize(uint32(s.config.ReadBufferSize*1024)), // 最大的header信息大小
+	)
 
 	if s.proxy != nil {
+		//返回一个ServerOption，允许添加一个自定义的未知服务处理器。所提供的方法是一个双流RPC服务处理程序。
+		//处理程序，当收到对未注册的服务或方法的请求时，它将被调用而不是返回 "未实现 "的 gRPC 错误。处理程序和流拦截器（如果设置）可以完全访问ServerStream，包括它的Context。
+		// todo 待看
 		opts = append(opts, grpc_go.UnknownServiceHandler(s.proxy.Handler()))
 	}
 

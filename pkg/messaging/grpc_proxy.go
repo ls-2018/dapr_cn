@@ -81,7 +81,11 @@ func (p *proxy) intercept(ctx context.Context, fullName string) (context.Context
 			}
 		}
 
-		conn, err := p.connectionFactory(outCtx, p.localAppAddress, p.appID, "", true, false, false, grpc.WithDefaultCallOptions(grpc.CallContentSubtype((&codec.Proxy{}).Name())))
+		conn, err := p.connectionFactory(
+			outCtx, p.localAppAddress, p.appID,
+			"", true, false, false,
+			grpc.WithDefaultCallOptions(grpc.CallContentSubtype((&codec.Proxy{}).Name())),
+		)
 		return outCtx, conn, err
 	}
 
@@ -91,7 +95,11 @@ func (p *proxy) intercept(ctx context.Context, fullName string) (context.Context
 		return ctx, nil, err
 	}
 
-	conn, err := p.connectionFactory(outCtx, remote.address, remote.id, remote.namespace, false, false, false, grpc.WithDefaultCallOptions(grpc.CallContentSubtype((&codec.Proxy{}).Name())))
+	conn, err := p.connectionFactory(
+		outCtx, remote.address, remote.id, remote.namespace,
+		false, false,
+		false, grpc.WithDefaultCallOptions(grpc.CallContentSubtype((&codec.Proxy{}).Name())),
+	)
 	outCtx = p.telemetryFn(outCtx)
 
 	return outCtx, conn, err

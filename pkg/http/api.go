@@ -42,7 +42,7 @@ import (
 	runtime_pubsub "github.com/dapr/dapr/pkg/runtime/pubsub"
 )
 
-// API returns a list of HTTP endpoints for Dapr.
+// API 返回Dapr的HTTP端点的列表。
 type API interface {
 	APIEndpoints() []Endpoint
 	PublicEndpoints() []Endpoint
@@ -165,84 +165,87 @@ func NewAPI(
 	return api
 }
 
-// APIEndpoints returns the list of registered endpoints.
+// APIEndpoints 返回注册的端点
 func (a *api) APIEndpoints() []Endpoint {
 	return a.endpoints
 }
 
-// PublicEndpoints returns the list of registered endpoints.
+// PublicEndpoints 返回公开的端点
 func (a *api) PublicEndpoints() []Endpoint {
 	return a.publicEndpoints
 }
 
-// MarkStatusAsReady marks the ready status of dapr.
+// MarkStatusAsReady 标记dapr状态已就绪
 func (a *api) MarkStatusAsReady() {
 	a.readyStatus = true
 }
 
-// MarkStatusAsOutboundReady marks the ready status of dapr for outbound traffic.
+// MarkStatusAsOutboundReady 标记dapr出站流量的已就绪。
 func (a *api) MarkStatusAsOutboundReady() {
 	a.outboundReadyStatus = true
 }
 
+//构造状态相关的端点
 func (a *api) constructStateEndpoints() []Endpoint {
 	return []Endpoint{
 		{
 			Methods: []string{fasthttp.MethodGet},
 			Route:   "state/{storeName}/{key}",
 			Version: apiVersionV1,
-			Handler: a.onGetState,
+			Handler: a.onGetState, //获取状态
 		},
 		{
 			Methods: []string{fasthttp.MethodPost, fasthttp.MethodPut},
 			Route:   "state/{storeName}",
 			Version: apiVersionV1,
-			Handler: a.onPostState,
+			Handler: a.onPostState, // 更新、创建状态
 		},
 		{
 			Methods: []string{fasthttp.MethodDelete},
 			Route:   "state/{storeName}/{key}",
 			Version: apiVersionV1,
-			Handler: a.onDeleteState,
+			Handler: a.onDeleteState, // 删除状态
 		},
 		{
 			Methods: []string{fasthttp.MethodPost, fasthttp.MethodPut},
 			Route:   "state/{storeName}/bulk",
 			Version: apiVersionV1,
-			Handler: a.onBulkGetState,
+			Handler: a.onBulkGetState, // 批量获取状态
 		},
 		{
 			Methods: []string{fasthttp.MethodPost, fasthttp.MethodPut},
 			Route:   "state/{storeName}/transaction",
 			Version: apiVersionV1,
-			Handler: a.onPostStateTransaction,
+			Handler: a.onPostStateTransaction, // 事务更新状态
 		},
 		{
 			Methods: []string{fasthttp.MethodPost, fasthttp.MethodPut},
 			Route:   "state/{storeName}/query",
 			Version: apiVersionV1alpha1,
-			Handler: a.onQueryState,
+			Handler: a.onQueryState, // 查询状态 todo 存在的意义  与onGetState 的区别
 		},
 	}
 }
 
+//构造secret相关的端点
 func (a *api) constructSecretEndpoints() []Endpoint {
 	return []Endpoint{
 		{
 			Methods: []string{fasthttp.MethodGet},
 			Route:   "secrets/{secretStoreName}/bulk",
 			Version: apiVersionV1,
-			Handler: a.onBulkGetSecret,
+			Handler: a.onBulkGetSecret, // 批量获取
 		},
 		{
 			Methods: []string{fasthttp.MethodGet},
 			Route:   "secrets/{secretStoreName}/{key}",
 			Version: apiVersionV1,
-			Handler: a.onGetSecret,
+			Handler: a.onGetSecret, // 只获取一个
 		},
 	}
 }
 
+// 构建pubsub端点
 func (a *api) constructPubSubEndpoints() []Endpoint {
 	return []Endpoint{
 		{
@@ -254,6 +257,7 @@ func (a *api) constructPubSubEndpoints() []Endpoint {
 	}
 }
 
+// 构建binging端点
 func (a *api) constructBindingsEndpoints() []Endpoint {
 	return []Endpoint{
 		{
@@ -265,6 +269,7 @@ func (a *api) constructBindingsEndpoints() []Endpoint {
 	}
 }
 
+//构建直接信息传递的端点
 func (a *api) constructDirectMessagingEndpoints() []Endpoint {
 	return []Endpoint{
 		{
@@ -276,7 +281,9 @@ func (a *api) constructDirectMessagingEndpoints() []Endpoint {
 		},
 	}
 }
-
+// actor
+// 一个actor的并发量为1
+//POST/GET/PUT/DELETE http://localhost:3500/v1.0/actors/<actorType>/<actorId>/<method/state/timers/reminders>
 func (a *api) constructActorEndpoints() []Endpoint {
 	return []Endpoint{
 		{
