@@ -102,7 +102,7 @@ type PipelineSpec struct {
 	Handlers []HandlerSpec `json:"handlers" yaml:"handlers"`
 }
 
-// APISpec describes the configuration for Dapr APIs.
+// APISpec Dapr API的配置信息
 type APISpec struct {
 	Allowed []APIAccessRule `json:"allowed,omitempty"`
 }

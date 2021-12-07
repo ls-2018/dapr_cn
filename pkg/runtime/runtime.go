@@ -128,30 +128,36 @@ type TopicRoute struct {
 
 // DaprRuntime 持有运行时的所有核心组件。
 type DaprRuntime struct {
-	runtimeConfig          *Config
-	globalConfig           *config.Configuration
-	accessControlList      *config.AccessControlList
-	componentsLock         *sync.RWMutex
-	components             []components_v1alpha1.Component
-	grpc                   *grpc.Manager
-	appChannel             channel.AppChannel
-	appConfig              config.ApplicationConfig
-	directMessaging        messaging.DirectMessaging
-	stateStoreRegistry     state_loader.Registry
-	secretStoresRegistry   secretstores_loader.Registry
-	nameResolutionRegistry nr_loader.Registry
-	stateStores            map[string]state.Store
-	actor                  actors.Actors
-	bindingsRegistry       bindings_loader.Registry
-	subscribeBindingList   []string
-	inputBindings          map[string]bindings.InputBinding
-	outputBindings         map[string]bindings.OutputBinding
-	secretStores           map[string]secretstores.SecretStore
-	pubSubRegistry         pubsub_loader.Registry
-	pubSubs                map[string]pubsub.PubSub
+	runtimeConfig     *Config                         // 运行时配置
+	globalConfig      *config.Configuration           // k8s中的全局配置
+	accessControlList *config.AccessControlList       // 访问控制列表
+	componentsLock    *sync.RWMutex                   // 组件锁
+	components        []components_v1alpha1.Component // 所有组件
+	grpc              *grpc.Manager
+	appChannel        channel.AppChannel
+	appConfig         config.ApplicationConfig  // 应用配置
+	directMessaging   messaging.DirectMessaging // todo
+
+	stateStoreRegistry state_loader.Registry  // 状态工厂map
+	stateStores        map[string]state.Store //  state实例map
+	actor              actors.Actors
+
+	nameResolutionRegistry nr_loader.Registry // 名称解析工厂map
+
+	bindingsRegistry bindings_loader.Registry          // 输入输出binging 工厂map
+	inputBindings    map[string]bindings.InputBinding  // InputBinding 实例
+	outputBindings   map[string]bindings.OutputBinding // OutputBinding 实例
+
+	secretStoresRegistry secretstores_loader.Registry // sceret工厂map
+	secretStores         map[string]secretstores.SecretStore
+
+	pubSubRegistry       pubsub_loader.Registry   // pubsub工厂map
+	pubSubs              map[string]pubsub.PubSub // pubsub 实例
+	subscribeBindingList []string
+
 	nameResolver           nr.Resolver
 	json                   jsoniter.API
-	httpMiddlewareRegistry http_middleware_loader.Registry
+	httpMiddlewareRegistry http_middleware_loader.Registry // 中间件工厂map
 	hostAddress            string
 	actorStateStoreName    string
 	actorStateStoreCount   int
@@ -165,11 +171,11 @@ type DaprRuntime struct {
 	topicRoutes            map[string]TopicRoute
 	inputBindingRoutes     map[string]string
 	shutdownC              chan error
-	apiClosers             []io.Closer
+	apiClosers             []io.Closer // 可关闭的服务，1、dapr对app暴露的http 2、dapr对app暴露的grpc 3、dapr对dapr暴露的grpc
 
 	secretsConfiguration map[string]config.SecretsScope
 
-	configurationStoreRegistry configuration_loader.Registry
+	configurationStoreRegistry configuration_loader.Registry // 配置工厂map
 	configurationStores        map[string]configuration.Store
 
 	pendingComponents          chan components_v1alpha1.Component         // 等待初始化的组件
@@ -396,7 +402,6 @@ func (a *DaprRuntime) initRuntime(opts *runtimeOpts) error {
 	} else {
 		log.Infof("API gRPC server is running on port %v", a.runtimeConfig.APIGRPCPort)
 	}
-
 
 	// Start HTTP Server
 	err = a.startHTTPServer(a.runtimeConfig.HTTPPort, a.runtimeConfig.PublicPort, a.runtimeConfig.ProfilePort, a.runtimeConfig.AllowedOrigins, pipeline)

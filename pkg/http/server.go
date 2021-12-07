@@ -41,17 +41,17 @@ type Server interface {
 }
 
 type server struct {
-	config             ServerConfig
-	tracingSpec        config.TracingSpec
-	metricSpec         config.MetricSpec
-	pipeline           http_middleware.Pipeline
-	api                API
-	apiSpec            config.APISpec
-	servers            []*fasthttp.Server
-	profilingListeners []net.Listener
+	config             ServerConfig             // 配置
+	tracingSpec        config.TracingSpec       // 追踪配置
+	metricSpec         config.MetricSpec        // 指标配置
+	pipeline           http_middleware.Pipeline // 中间件配置
+	api                API                      // 路由信息,等等
+	apiSpec            config.APISpec           //  Dapr API的配置信息
+	servers            []*fasthttp.Server       // fasthttp 服务
+	profilingListeners []net.Listener           // 性能分析,在启动时添加
 }
 
-// NewServer returns a new HTTP server.
+// NewServer 返回  HTTP 服务.
 func NewServer(api API, config ServerConfig, tracingSpec config.TracingSpec, metricSpec config.MetricSpec, pipeline http_middleware.Pipeline, apiSpec config.APISpec) Server {
 	return &server{
 		api:         api,
@@ -65,8 +65,8 @@ func NewServer(api API, config ServerConfig, tracingSpec config.TracingSpec, met
 
 // StartNonBlocking 在goroutine. 中启动服务
 func (s *server) StartNonBlocking() error {
+	// ➕中间件
 	handler := useAPIAuthentication(s.useCors(s.useComponents(s.useRouter())))
-
 	handler = s.useMetrics(handler)
 	handler = s.useTracing(handler)
 
@@ -128,7 +128,7 @@ func (s *server) StartNonBlocking() error {
 			}
 		}()
 	}
-
+	// 如果允许性能分析，
 	if s.config.EnableProfiling {
 		for _, apiListenAddress := range s.config.APIListenAddresses {
 			log.Infof("starting profiling server on %v:%v", apiListenAddress, s.config.ProfilePort)

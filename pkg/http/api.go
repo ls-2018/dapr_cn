@@ -110,6 +110,7 @@ const (
 )
 
 // NewAPI returns a new API.
+// 无非就是将RuntimeConfig里的数据来回传,避免依赖
 func NewAPI(
 	appID string,
 	appChannel channel.AppChannel,
@@ -146,6 +147,7 @@ func NewAPI(
 		shutdown:                 shutdown,
 	}
 
+	//	注册路由
 	metadataEndpoints := api.constructMetadataEndpoints()
 	healthEndpoints := api.constructHealthzEndpoints()
 
@@ -184,6 +186,8 @@ func (a *api) MarkStatusAsReady() {
 func (a *api) MarkStatusAsOutboundReady() {
 	a.outboundReadyStatus = true
 }
+
+// ----------------------------------------
 
 //构造状态相关的端点
 func (a *api) constructStateEndpoints() []Endpoint {
@@ -281,6 +285,7 @@ func (a *api) constructDirectMessagingEndpoints() []Endpoint {
 		},
 	}
 }
+
 // actor
 // 一个actor的并发量为1
 //POST/GET/PUT/DELETE http://localhost:3500/v1.0/actors/<actorType>/<actorId>/<method/state/timers/reminders>
@@ -337,6 +342,7 @@ func (a *api) constructActorEndpoints() []Endpoint {
 	}
 }
 
+// 元信息
 func (a *api) constructMetadataEndpoints() []Endpoint {
 	return []Endpoint{
 		{
@@ -354,33 +360,37 @@ func (a *api) constructMetadataEndpoints() []Endpoint {
 	}
 }
 
+// 停止
 func (a *api) constructShutdownEndpoints() []Endpoint {
 	return []Endpoint{
 		{
 			Methods: []string{fasthttp.MethodPost},
-			Route:   "shutdown",
+			Route:   "shutdown",//   curl -X POST http://localhost:3500/v1.0/shutdown
 			Version: apiVersionV1,
 			Handler: a.onShutdown,
 		},
 	}
 }
 
+// 健康检查
 func (a *api) constructHealthzEndpoints() []Endpoint {
 	return []Endpoint{
 		{
 			Methods: []string{fasthttp.MethodGet},
-			Route:   "healthz",
+			Route:   "healthz", //      curl http://localhost:3500/v1.0/healthz
 			Version: apiVersionV1,
 			Handler: a.onGetHealthz,
 		},
 		{
 			Methods: []string{fasthttp.MethodGet},
-			Route:   "healthz/outbound",
+			Route:   "healthz/outbound", // curl http://localhost:3500/v1.0/healthz/outbound
 			Version: apiVersionV1,
 			Handler: a.onGetOutboundHealthz,
 		},
 	}
 }
+
+// ----------------------------------------
 
 func (a *api) onOutputBindingMessage(reqCtx *fasthttp.RequestCtx) {
 	name := reqCtx.UserValue(nameParam).(string)
