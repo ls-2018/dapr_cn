@@ -69,8 +69,8 @@ type api struct {
 	sendToOutputBindingFn    func(name string, req *bindings.InvokeRequest) (*bindings.InvokeResponse, error)
 	id                       string
 	extendedMetadata         sync.Map
-	readyStatus              bool
-	outboundReadyStatus      bool
+	readyStatus              bool // 所有逻辑均准备后 ,置为true
+	outboundReadyStatus      bool // http服务开启后，置为true
 	tracingSpec              config.TracingSpec
 	shutdown                 func()
 }
@@ -365,7 +365,7 @@ func (a *api) constructShutdownEndpoints() []Endpoint {
 	return []Endpoint{
 		{
 			Methods: []string{fasthttp.MethodPost},
-			Route:   "shutdown",//   curl -X POST http://localhost:3500/v1.0/shutdown
+			Route:   "shutdown", //   curl -X POST http://localhost:3500/v1.0/shutdown
 			Version: apiVersionV1,
 			Handler: a.onShutdown,
 		},

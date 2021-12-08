@@ -19,7 +19,7 @@ const (
 
 // AppChannel 是对与用户代码通信的一种抽象。
 type AppChannel interface {
-	GetBaseAddress() string
-	GetAppConfig() (*config.ApplicationConfig, error)
-	InvokeMethod(ctx context.Context, req *invokev1.InvokeMethodRequest) (*invokev1.InvokeMethodResponse, error)
+	GetBaseAddress() string // 获取地址
+	GetAppConfig() (*config.ApplicationConfig, error) // 获取配置
+	InvokeMethod(ctx context.Context, req *invokev1.InvokeMethodRequest) (*invokev1.InvokeMethodResponse, error) // 方法调用
 }

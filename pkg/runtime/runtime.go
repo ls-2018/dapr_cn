@@ -134,7 +134,7 @@ type DaprRuntime struct {
 	componentsLock    *sync.RWMutex                   // 组件锁
 	components        []components_v1alpha1.Component // 所有组件
 	grpc              *grpc.Manager
-	appChannel        channel.AppChannel
+	appChannel        channel.AppChannel        // 并不是go的channel ,是一层抽象
 	appConfig         config.ApplicationConfig  // 应用配置
 	directMessaging   messaging.DirectMessaging // todo
 
@@ -393,6 +393,7 @@ func (a *DaprRuntime) initRuntime(opts *runtimeOpts) error {
 	// 创建和启动内部和外部gRPC服务器 、struct
 	grpcAPI := a.getGRPCAPI() // 承接app流量的实现
 	// 50001
+	// 1、外部grpc
 	err = a.startGRPCAPIServer(grpcAPI, a.runtimeConfig.APIGRPCPort)
 	if err != nil {
 		log.Fatalf("failed to start API gRPC server: %s", err)
@@ -402,8 +403,8 @@ func (a *DaprRuntime) initRuntime(opts *runtimeOpts) error {
 	} else {
 		log.Infof("API gRPC server is running on port %v", a.runtimeConfig.APIGRPCPort)
 	}
-
-	// Start HTTP Server
+	// 2、外部http
+	// Start HTTP Server 【http  prof】
 	err = a.startHTTPServer(a.runtimeConfig.HTTPPort, a.runtimeConfig.PublicPort, a.runtimeConfig.ProfilePort, a.runtimeConfig.AllowedOrigins, pipeline)
 	if err != nil {
 		log.Fatalf("failed to start HTTP server: %s", err)
@@ -414,7 +415,7 @@ func (a *DaprRuntime) initRuntime(opts *runtimeOpts) error {
 		log.Infof("http server is running on port %v", a.runtimeConfig.HTTPPort)
 	}
 	log.Infof("The request body size parameter is: %v", a.runtimeConfig.MaxRequestBodySize)
-
+	// 3、内部grpc
 	err = a.startGRPCInternalServer(grpcAPI, a.runtimeConfig.InternalGRPCPort)
 	if err != nil {
 		log.Fatalf("failed to start internal gRPC server: %s", err)
@@ -2108,12 +2109,13 @@ func (a *DaprRuntime) getSecretStore(storeName string) secretstores.SecretStore 
 	return a.secretStores[storeName]
 }
 
+// 阻塞直到应用就绪
 func (a *DaprRuntime) blockUntilAppIsReady() {
 	if a.runtimeConfig.ApplicationPort <= 0 {
 		return
 	}
 
-	log.Infof("application protocol: %s. waiting on port %v.  This will block until the app is listening on that port.", string(a.runtimeConfig.ApplicationProtocol), a.runtimeConfig.ApplicationPort)
+	log.Infof("application protocol: %s. waiting on port %v.  阻塞直到应用就绪", string(a.runtimeConfig.ApplicationProtocol), a.runtimeConfig.ApplicationPort)
 
 	for {
 		conn, _ := net.DialTimeout("tcp", net.JoinHostPort("localhost", fmt.Sprintf("%v", a.runtimeConfig.ApplicationPort)), time.Millisecond*500)
@@ -2121,11 +2123,11 @@ func (a *DaprRuntime) blockUntilAppIsReady() {
 			conn.Close()
 			break
 		}
-		// prevents overwhelming the OS with open connections
+		// 防止连接使操作系统不堪重负
 		time.Sleep(time.Millisecond * 50)
 	}
 
-	log.Infof("application discovered on port %v", a.runtimeConfig.ApplicationPort)
+	log.Infof("发现应用在端口:%v", a.runtimeConfig.ApplicationPort)
 }
 
 func (a *DaprRuntime) loadAppConfiguration() {
@@ -2157,7 +2159,13 @@ func (a *DaprRuntime) createAppChannel() error {
 			return errors.Errorf("cannot create app channel for protocol %s", string(a.runtimeConfig.ApplicationProtocol))
 		}
 
-		ch, err := channelCreatorFn(a.runtimeConfig.ApplicationPort, a.runtimeConfig.MaxConcurrency, a.globalConfig.Spec.TracingSpec, a.runtimeConfig.AppSSL, a.runtimeConfig.MaxRequestBodySize, a.runtimeConfig.ReadBufferSize)
+		ch, err := channelCreatorFn(a.runtimeConfig.ApplicationPort,
+			a.runtimeConfig.MaxConcurrency,
+			a.globalConfig.Spec.TracingSpec,
+			a.runtimeConfig.AppSSL, // 是否加密
+			a.runtimeConfig.MaxRequestBodySize,
+			a.runtimeConfig.ReadBufferSize,
+		)
 		if err != nil {
 			log.Infof("app max concurrency set to %v", a.runtimeConfig.MaxConcurrency)
 		}

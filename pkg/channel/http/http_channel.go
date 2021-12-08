@@ -14,12 +14,6 @@ import (
 
 	nethttp "net/http"
 
-	jsoniter "github.com/json-iterator/go"
-	"github.com/valyala/fasthttp"
-	"go.opencensus.io/plugin/ochttp/propagation/tracecontext"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	"github.com/dapr/dapr/pkg/channel"
 	"github.com/dapr/dapr/pkg/config"
 	diag "github.com/dapr/dapr/pkg/diagnostics"
@@ -28,10 +22,15 @@ import (
 	commonv1pb "github.com/dapr/dapr/pkg/proto/common/v1"
 	internalv1pb "github.com/dapr/dapr/pkg/proto/internals/v1"
 	auth "github.com/dapr/dapr/pkg/runtime/security"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/valyala/fasthttp"
+	"go.opencensus.io/plugin/ochttp/propagation/tracecontext"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const (
-	// HTTPStatusCode is an dapr http channel status code.
+	// HTTPStatusCode 是dapr http通道状态代码。
 	HTTPStatusCode = "http.status_code"
 	httpScheme     = "http"
 	httpsScheme    = "https"
@@ -39,18 +38,18 @@ const (
 	appConfigEndpoint = "dapr/config"
 )
 
-// Channel is an HTTP implementation of an AppChannel.
+// Channel APP channel 的http实现
 type Channel struct {
 	client              *fasthttp.Client
-	baseAddress         string
-	ch                  chan int
-	tracingSpec         config.TracingSpec
-	appHeaderToken      string
+	baseAddress         string             // eg http://127.0.0.1:8000
+	ch                  chan int           // 用于限制并发
+	tracingSpec         config.TracingSpec // 追踪信息
+	appHeaderToken      string             // app token
 	json                jsoniter.API
 	maxResponseBodySize int
 }
 
-// CreateLocalChannel creates an HTTP AppChannel
+// CreateLocalChannel 创建http应用channel
 // nolint:gosec
 func CreateLocalChannel(port, maxConcurrency int, spec config.TracingSpec, sslEnabled bool, maxRequestBodySize int, readBufferSize int) (channel.AppChannel, error) {
 	scheme := httpScheme
@@ -61,21 +60,23 @@ func CreateLocalChannel(port, maxConcurrency int, spec config.TracingSpec, sslEn
 	c := &Channel{
 		client: &fasthttp.Client{
 			MaxConnsPerHost:           1000000,
-			MaxIdemponentCallAttempts: 0,
-			MaxResponseBodySize:       maxRequestBodySize * 1024 * 1024,
-			ReadBufferSize:            readBufferSize * 1024,
+			MaxIdemponentCallAttempts: 0,                                // 重试次数 0
+			MaxResponseBodySize:       maxRequestBodySize * 1024 * 1024, // 请求体大小 , M
+			ReadBufferSize:            readBufferSize * 1024,            // K
 		},
 		baseAddress:         fmt.Sprintf("%s://%s:%d", scheme, channel.DefaultChannelAddress, port),
-		tracingSpec:         spec,
+		tracingSpec:         spec, // 追踪的配置
 		appHeaderToken:      auth.GetAppToken(),
-		json:                jsoniter.ConfigFastest,
+		json:                jsoniter.ConfigFastest, // 序列化模块
 		maxResponseBodySize: maxRequestBodySize,
 	}
 
 	if sslEnabled {
+		// 控制客户端是否验证服务器的证书链和主机名。
+		// 如果InsecureSkipVerify为真，crypto/tls接受服务器提交的任何证书和该证书中的任何主机名。
 		c.client.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 	}
-
+	// 默认是-1
 	if maxConcurrency > 0 {
 		c.ch = make(chan int, maxConcurrency)
 	}
@@ -83,15 +84,15 @@ func CreateLocalChannel(port, maxConcurrency int, spec config.TracingSpec, sslEn
 	return c, nil
 }
 
-// GetBaseAddress returns the application base address.
+// GetBaseAddress 返回应用地址
 func (h *Channel) GetBaseAddress() string {
 	return h.baseAddress
 }
 
-// GetAppConfig gets application config from user application
+// GetAppConfig 获取应用的配置
 // GET http://localhost:<app_port>/dapr/config
 func (h *Channel) GetAppConfig() (*config.ApplicationConfig, error) {
-	req := invokev1.NewInvokeMethodRequest(appConfigEndpoint)
+	req := invokev1.NewInvokeMethodRequest(appConfigEndpoint) // "dapr/config"
 	req.WithHTTPExtension(nethttp.MethodGet, "")
 	req.WithRawData(nil, invokev1.JSONContentType)
 
@@ -116,13 +117,14 @@ func (h *Channel) GetAppConfig() (*config.ApplicationConfig, error) {
 	return &config, nil
 }
 
-// InvokeMethod invokes user code via HTTP.
+// InvokeMethod
 func (h *Channel) InvokeMethod(ctx context.Context, req *invokev1.InvokeMethodRequest) (*invokev1.InvokeMethodResponse, error) {
-	// Check if HTTP Extension is given. Otherwise, it will return error.
+	// 必须调用了 pkg/channel/http/http_channel.go:96
 	httpExt := req.Message().GetHttpExtension()
 	if httpExt == nil {
 		return nil, status.Error(codes.InvalidArgument, "missing HTTP extension field")
 	}
+	// 必须调用了 pkg/channel/http/http_channel.go:96
 	if httpExt.GetVerb() == commonv1pb.HTTPExtension_NONE {
 		return nil, status.Error(codes.InvalidArgument, "invalid HTTP verb")
 	}
@@ -130,6 +132,7 @@ func (h *Channel) InvokeMethod(ctx context.Context, req *invokev1.InvokeMethodRe
 	var rsp *invokev1.InvokeMethodResponse
 	var err error
 	switch req.APIVersion() {
+	//  pkg/channel/http/http_channel.go:95 版本默认就是 APIVersion_V1
 	case internalv1pb.APIVersion_V1:
 		rsp, err = h.invokeMethodV1(ctx, req)
 
@@ -178,6 +181,7 @@ func (h *Channel) invokeMethodV1(ctx context.Context, req *invokev1.InvokeMethod
 	return rsp, nil
 }
 
+// 由 proto 结构体信息，构建 fasthttp 请求信息
 func (h *Channel) constructRequest(ctx context.Context, req *invokev1.InvokeMethodRequest) *fasthttp.Request {
 	channelReq := fasthttp.AcquireRequest()
 

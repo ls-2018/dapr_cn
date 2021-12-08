@@ -21,7 +21,7 @@ func GetAPIToken() string {
 	return os.Getenv(APITokenEnvVar)
 }
 
-// GetAppToken returns the value of the app api token from an environment variable.
+// GetAppToken 返回环境变量中的app api token的值。
 func GetAppToken() string {
 	return os.Getenv(AppAPITokenEnvVar)
 }

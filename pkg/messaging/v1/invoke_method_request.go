@@ -17,23 +17,22 @@ import (
 )
 
 const (
-	// DefaultAPIVersion is the default Dapr API version.
+	// DefaultAPIVersion dapr api 版本
 	DefaultAPIVersion = internalv1pb.APIVersion_V1
 )
 
-// InvokeMethodRequest holds InternalInvokeRequest protobuf message
-// and provides the helpers to manage it.
+// InvokeMethodRequest 持有 InternalInvokeRequest protobuf消息，并提供帮助器来管理它。
 type InvokeMethodRequest struct {
 	r *internalv1pb.InternalInvokeRequest
 }
 
-// NewInvokeMethodRequest creates InvokeMethodRequest object for method.
+// NewInvokeMethodRequest 为方法创建InvokeMethodRequest对象。
 func NewInvokeMethodRequest(method string) *InvokeMethodRequest {
 	return &InvokeMethodRequest{
 		r: &internalv1pb.InternalInvokeRequest{
 			Ver: DefaultAPIVersion,
 			Message: &commonv1pb.InvokeRequest{
-				Method: method,
+				Method: method, // 被调用法的方法,具体的执行逻辑
 			},
 		},
 	}
@@ -81,7 +80,7 @@ func (imr *InvokeMethodRequest) WithFastHTTPHeaders(header *fasthttp.RequestHead
 	return imr
 }
 
-// WithRawData sets message data and content_type.
+// WithRawData 设置消息的格式
 func (imr *InvokeMethodRequest) WithRawData(data []byte, contentType string) *InvokeMethodRequest {
 	if contentType == "" {
 		contentType = JSONContentType
@@ -91,13 +90,13 @@ func (imr *InvokeMethodRequest) WithRawData(data []byte, contentType string) *In
 	return imr
 }
 
-// WithHTTPExtension sets new HTTP extension with verb and querystring.
+// WithHTTPExtension 设置http的请求方式和查询字符串
 func (imr *InvokeMethodRequest) WithHTTPExtension(verb string, querystring string) *InvokeMethodRequest {
 	httpMethod, ok := commonv1pb.HTTPExtension_Verb_value[strings.ToUpper(verb)]
 	if !ok {
+		// 如果请求方式不存在，就改成post
 		httpMethod = int32(commonv1pb.HTTPExtension_POST)
 	}
-
 	imr.r.Message.HttpExtension = &commonv1pb.HTTPExtension{
 		Verb:        commonv1pb.HTTPExtension_Verb(httpMethod),
 		Querystring: querystring,
@@ -131,7 +130,7 @@ func (imr *InvokeMethodRequest) EncodeHTTPQueryString() string {
 	return m.GetHttpExtension().Querystring
 }
 
-// APIVersion gets API version of InvokeMethodRequest.
+// APIVersion 返回请求调用的 版本
 func (imr *InvokeMethodRequest) APIVersion() internalv1pb.APIVersion {
 	return imr.r.GetVer()
 }

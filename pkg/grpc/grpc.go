@@ -26,19 +26,19 @@ import (
 )
 
 const (
-	// needed to load balance requests for target services with multiple endpoints, ie. multiple instances.
+	//需要对具有多个端点（即多个实例）的目标服务请求进行负载平衡。
 	grpcServiceConfig = `{"loadBalancingPolicy":"round_robin"}`
 	dialTimeout       = time.Second * 30
 )
 
-// ClientConnCloser combines grpc.ClientConnInterface and io.Closer
-// to cover the methods used from *grpc.ClientConn.
+// ClientConnCloser 接口封装
 type ClientConnCloser interface {
 	grpc.ClientConnInterface
 	io.Closer
 }
 
-// Manager is a wrapper around gRPC connection pooling.
+// Manager
+// 是一个gRPC连接池的包装器。
 type Manager struct {
 	AppClient      ClientConnCloser
 	lock           *sync.RWMutex
@@ -47,7 +47,7 @@ type Manager struct {
 	mode           modes.DaprMode
 }
 
-// NewGRPCManager returns a new grpc manager.
+// NewGRPCManager 返回grpc管理器
 func NewGRPCManager(mode modes.DaprMode) *Manager {
 	return &Manager{
 		lock:           &sync.RWMutex{},
@@ -56,16 +56,16 @@ func NewGRPCManager(mode modes.DaprMode) *Manager {
 	}
 }
 
-// SetAuthenticator sets the gRPC manager a tls authenticator context.
+// SetAuthenticator 设置grpc认证器
 func (g *Manager) SetAuthenticator(auth security.Authenticator) {
 	g.auth = auth
 }
 
-// CreateLocalChannel creates a new gRPC AppChannel.
+// CreateLocalChannel 创建 gRPC AppChannel.
 func (g *Manager) CreateLocalChannel(port, maxConcurrency int, spec config.TracingSpec, sslEnabled bool, maxRequestBodySize int, readBufferSize int) (channel.AppChannel, error) {
 	conn, err := g.GetGRPCConnection(context.TODO(), fmt.Sprintf("127.0.0.1:%v", port), "", "", true, false, sslEnabled)
 	if err != nil {
-		return nil, errors.Errorf("error establishing connection to app grpc on port %v: %s", port, err)
+		return nil, errors.Errorf("error 建立连接to app grpc on port %v: %s", port, err)
 	}
 
 	g.AppClient = conn
@@ -75,8 +75,12 @@ func (g *Manager) CreateLocalChannel(port, maxConcurrency int, spec config.Traci
 
 // GetGRPCConnection
 // 为给定的地址返回一个新的grpc连接，如果不存在则输入一个。
-func (g *Manager) GetGRPCConnection(ctx context.Context, address, id string, namespace string, skipTLS, recreateIfExists, sslEnabled bool, customOpts ...grpc.DialOption) (*grpc.ClientConn, error) {
+func (g *Manager) GetGRPCConnection(ctx context.Context, address, id string,
+	namespace string,
+	skipTLS, recreateIfExists, sslEnabled bool,
+	customOpts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	g.lock.RLock()
+	// 判断是否已经已经存在，且不用重新创建
 	if val, ok := g.connectionPool[address]; ok && !recreateIfExists {
 		g.lock.RUnlock()
 		return val, nil
@@ -85,25 +89,29 @@ func (g *Manager) GetGRPCConnection(ctx context.Context, address, id string, nam
 
 	g.lock.Lock()
 	defer g.lock.Unlock()
-	// read the value once again, as a concurrent writer could create it
+	// 再次读取该值，可能会已被并发创建
 	if val, ok := g.connectionPool[address]; ok && !recreateIfExists {
 		return val, nil
 	}
 
 	opts := []grpc.DialOption{
+		// grpc 服务配置
 		grpc.WithDefaultServiceConfig(grpcServiceConfig),
 	}
-
+	// 是否启用监控, 一般来说都是开启的
 	if diag.DefaultGRPCMonitoring.IsEnabled() {
+		// 添加拦截器
 		opts = append(opts, grpc.WithUnaryInterceptor(diag.DefaultGRPCMonitoring.UnaryClientInterceptor()))
 	}
-
+	// dapr 与 app grpc通信需不需要加证书
 	transportCredentialsAdded := false
+	// 不跳过，且设置了证书
 	if !skipTLS && g.auth != nil {
-		signedCert := g.auth.GetCurrentSignedCert()
+		signedCert := g.auth.GetCurrentSignedCert() // 获取签名的证书链
+		//从一对PEM编码的数据中解析出一个公钥/私钥对。在成功返回时，Certificate.Leaf将为nil，因为证书的解析形式没有被保留。
 		cert, err := tls.X509KeyPair(signedCert.WorkloadCert, signedCert.PrivateKeyPem)
 		if err != nil {
-			return nil, errors.Errorf("error generating x509 Key Pair: %s", err)
+			return nil, errors.Errorf("error 生成 x509 秘钥对: %s", err)
 		}
 
 		var serverName string
@@ -124,6 +132,7 @@ func (g *Manager) GetGRPCConnection(ctx context.Context, address, id string, nam
 	ctx, cancel := context.WithTimeout(ctx, dialTimeout)
 	defer cancel()
 
+	// 		dns:///
 	dialPrefix := GetDialAddressPrefix(g.mode)
 	if sslEnabled {
 		// nolint:gosec

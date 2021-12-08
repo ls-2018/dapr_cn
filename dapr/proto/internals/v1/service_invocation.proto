@@ -40,16 +40,16 @@ message Actor {
   string actor_id = 2;
 }
 
-// InternalInvokeRequest is the message to transfer caller's data to callee
-// for service invocation. This includes callee's app id and caller's request data.
+// InternalInvokeRequest
+// 是将调用者的数据传输给被调用者以进行服务调用的信息。这包括被呼叫者的应用程序ID和呼叫者的请求数据。
 message InternalInvokeRequest {
-  // Required. The version of Dapr runtime API.
+  // Required. dapr 运行时版本
   APIVersion ver = 1;
 
-  // Required. metadata holds caller's HTTP headers or gRPC metadata.
+  // Required. 调用这的元信息[http的头信息、grpc的元信息]
   map<string, ListStringValue> metadata = 2;
 
-  // Required. message including caller's invocation request.
+  // Required. 调用者的请求体
   common.v1.InvokeRequest message = 3;
 
   // Actor type and id. This field is used only for

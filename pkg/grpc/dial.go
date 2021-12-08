@@ -6,8 +6,8 @@ import (
 	"github.com/dapr/dapr/pkg/modes"
 )
 
-// GetDialAddressPrefix returns a dial prefix for a gRPC client connections
-// For a given DaprMode.
+// GetDialAddressPrefix
+// 返回gRPC客户端连接的拨号前缀 对于一个给定的DaprMode。
 func GetDialAddressPrefix(mode modes.DaprMode) string {
 	if runtime.GOOS == "windows" {
 		return ""

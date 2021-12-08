@@ -185,12 +185,14 @@ func (g *grpcMetrics) UnaryServerInterceptor() func(ctx context.Context, req int
 // 是一个用于RPC的gRPC客户端拦截器。
 func (g *grpcMetrics) UnaryClientInterceptor() func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+		// 记录  客户端发送的数据包大小
 		start := g.ClientRequestSent(ctx, method, int64(g.getPayloadSize(req)))
 		err := invoker(ctx, method, req, reply, cc, opts...)
 		size := 0
 		if err == nil {
 			size = g.getPayloadSize(reply)
 		}
+		// 记录  服务端响应的数据包大小
 		g.ClientRequestReceived(ctx, method, status.Code(err).String(), int64(size), start)
 		return err
 	}

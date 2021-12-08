@@ -25,6 +25,7 @@ message HTTPExtension {
   // Type of HTTP 1.1 Methods
   // RFC 7231: https://tools.ietf.org/html/rfc7231#page-24
   // RFC 5789: https://datatracker.ietf.org/doc/html/rfc5789
+  // 请求方式与序号的转化
   enum Verb {
     NONE = 0;
     GET = 1;
@@ -49,11 +50,11 @@ message HTTPExtension {
 // This message is used in InvokeService of Dapr gRPC Service and OnInvoke
 // of AppCallback gRPC service.
 message InvokeRequest {
-  // Required. method is a method name which will be invoked by caller.
+  // Required. 方法是一个方法名，将被调用者调用。
   string method = 1;
 
-  // Required. Bytes value or Protobuf message which caller sent.
-  // Dapr treats Any.value as bytes type if Any.type_url is unset.
+  //  字节值或调用者发送的Protobuf信息。
+  //  如果Any.type_url没有设置，Dapr将Any.value视为字节类型。
   google.protobuf.Any data = 2;
 
   // The type of data content.
