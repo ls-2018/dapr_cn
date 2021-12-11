@@ -3,6 +3,7 @@ package daprd_debug
 import (
 	"fmt"
 	nr_kubernetes "github.com/dapr/components-contrib/nameresolution/kubernetes"
+	auth "github.com/dapr/dapr/pkg/runtime/security"
 	"io/ioutil"
 	raw_k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -33,16 +34,18 @@ func PRE(
 
 	*controlPlaneAddress = "127.0.0.1:6500"
 	// kubectl port-forward svc/dapr-api -n dapr-system 6500:80 &
-	*appID = "dp-618b5e4aa5ebc3924db86860-executorapp"
+	*appID = "dp-618b5e4aa5ebc3924db86860-workerapp-54683-7f8d646556-vf58h"
 	*placementServiceHostAddr = "dapr-placement-server.dapr-system.svc.cluster.local:50005"
 	*appProtocol = "http"
-	*sentryAddress = "dapr-sentry.dapr-system.svc.cluster.local:80"
-	*config = "appconfig" // 注入的时候，就确定了的
+	//*sentryAddress = "dapr-sentry.dapr-system.svc.cluster.local:80"
+	// kubectl port-forward svc/dapr-sentry -n dapr-system 1080:80 &
+	*sentryAddress = "127.0.0.1:50001"
+	*config = "appconfig" // 注入的时候，就确定了
 	*appMaxConcurrency = -1
 	*mode = "kubernetes"
 	*daprHTTPPort = "3500"
-	*daprAPIGRPCPort = "50001"
-	*daprInternalGRPCPort = "50002"
+	*daprAPIGRPCPort = "50003"
+	*daprInternalGRPCPort = "50004"
 	*appPort = "3001"
 
 	*daprHTTPMaxRequestSize = -1
@@ -53,6 +56,8 @@ func PRE(
 		fmt.Println(err)
 		os.Exit(1)
 	}
+	// 直接启动本地的sentry
+	//command = exec.Command("zsh", "-c", "kubectl port-forward svc/dapr-sentry -n dapr-system 10080:80 &")
 	// 以下证书，是从daprd的环境变量中截取的
 
 	crt := `-----BEGIN CERTIFICATE-----
@@ -84,6 +89,7 @@ BDAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB
 c3Rlci5sb2NhbDAKBggqhkjOPQQDAgNIADBFAiBscw216OcA8jt9tI1LmTywzNVV
 zfCt2fhdjXEK2GGEMAIhAKi0GsyI5b2hkrUkIEZm1kTLbeuw0GIguSvW89yUkXbT
 -----END CERTIFICATE-----`
+	token := `eyJhbGciOiJSUzI1NiIsImtpZCI6IkE3UktoWU8yU2N5YTRMak9seTFHNHVSbGZvd0xlVXlSZDN1OF9NVDVOVmMifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiXSwiZXhwIjoxNjcwNDkzNzQ3LCJpYXQiOjE2Mzg5NTc3NDcsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJtZXNvaWQiLCJwb2QiOnsibmFtZSI6ImRwLTYxOGI1ZTRhYTVlYmMzOTI0ZGI4Njg2MC13b3JrZXJhcHAtNTQ2ODMtN2Y4ZDY0NjU1Ni12ZjU4aCIsInVpZCI6IjBlOWEyN2YyLTBiYWMtNGU2YS04MDlkLTVhZTIxZGU4MTVjMyJ9LCJzZXJ2aWNlYWNjb3VudCI6eyJuYW1lIjoiZGVmYXVsdCIsInVpZCI6IjdkN2E2ZWFlLTlmMWUtNDgyZi05NmI4LWI3ZTJmZTQwNzQ3OSJ9LCJ3YXJuYWZ0ZXIiOjE2Mzg5NjEzNTR9LCJuYmYiOjE2Mzg5NTc3NDcsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDptZXNvaWQ6ZGVmYXVsdCJ9.mJxHmuCGTtiq44ptSf5lD3DXpa9EUp1BsrQnB0gEqpuxoUswXNoba7k_qjvV9oa5HdphjIz0pjWW7NUu0TF1rU9ktYw8pS8pphLHG27_FvD_LPHGM6zvqdXPTQlIUPTVf9SDzdavtdoJBo210J6JY_bzRadKdlNGZ1hYGz1TU08oJdLYiOsZ8N8YpNoDvXeMWrCpA7-rRTn2MPZ25BMD1Kw-1gwIPHvsd3gJ42Jjif90jg7O8_gkU2_tA1snCNPYNX52FJAzSRrmD2lQ_yD_hlDhgLSchqyRKis5pqBYJ6ED1w0eaxtZMk1upL3BIM5zbQkVXdB5Il65WNzUnLDFqQ`
 
 	os.Setenv("DAPR_CERT_CHAIN", crt)
 	os.Setenv("DAPR_CERT_KEY", key)
@@ -95,12 +101,17 @@ zfCt2fhdjXEK2GGEMAIhAKi0GsyI5b2hkrUkIEZm1kTLbeuw0GIguSvW89yUkXbT
 	rootCertPath := "/tmp/ca.crt"
 	issuerCertPath := "/tmp/issuer.crt"
 	issuerKeyPath := "/tmp/issuer.key"
+	kubeTknPath := "/tmp/token"
 
 	_ = ioutil.WriteFile(rootCertPath, []byte(ca), 0644)
 	_ = ioutil.WriteFile(issuerCertPath, []byte(crt), 0644)
 	_ = ioutil.WriteFile(issuerKeyPath, []byte(key), 0644)
+	_ = ioutil.WriteFile(kubeTknPath, []byte(token), 0644)
 
 	os.Setenv("NAMESPACE", "mesoid")
+
+	*auth.GetKubeTknPath() = kubeTknPath
+
 }
 
 // GetK8s 此处改用加载本地配置文件 ~/.kube/config

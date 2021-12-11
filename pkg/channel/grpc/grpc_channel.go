@@ -33,7 +33,7 @@ type Channel struct {
 	readBufferSize     int
 }
 
-// CreateLocalChannel creates a gRPC connection with user code.
+// CreateLocalChannel 用用户代码创建一个gRPC连接。
 func CreateLocalChannel(port, maxConcurrency int, conn *grpc.ClientConn, spec config.TracingSpec, maxRequestBodySize int, readBufferSize int) *Channel {
 	c := &Channel{
 		client:             conn,
@@ -54,7 +54,7 @@ func (g *Channel) GetBaseAddress() string {
 	return g.baseAddress
 }
 
-// GetAppConfig gets application config from user application.
+// GetAppConfig 获取应用的配置
 func (g *Channel) GetAppConfig() (*config.ApplicationConfig, error) {
 	return nil, nil
 }

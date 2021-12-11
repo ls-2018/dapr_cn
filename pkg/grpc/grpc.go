@@ -63,6 +63,7 @@ func (g *Manager) SetAuthenticator(auth security.Authenticator) {
 
 // CreateLocalChannel 创建 gRPC AppChannel.
 func (g *Manager) CreateLocalChannel(port, maxConcurrency int, spec config.TracingSpec, sslEnabled bool, maxRequestBodySize int, readBufferSize int) (channel.AppChannel, error) {
+	//  eg  dns:///127.0.0.1:3001 链接的app
 	conn, err := g.GetGRPCConnection(context.TODO(), fmt.Sprintf("127.0.0.1:%v", port), "", "", true, false, sslEnabled)
 	if err != nil {
 		return nil, errors.Errorf("error 建立连接to app grpc on port %v: %s", port, err)
@@ -143,15 +144,16 @@ func (g *Manager) GetGRPCConnection(ctx context.Context, address, id string,
 	}
 
 	if !transportCredentialsAdded {
+		// 不安全传输
 		opts = append(opts, grpc.WithInsecure())
 	}
-
+	// 一些自定义的配置
 	opts = append(opts, customOpts...)
 	conn, err := grpc.DialContext(ctx, dialPrefix+address, opts...)
 	if err != nil {
 		return nil, err
 	}
-
+	// 将旧的停掉
 	if c, ok := g.connectionPool[address]; ok {
 		c.Close()
 	}

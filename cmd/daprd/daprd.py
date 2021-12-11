@@ -16,6 +16,13 @@ async def get(req: Request):
     }
 
 
+@app.get("/dapr/config")
+async def get(req: Request):
+    return {
+        "state": "ok",
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
 

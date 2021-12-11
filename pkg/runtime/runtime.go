@@ -134,7 +134,6 @@ type DaprRuntime struct {
 	componentsLock    *sync.RWMutex                   // 组件锁
 	components        []components_v1alpha1.Component // 所有组件
 	grpc              *grpc.Manager
-	appChannel        channel.AppChannel        // 并不是go的channel ,是一层抽象
 	appConfig         config.ApplicationConfig  // 应用配置
 	directMessaging   messaging.DirectMessaging // todo
 
@@ -166,12 +165,14 @@ type DaprRuntime struct {
 	scopedSubscriptions    map[string][]string
 	scopedPublishings      map[string][]string
 	allowedTopics          map[string][]string
+	appChannel             channel.AppChannel // 并不是go的channel ,是一层抽象
 	daprHTTPAPI            http.API
-	operatorClient         operatorv1pb.OperatorClient // operator = controlPlaneAddress = dapr-api.dapr-system.svc.cluster.local:80 == localhost:6500
-	topicRoutes            map[string]TopicRoute
-	inputBindingRoutes     map[string]string
-	shutdownC              chan error
-	apiClosers             []io.Closer // 可关闭的服务，1、dapr对app暴露的http 2、dapr对app暴露的grpc 3、dapr对dapr暴露的grpc
+
+	operatorClient     operatorv1pb.OperatorClient // operator = controlPlaneAddress = dapr-api.dapr-system.svc.cluster.local:80 == localhost:6500
+	topicRoutes        map[string]TopicRoute
+	inputBindingRoutes map[string]string
+	shutdownC          chan error
+	apiClosers         []io.Closer // 可关闭的服务，1、dapr对app暴露的http 2、dapr对app暴露的grpc 3、dapr对dapr暴露的grpc
 
 	secretsConfiguration map[string]config.SecretsScope
 
@@ -432,7 +433,8 @@ func (a *DaprRuntime) initRuntime(opts *runtimeOpts) error {
 	if err != nil {
 		log.Warnf("failed to open %s channel to app: %s", string(a.runtimeConfig.ApplicationProtocol), err)
 	}
-	a.daprHTTPAPI.SetAppChannel(a.appChannel)
+	// 将创建的channel 与api绑定  , 与应用协议绑定，只能创建一个channel
+	a.daprHTTPAPI.SetAppChannel(a.appChannel) //
 	grpcAPI.SetAppChannel(a.appChannel)
 
 	a.loadAppConfiguration()
@@ -2146,6 +2148,9 @@ func (a *DaprRuntime) loadAppConfiguration() {
 	}
 }
 
+// 创建与app 通信的通道
+// 如果是http ，创建http client
+// 如果是grpc, 与app 建链
 func (a *DaprRuntime) createAppChannel() error {
 	if a.runtimeConfig.ApplicationPort > 0 {
 		var channelCreatorFn func(port, maxConcurrency int, spec config.TracingSpec, sslEnabled bool, maxRequestBodySize int, readBufferSize int) (channel.AppChannel, error)

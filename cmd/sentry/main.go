@@ -63,6 +63,7 @@ func main() {
 	metricsExporter.Options().AttachCmdFlags(flag.StringVar, flag.BoolVar)
 
 	flag.Parse()
+	loggerOptions.SetOutputLevel("debug")
 
 	// pass
 	if err := logger.ApplyOptionsToLoggers(&loggerOptions); err != nil {
@@ -74,6 +75,7 @@ func main() {
 
 	// pass
 	if err := metricsExporter.Init(); err != nil {
+
 		log.Fatal(err)
 	}
 	// pass

@@ -6,13 +6,16 @@
 package metrics
 
 import (
+	"github.com/dapr/dapr/utils"
 	"strconv"
 )
 
 const (
-	defaultMetricsPort    = "9090"
+	//defaultMetricsPort    = "9090"
 	defaultMetricsEnabled = true
 )
+
+var defaultMetricsPort, _ = utils.GetAvailablePort()
 
 // Options 定义用于Dapr日志记录的选项集。
 type Options struct {

@@ -172,7 +172,9 @@ func (s *server) Close() error {
 }
 
 func (s *server) generateWorkloadCert() error {
-	s.logger.Info("sending workload csr request to sentry")
+	//kubectl port-forward svc/dapr-api -n dapr-system 6500:80 &
+
+	s.logger.Info("向Sentry发送工作负荷CSR请求")
 	signedCert, err := s.authenticator.CreateSignedWorkloadCert(s.config.AppID, s.config.NameSpace, s.config.TrustDomain)
 	if err != nil {
 		return errors.Wrap(err, "error from authenticator CreateSignedWorkloadCert")

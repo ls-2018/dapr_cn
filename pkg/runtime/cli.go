@@ -89,7 +89,7 @@ func FromFlags() (*DaprRuntime, error) {
 	)
 
 	flag.Parse()
-
+	loggerOptions.SetOutputLevel("debug")
 	if *runtimeVersion {
 		fmt.Println(version.Version())
 		os.Exit(0)

@@ -42,3 +42,5 @@ func GetHostAddress() (string, error) {
 	defer conn.Close()
 	return conn.LocalAddr().(*net.UDPAddr).IP.String(), nil
 }
+
+
