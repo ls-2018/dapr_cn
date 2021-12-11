@@ -127,7 +127,7 @@ func (c *defaultCA) ValidateCSR(csr *x509.CertificateRequest) error {
 	}
 	return nil
 }
-
+// 根据文件存不存在，判断需不需要创建
 func shouldCreateCerts(conf config.SentryConfig) bool {
 	exists, err := certs.CredentialsExist(conf)
 	if err != nil {
@@ -220,33 +220,35 @@ func (c *defaultCA) validateAndBuildTrustBundle() (*trustRootBundle, error) {
 	}, nil
 }
 
+//生成根、颁发者证书  return 颁发者证书结构体、根证书字节、颁发者证书字节
 func (c *defaultCA) generateRootAndIssuerCerts() (*certs.Credentials, []byte, []byte, error) {
-	rootKey, err := certs.GenerateECPrivateKey()
+	//都是使用的ecdsa签名算法
+	rootKey, err := certs.GenerateECPrivateKey() // 根秘钥
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	rootCsr, err := csr.GenerateRootCertCSR(caOrg, caCommonName, &rootKey.PublicKey, selfSignedRootCertLifetime, c.config.AllowedClockSkew)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	rootCertBytes, err := x509.CreateCertificate(rand.Reader, rootCsr, rootCsr, &rootKey.PublicKey, rootKey)
+	rootCsr, err := csr.GenerateRootCertCSR(caOrg, caCommonName, &rootKey.PublicKey, selfSignedRootCertLifetime, c.config.AllowedClockSkew) // 证书签名请求
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	rootCertPem := pem.EncodeToMemory(&pem.Block{Type: certs.Certificate, Bytes: rootCertBytes})
-
-	rootCert, err := x509.ParseCertificate(rootCertBytes)
+	rootCertBytes, err := x509.CreateCertificate(rand.Reader, rootCsr, rootCsr, &rootKey.PublicKey, rootKey) // 根证书 二进制数据
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	issuerKey, err := certs.GenerateECPrivateKey()
+	rootCertPem := pem.EncodeToMemory(&pem.Block{Type: certs.Certificate, Bytes: rootCertBytes}) // 根证书
+
+	rootCert, err := x509.ParseCertificate(rootCertBytes) // 根证书 struct
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
+	issuerKey, err := certs.GenerateECPrivateKey() // 生成颁发者证书
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	// 颁发者签名
 	issuerCsr, err := csr.GenerateIssuerCertCSR(caCommonName, &issuerKey.PublicKey, selfSignedRootCertLifetime, c.config.AllowedClockSkew)
 	if err != nil {
 		return nil, nil, nil, err
@@ -270,7 +272,7 @@ func (c *defaultCA) generateRootAndIssuerCerts() (*certs.Credentials, []byte, []
 		return nil, nil, nil, err
 	}
 
-	// store credentials so that next time sentry restarts it'll load normally
+	// 储存证书，以便下次sentry重新启动时能正常加载。
 	err = certs.StoreCredentials(c.config, rootCertPem, issuerCertPem, issuerKeyPem)
 	if err != nil {
 		return nil, nil, nil, err

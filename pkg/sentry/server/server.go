@@ -93,22 +93,25 @@ func (s *server) tlsServerOption(trustBundler ca.TrustRootBundler) grpc.ServerOp
 }
 
 func (s *server) getServerCertificate() (*tls.Certificate, error) {
+	// 生成新的证书签名文件、私钥文件
 	csrPem, pkPem, err := csr.GenerateCSR("", false)
 	if err != nil {
 		return nil, err
 	}
 
 	now := time.Now().UTC()
+	// CA证书的过期时间
 	issuerExp := s.certAuth.GetCACertBundle().GetIssuerCertExpiry()
 	serverCertTTL := issuerExp.Sub(now)
-
+	//	证书申请: csrCert,	 证书:     certPem,
 	resp, err := s.certAuth.SignCSR(csrPem, s.certAuth.GetCACertBundle().GetTrustDomain(), nil, serverCertTTL, false)
 	if err != nil {
 		return nil, err
 	}
 
-	certPem := resp.CertPEM
-	certPem = append(certPem, s.certAuth.GetCACertBundle().GetIssuerCertPem()...)
+	certPem := resp.CertPEM // 新生成的证书
+	// 以下的证书都是CA， 都设置了ISCA:true
+	certPem = append(certPem, s.certAuth.GetCACertBundle().GetIssuerCertPem()...) // 使用此证书进行的签名
 	certPem = append(certPem, s.certAuth.GetCACertBundle().GetRootCertPem()...)
 
 	cert, err := tls.X509KeyPair(certPem, pkPem)
@@ -123,9 +126,9 @@ func (s *server) getServerCertificate() (*tls.Certificate, error) {
 // 该方法接收一个带有身份和初始证书的请求 并返回一个包括信任链的签名证书给调用者，并附上一个到期日。
 func (s *server) SignCertificate(ctx context.Context, req *sentryv1pb.SignCertificateRequest) (*sentryv1pb.SignCertificateResponse, error) {
 	monitoring.CertSignRequestReceived()
-
+	// 获取签名申请的字节数据
 	csrPem := req.GetCertificateSigningRequest()
-
+	// CertificateRequest
 	csr, err := certs.ParsePemCSR(csrPem)
 	if err != nil {
 		err = errors.Wrap(err, "cannot parse certificate signing request pem")
@@ -133,7 +136,7 @@ func (s *server) SignCertificate(ctx context.Context, req *sentryv1pb.SignCertif
 		monitoring.CertSignFailed("cert_parse")
 		return nil, err
 	}
-
+	// cn字段不能为空
 	err = s.certAuth.ValidateCSR(csr)
 	if err != nil {
 		err = errors.Wrap(err, "error validating csr")
@@ -142,6 +145,7 @@ func (s *server) SignCertificate(ctx context.Context, req *sentryv1pb.SignCertif
 		return nil, err
 	}
 
+	// 不能为空,只是校验，没有实际作用
 	err = s.validator.Validate(req.GetId(), req.GetToken(), req.GetNamespace())
 	if err != nil {
 		err = errors.Wrap(err, "error validating requester identity")
@@ -149,7 +153,7 @@ func (s *server) SignCertificate(ctx context.Context, req *sentryv1pb.SignCertif
 		monitoring.CertSignFailed("req_id_validation")
 		return nil, err
 	}
-
+	//
 	identity := identity.NewBundle(csr.Subject.CommonName, req.GetNamespace(), req.GetTrustDomain())
 	signed, err := s.certAuth.SignCSR(csrPem, csr.Subject.CommonName, identity, -1, false)
 	if err != nil {
@@ -193,6 +197,7 @@ func (s *server) Shutdown() {
 	s.srv.Stop()
 }
 
+// 有没有过期
 func needsRefresh(cert *tls.Certificate, expiryBuffer time.Duration) bool {
 	leaf := cert.Leaf
 	if leaf == nil {

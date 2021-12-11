@@ -28,16 +28,17 @@ const (
 // SAN扩展的OID (http://www.alvestrand.no/objectid/2.5.29.17.html)
 var oidSubjectAlternativeName = asn1.ObjectIdentifier{2, 5, 29, 17}
 
-// GenerateCSR 创建一个X.509证书签名请求和私钥。
+// GenerateCSR 创建一个X.509证书签名请求和私钥。"", false
 func GenerateCSR(org string, pkcs8 bool) ([]byte, []byte, error) {
 	key, err := certs.GenerateECPrivateKey()
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "unable to generate private keys")
 	}
 
-	templ, err := genCSRTemplate(org)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "error generating csr template")
+	templ := &x509.CertificateRequest{
+		Subject: pkix.Name{
+			Organization: []string{org},
+		},
 	}
 
 	csrBytes, err := x509.CreateCertificateRequest(rand.Reader, templ, crypto.PrivateKey(key))
@@ -65,7 +66,7 @@ func generateBaseCert(ttl, skew time.Duration, publicKey interface{}) (*x509.Cer
 	}
 
 	now := time.Now().UTC()
-	// 允许在NotBefore有效期内出现时钟偏移。
+	// 证书的有效时间
 	notBefore := now.Add(-1 * skew)
 	notAfter := now.Add(ttl)
 
@@ -77,6 +78,7 @@ func generateBaseCert(ttl, skew time.Duration, publicKey interface{}) (*x509.Cer
 	}, nil
 }
 
+// GenerateIssuerCertCSR 生成颁发者证书、ca证书
 func GenerateIssuerCertCSR(cn string, publicKey interface{}, ttl, skew time.Duration) (*x509.Certificate, error) {
 	cert, err := generateBaseCert(ttl, skew, publicKey)
 	if err != nil {
@@ -176,6 +178,7 @@ func GenerateCSRCertificate(csr *x509.CertificateRequest, subject string, identi
 	return x509.CreateCertificate(rand.Reader, cert, signingCert, publicKey, signingKey)
 }
 
+//	crtPem, keyPem, err := encode(true, csrBytes, key, false)
 func encode(csr bool, csrOrCert []byte, privKey *ecdsa.PrivateKey, pkcs8 bool) ([]byte, []byte, error) {
 	encodeMsg := encodeMsgCert
 	if csr {
@@ -201,6 +204,7 @@ func encode(csr bool, csrOrCert []byte, privKey *ecdsa.PrivateKey, pkcs8 bool) (
 	return csrOrCertPem, privPem, nil
 }
 
+// 生成证书编号
 func newSerialNumber() (*big.Int, error) {
 	serialNumLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNum, err := rand.Int(rand.Reader, serialNumLimit)

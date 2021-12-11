@@ -106,6 +106,7 @@ func FromFlags() (*DaprRuntime, error) {
 		os.Exit(0)
 	}
 
+
 	if *appID == "" {
 		return nil, errors.New("app-id parameter cannot be empty")
 	}
