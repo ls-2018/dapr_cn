@@ -54,7 +54,7 @@ type server struct {
 	renewMutex         *sync.Mutex
 	signedCert         *auth.SignedCertificate
 	tlsCert            tls.Certificate
-	signedCertDuration time.Duration
+	signedCertDuration time.Duration // 证书有效期
 	kind               string
 	logger             logger.Logger
 	maxConnectionAge   *time.Duration
@@ -175,20 +175,21 @@ func (s *server) generateWorkloadCert() error {
 	//kubectl port-forward svc/dapr-api -n dapr-system 6500:80 &
 
 	s.logger.Info("向Sentry发送工作负荷CSR请求")
+	// 发送签名申请，获得证书
 	signedCert, err := s.authenticator.CreateSignedWorkloadCert(s.config.AppID, s.config.NameSpace, s.config.TrustDomain)
 	if err != nil {
-		return errors.Wrap(err, "error from authenticator CreateSignedWorkloadCert")
+		return errors.Wrap(err, "来自认证器CreateSignedWorkloadCert的错误")
 	}
-	s.logger.Info("certificate signed successfully")
+	s.logger.Info("证书签名 successfully")
 
 	tlsCert, err := tls.X509KeyPair(signedCert.WorkloadCert, signedCert.PrivateKeyPem)
 	if err != nil {
-		return errors.Wrap(err, "error creating x509 Key Pair")
+		return errors.Wrap(err, "error 创建 x509 秘钥对")
 	}
 
 	s.signedCert = signedCert
 	s.tlsCert = tlsCert
-	s.signedCertDuration = signedCert.Expiry.Sub(time.Now().UTC())
+	s.signedCertDuration = signedCert.Expiry.Sub(time.Now().UTC()) // 证书有效期
 	return nil
 }
 
@@ -257,10 +258,10 @@ func (s *server) getGRPCServer() (*grpc_go.Server, error) {
 
 		// nolint:gosec
 		tlsConfig := tls.Config{
-			ClientCAs:  s.signedCert.TrustChain,
-			ClientAuth: tls.RequireAndVerifyClientCert,
+			ClientCAs:  s.signedCert.TrustChain, // 证书池
+			ClientAuth: tls.RequireAndVerifyClientCert,// 对客户端证书进行校验
 			GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-				return &s.tlsCert, nil
+				return &s.tlsCert, nil // 返回当前使用的证书、秘钥
 			},
 		}
 		ta := credentials.NewTLS(&tlsConfig)
@@ -278,7 +279,6 @@ func (s *server) getGRPCServer() (*grpc_go.Server, error) {
 	if s.proxy != nil {
 		//返回一个ServerOption，允许添加一个自定义的未知服务处理器。所提供的方法是一个双流RPC服务处理程序。
 		//处理程序，当收到对未注册的服务或方法的请求时，它将被调用而不是返回 "未实现 "的 gRPC 错误。处理程序和流拦截器（如果设置）可以完全访问ServerStream，包括它的Context。
-		// todo 待看
 		opts = append(opts, grpc_go.UnknownServiceHandler(s.proxy.Handler()))
 	}
 
@@ -287,7 +287,9 @@ func (s *server) getGRPCServer() (*grpc_go.Server, error) {
 
 func (s *server) startWorkloadCertRotation() {
 	s.logger.Infof("starting workload cert expiry watcher. current cert expires on: %s", s.signedCert.Expiry.String())
-
+	// 每隔3秒判断一次
+	//	allowedClockSkew = time.Minute * 10 时钟偏移
+	//	workloadCertTTL = time.Hour * 10  证书的有效期 + allowedClockSkew
 	ticker := time.NewTicker(certWatchInterval)
 
 	for range ticker.C {
@@ -305,12 +307,13 @@ func (s *server) startWorkloadCertRotation() {
 		s.renewMutex.Unlock()
 	}
 }
-
+// 是不是应该刷新证书
 func shouldRenewCert(certExpiryDate time.Time, certDuration time.Duration) bool {
 	expiresIn := certExpiryDate.Sub(time.Now().UTC())
-	expiresInSeconds := expiresIn.Seconds()
+	expiresInSeconds := expiresIn.Seconds() // 证书剩余有效秒数
 	certDurationSeconds := certDuration.Seconds()
-
+	// 经过了证书有效期的70%就刷新证书
+	// 重新签名
 	percentagePassed := 100 - ((expiresInSeconds / certDurationSeconds) * 100)
 	return percentagePassed >= renewWhenPercentagePassed
 }

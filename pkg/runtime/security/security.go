@@ -60,7 +60,7 @@ func GetSidecarAuthenticator(sentryAddress string, certChain *credentials.CertCh
 	return newAuthenticator(sentryAddress, trustAnchors, certChain.Cert, certChain.Key, generateCSRAndPrivateKey), nil
 }
 
-//todo 看不懂
+// 生成签名和私钥
 func generateCSRAndPrivateKey(id string) ([]byte, []byte, error) {
 	if id == "" {
 		return nil, nil, errors.New("id must not be empty")

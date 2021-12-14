@@ -49,10 +49,10 @@ type authenticator struct {
 }
 
 type SignedCertificate struct {
-	WorkloadCert  []byte
-	PrivateKeyPem []byte
-	Expiry        time.Time
-	TrustChain    *x509.CertPool
+	WorkloadCert  []byte // 签名后的证书
+	PrivateKeyPem []byte // 私钥
+	Expiry        time.Time // 过期的时间点
+	TrustChain    *x509.CertPool // 证书链
 }
 
 func newAuthenticator(sentryAddress string, trustAnchors *x509.CertPool, certChainPem, keyPem []byte, genCSRFunc func(id string) ([]byte, []byte, error)) Authenticator {
@@ -80,7 +80,9 @@ func (a *authenticator) GetCurrentSignedCert() *SignedCertificate {
 
 // CreateSignedWorkloadCert  返回一个签名的负载证书，PEM编码的私钥和签名证书的持续时间。
 func (a *authenticator) CreateSignedWorkloadCert(id, namespace, trustDomain string) (*SignedCertificate, error) {
-	csrb, pkPem, err := a.genCSRFunc(id)
+	//   pkg/runtime/security/security.go:64
+	// 证书签名 , EC 私钥
+	csrb, pkPem, err := a.genCSRFunc(id) // id ==APPID 会将它封装到DNSNAMES里  []string
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +113,9 @@ func (a *authenticator) CreateSignedWorkloadCert(id, namespace, trustDomain stri
 	defer conn.Close()
 
 	c := sentryv1pb.NewCAClient(conn)
-	// 签署证书
+	// 签署证书,发送证书前
+	//  error validating requester identity: csr validation failed: invalid token: [invalid bearer token, Token has been invalidated]
+	//  error validating requester identity: csr validation failed: token/id mismatch. received id: dp-618b5e4aa5ebc3924db86860-workerapp-54683-7f8d646556-vf58h
 	resp, err := c.SignCertificate(context.Background(),
 		&sentryv1pb.SignCertificateRequest{
 			CertificateSigningRequest: certPem,
@@ -125,14 +129,15 @@ func (a *authenticator) CreateSignedWorkloadCert(id, namespace, trustDomain stri
 		return nil, errors.Wrap(err, "error from sentry SignCertificate")
 	}
 
-	workloadCert := resp.GetWorkloadCertificate()
-	validTimestamp := resp.GetValidUntil()
+	workloadCert := resp.GetWorkloadCertificate() // 签名以后的证书
+	validTimestamp := resp.GetValidUntil()        // 过期日期
 	if err = validTimestamp.CheckValid(); err != nil {
 		diag.DefaultMonitoring.MTLSWorkLoadCertRotationFailed("invalid_ts")
 		return nil, errors.Wrap(err, "error parsing ValidUntil")
 	}
-
+	// 类型转换
 	expiry := validTimestamp.AsTime()
+
 	trustChain := x509.NewCertPool()
 	for _, c := range resp.GetTrustChainCertificates() {
 		ok := trustChain.AppendCertsFromPEM(c)

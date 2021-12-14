@@ -30,6 +30,10 @@ type validator struct {
 	auth   kauth.AuthenticationV1Interface
 }
 
+// Validate 验证该token在k8s中是不是真实存在
+// id pod name
+// token /var/run/secrets/kubernetes.io/serviceaccount/token
+// namespace
 func (v *validator) Validate(id, token, namespace string) error {
 	if id == "" {
 		return errors.Errorf("%s: id field in request must not be empty", errPrefix)

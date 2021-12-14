@@ -30,16 +30,15 @@ func PRE(
 	*metricEnable = true
 	*metricPort = "9090"
 	*outputLevel = "info"
-	*controlPlaneAddress = "dapr-api.dapr-system.svc.cluster.local:80"
-
-	*controlPlaneAddress = "127.0.0.1:6500"
-	// kubectl port-forward svc/dapr-api -n dapr-system 6500:80 &
-	*appID = "dp-618b5e4aa5ebc3924db86860-workerapp-54683-7f8d646556-vf58h"
+	//*controlPlaneAddress = "dapr-api.dapr-system.svc.cluster.local:80"
+	*controlPlaneAddress = "dapr-api.dapr-system.svc.cluster.local:6500"
 	*placementServiceHostAddr = "dapr-placement-server.dapr-system.svc.cluster.local:50005"
-	*appProtocol = "http"
 	//*sentryAddress = "dapr-sentry.dapr-system.svc.cluster.local:80"
-	// kubectl port-forward svc/dapr-sentry -n dapr-system 1080:80 &
-	*sentryAddress = "127.0.0.1:50001"
+	*sentryAddress = "dapr-sentry.dapr-system.svc.cluster.local:10080"
+
+	*appID = "dp-61b7fa0d5c5ca0f638670680-executorapp-4f9b5-787779868f-krfxp"
+	*appProtocol = "http"
+	// kubectl port-forward svc/dapr-sentry -n dapr-system 10080:80 &
 	*config = "appconfig" // 注入的时候，就确定了
 	*appMaxConcurrency = -1
 	*mode = "kubernetes"
@@ -56,8 +55,12 @@ func PRE(
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	// 直接启动本地的sentry
-	//command = exec.Command("zsh", "-c", "kubectl port-forward svc/dapr-sentry -n dapr-system 10080:80 &")
+	command = exec.Command("zsh", "-c", "kubectl port-forward svc/dapr-sentry -n dapr-system 10080:80 &")
+	err = command.Run()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 	// 以下证书，是从daprd的环境变量中截取的
 
 	crt := `-----BEGIN CERTIFICATE-----
@@ -72,11 +75,13 @@ FgQUN+JjAulZKw/mBAaPgYhvbukY6KkwHwYDVR0jBBgwFoAUT4gnr9tzfi5hRW9A
 ADBGAiEA1TtSlfgQXmaQ3rEqt+raaG3QUXWKc6bVuvc8oxQGeQQCIQDCGMgoedRX
 w+ZOMIjU2uBQ3QZ/ayy273tQHM/beTgDPQ==
 -----END CERTIFICATE-----`
+
 	key := `-----BEGIN EC PRIVATE KEY-----
 MHcCAQEEILld+Jm1MDXgVq75SKcgh+wVBYQ/UiYd0TLRoH1wV3P1oAoGCCqGSM49
 AwEHoUQDQgAEe+YNMYwK+FXGXnetrMc2dpFB9wcWrW3atv+fuIScjMl+4hTXxtUY
 CUoHyaU4h120W3dd0OjJPl22PKWYAFeNBA==
 -----END EC PRIVATE KEY-----`
+
 	ca := `-----BEGIN CERTIFICATE-----
 MIIB3DCCAYKgAwIBAgIRAJrB3Ct76di0AV9xiwz4RYgwCgYIKoZIzj0EAwIwMTEX
 MBUGA1UEChMOZGFwci5pby9zZW50cnkxFjAUBgNVBAMTDWNsdXN0ZXIubG9jYWww
@@ -89,7 +94,8 @@ BDAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB
 c3Rlci5sb2NhbDAKBggqhkjOPQQDAgNIADBFAiBscw216OcA8jt9tI1LmTywzNVV
 zfCt2fhdjXEK2GGEMAIhAKi0GsyI5b2hkrUkIEZm1kTLbeuw0GIguSvW89yUkXbT
 -----END CERTIFICATE-----`
-	token := `eyJhbGciOiJSUzI1NiIsImtpZCI6IkE3UktoWU8yU2N5YTRMak9seTFHNHVSbGZvd0xlVXlSZDN1OF9NVDVOVmMifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiXSwiZXhwIjoxNjcwNDkzNzQ3LCJpYXQiOjE2Mzg5NTc3NDcsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJtZXNvaWQiLCJwb2QiOnsibmFtZSI6ImRwLTYxOGI1ZTRhYTVlYmMzOTI0ZGI4Njg2MC13b3JrZXJhcHAtNTQ2ODMtN2Y4ZDY0NjU1Ni12ZjU4aCIsInVpZCI6IjBlOWEyN2YyLTBiYWMtNGU2YS04MDlkLTVhZTIxZGU4MTVjMyJ9LCJzZXJ2aWNlYWNjb3VudCI6eyJuYW1lIjoiZGVmYXVsdCIsInVpZCI6IjdkN2E2ZWFlLTlmMWUtNDgyZi05NmI4LWI3ZTJmZTQwNzQ3OSJ9LCJ3YXJuYWZ0ZXIiOjE2Mzg5NjEzNTR9LCJuYmYiOjE2Mzg5NTc3NDcsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDptZXNvaWQ6ZGVmYXVsdCJ9.mJxHmuCGTtiq44ptSf5lD3DXpa9EUp1BsrQnB0gEqpuxoUswXNoba7k_qjvV9oa5HdphjIz0pjWW7NUu0TF1rU9ktYw8pS8pphLHG27_FvD_LPHGM6zvqdXPTQlIUPTVf9SDzdavtdoJBo210J6JY_bzRadKdlNGZ1hYGz1TU08oJdLYiOsZ8N8YpNoDvXeMWrCpA7-rRTn2MPZ25BMD1Kw-1gwIPHvsd3gJ42Jjif90jg7O8_gkU2_tA1snCNPYNX52FJAzSRrmD2lQ_yD_hlDhgLSchqyRKis5pqBYJ6ED1w0eaxtZMk1upL3BIM5zbQkVXdB5Il65WNzUnLDFqQ`
+
+	token := `eyJhbGciOiJSUzI1NiIsImtpZCI6IkE3UktoWU8yU2N5YTRMak9seTFHNHVSbGZvd0xlVXlSZDN1OF9NVDVOVmMifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiXSwiZXhwIjoxNjcwOTgzMDU2LCJpYXQiOjE2Mzk0NDcwNTYsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJtZXNvaWQiLCJwb2QiOnsibmFtZSI6ImRwLTYxYjdmYTBkNWM1Y2EwZjYzODY3MDY4MC1leGVjdXRvcmFwcC00ZjliNS03ODc3Nzk4NjhmLWtyZnhwIiwidWlkIjoiMzRlY2M1MmEtNDdlMC00YzNmLThlZDktM2NjN2EzZTYwMmEyIn0sInNlcnZpY2VhY2NvdW50Ijp7Im5hbWUiOiJkZWZhdWx0IiwidWlkIjoiN2Q3YTZlYWUtOWYxZS00ODJmLTk2YjgtYjdlMmZlNDA3NDc5In0sIndhcm5hZnRlciI6MTYzOTQ1MDY2M30sIm5iZiI6MTYzOTQ0NzA1Niwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50Om1lc29pZDpkZWZhdWx0In0.xC0YNeahfbPcBCzslg93Sr6DKZceeNlX3OHwc_1Pap65OYVe4Zzu1nZsAE66WLQps4VjYnt5lQsGLJQdcc2gAeUv_Ju7MM5nIkHbjjQgN1OLh3OqhE8b4UfLxEmcF8SZrQPLcHgDO25XwExbi7tDQ_uyV90FA48WWao6KOwFFnOfoF1rghkbWQGyzYRtRvCNEFktsaWOocwQo9Tz6SECAL0mvKYn2gGMgWCl-q06T7DZu-n4FOjPVQ8mZpHxb-MWYD_hr1ZaI2LNW5YxehUfiO8Q795kBiVUR17y_IkqudzEoK5YAK4BoVYbU1GhFDznsDbPR2zYbtlWGjx9hBqT7A`
 
 	os.Setenv("DAPR_CERT_CHAIN", crt)
 	os.Setenv("DAPR_CERT_KEY", key)
@@ -109,7 +115,7 @@ zfCt2fhdjXEK2GGEMAIhAKi0GsyI5b2hkrUkIEZm1kTLbeuw0GIguSvW89yUkXbT
 	_ = ioutil.WriteFile(kubeTknPath, []byte(token), 0644)
 
 	os.Setenv("NAMESPACE", "mesoid")
-
+	os.Setenv("SENTRY_LOCAL_IDENTITY", "mesoid:default") // 用于验证 token 是不是这个sa的,注入的时候指定的
 	*auth.GetKubeTknPath() = kubeTknPath
 
 }

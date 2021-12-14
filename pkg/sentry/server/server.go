@@ -145,7 +145,7 @@ func (s *server) SignCertificate(ctx context.Context, req *sentryv1pb.SignCertif
 		return nil, err
 	}
 
-	// 不能为空,只是校验，没有实际作用
+	// 不能为空,校验token是不是这个id的
 	err = s.validator.Validate(req.GetId(), req.GetToken(), req.GetNamespace())
 	if err != nil {
 		err = errors.Wrap(err, "error validating requester identity")

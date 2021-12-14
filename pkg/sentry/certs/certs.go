@@ -174,4 +174,5 @@ func GenerateECPrivateKey() (*ecdsa.PrivateKey, error) {
 	return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 }
 
-//todo 关于证书这方面的知识不是很熟悉
+//  关于证书这方面的知识
+//  https://github.com/bigwhite/experiments/tree/master/gohttps
