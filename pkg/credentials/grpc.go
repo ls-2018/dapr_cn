@@ -35,7 +35,7 @@ func GetServerOptions(certChain *CertChain) ([]grpc.ServerOption, error) {
 
 	return opts, nil
 }
-
+// GetClientOptions 作为客户端，与服务端建立连接
 func GetClientOptions(certChain *CertChain, serverName string) ([]grpc.DialOption, error) {
 	var opts []grpc.DialOption
 	if certChain != nil {
@@ -45,7 +45,7 @@ func GetClientOptions(certChain *CertChain, serverName string) ([]grpc.DialOptio
 			return nil, errors.New("failed to append PEM root cert to x509 CertPool")
 		}
 
-		//  与服务端的配置不同
+		//  与服务端的配置不同,这是客户端的配置
 		//	config := &tls.Config{
 		//		InsecureSkipVerify: false,
 		//		RootCAs:            rootCA,

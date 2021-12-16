@@ -34,61 +34,59 @@ const (
 	updateOperation = "update"
 
 	placementReconnectInterval    = 500 * time.Millisecond
-	statusReportHeartbeatInterval = 1 * time.Second
+	statusReportHeartbeatInterval = 1 * time.Second // 1秒汇报一次状态
 
 	grpcServiceConfig = `{"loadBalancingPolicy":"round_robin"}`
 )
 
-// ActorPlacement maintains membership of actor instances and consistent hash
-// tables to discover the actor while interacting with Placement service.
+// ActorPlacement 维护actor实例的成员 和一致性哈希当用于与placement service 进行服务发现时
 type ActorPlacement struct {
 	actorTypes []string
 	appID      string
-	// runtimeHostname is the address and port of the runtime
+	// ip:port
 	runtimeHostName string
 
-	// serverAddr is the list of placement addresses.
+	// serverAddr placement service 的地址数组【高可用】
 	serverAddr []string
-	// serverIndex is the current index of placement servers in serverAddr.
+	// serverIndex 当前使用的是哪一个placement   ,数组下表
 	serverIndex atomic.Int32
 
-	// clientCert is the workload certificate to connect placement.
+	// clientCert 与placement连接所用的证书链
 	clientCert *dapr_credentials.CertChain
 
 	// clientLock is the lock for client conn and stream.
 	clientLock *sync.RWMutex
-	// clientConn is the gRPC client connection.
+	// clientConn grpc 客户端连接
 	clientConn *grpc.ClientConn
-	// clientStream is the client side stream.
+	// clientStream 是客户端流。
 	clientStream v1pb.Placement_ReportDaprStatusClient
-	// streamConnAlive is the status of stream connection alive.
+	// streamConnAlive 是客户端流是否存活
 	streamConnAlive bool
 	// streamConnectedCond is the condition variable for goroutines waiting for or announcing
 	// that the stream between runtime and placement is connected.
+	//是等待或宣布的goroutines的条件变量 ，用于等待或宣布runtime和placement 已经连接
 	streamConnectedCond *sync.Cond
 
-	// placementTables is the consistent hashing table map to
-	// look up Dapr runtime host address to locate actor.
+	// placementTables 一致性哈希表，用于寻找其他actor
 	placementTables *hashing.ConsistentHashTables
-	// placementTableLock is the lock for placementTables.
+	// placementTableLock 一致性哈希表 锁
 	placementTableLock *sync.RWMutex
 
-	// unblockSignal is the channel to unblock table locking.
+	// unblockSignal 用于解锁[placementTableLock]的channel
 	unblockSignal chan struct{}
-	// tableIsBlocked is the status of table lock.
+	// tableIsBlocked 表锁的状态
 	tableIsBlocked *atomic.Bool
-	// operationUpdateLock is the lock for three stage commit.
+	// operationUpdateLock 是三阶段提交的锁。
 	operationUpdateLock *sync.Mutex
 
-	// appHealthFn is the user app health check callback.
+	// appHealthFn 用户应用健康检查的回调函数
 	appHealthFn func() bool
-	// afterTableUpdateFn is function for post processing done after table updates,
-	// such as draining actors and resetting reminders.
+	// afterTableUpdateFn 是在表更新后进行的后处理的函数。 如排空演员和重设提醒等。
 	afterTableUpdateFn func()
 
-	// shutdown is the flag when runtime is being shutdown.
+	// shutdown 是运行时被关闭时的标志。
 	shutdown atomic.Bool
-	// shutdownConnLoop is the wait group to wait until all connection loop are done
+	// shutdownConnLoop 是等待组，等待所有的连接循环完成。
 	shutdownConnLoop sync.WaitGroup
 }
 
@@ -105,7 +103,7 @@ func addDNSResolverPrefix(addr []string) []string {
 	return resolvers
 }
 
-// NewActorPlacement initializes ActorPlacement for the actor service.
+// NewActorPlacement 初始化actor服务的 ActorPlacement
 func NewActorPlacement(
 	serverAddr []string, clientCert *dapr_credentials.CertChain,
 	appID, runtimeHostName string, actorTypes []string,
@@ -115,8 +113,8 @@ func NewActorPlacement(
 		actorTypes:      actorTypes,
 		appID:           appID,
 		runtimeHostName: runtimeHostName,
-		serverAddr:      addDNSResolverPrefix(serverAddr),
-
+		serverAddr:      addDNSResolverPrefix(serverAddr), // dapr-placement-server.dapr-system.svc.cluster.local:50005
+		// dns:///dapr-placement-server.dapr-system.svc.cluster.local:50005
 		clientCert: clientCert,
 
 		clientLock:          &sync.RWMutex{},
@@ -133,8 +131,8 @@ func NewActorPlacement(
 	}
 }
 
-// Start connects placement service to register to membership and send heartbeat
-// to report the current member status periodically.
+// Start
+//连接placement服务并注册，并定期发送心跳以报告当前的状态。
 func (p *ActorPlacement) Start() {
 	p.serverIndex.Store(0)
 	p.shutdown.Store(false)
@@ -143,12 +141,12 @@ func (p *ActorPlacement) Start() {
 	func() {
 		p.clientLock.Lock()
 		defer p.clientLock.Unlock()
-
+		// 与placement建立流连接
 		p.clientStream, p.clientConn = p.establishStreamConn()
 		if p.clientStream == nil {
 			return
 		}
-		established = true
+		established = true // 订阅placement
 	}()
 	if !established {
 		return
@@ -158,11 +156,11 @@ func (p *ActorPlacement) Start() {
 		p.streamConnectedCond.L.Lock()
 		defer p.streamConnectedCond.L.Unlock()
 
-		p.streamConnAlive = true
+		p.streamConnAlive = true //  标记存货
 		p.streamConnectedCond.Broadcast()
 	}()
 
-	// Establish receive channel to retrieve placement table update
+	// 建立接收通道，以检索placement table的更新
 	p.shutdownConnLoop.Add(1)
 	go func() {
 		defer p.shutdownConnLoop.Done()
@@ -175,12 +173,12 @@ func (p *ActorPlacement) Start() {
 				break
 			}
 
-			// TODO: we may need to handle specific errors later.
+			// TODO: 我们以后可能需要处理特定的错误。
 			if err != nil {
 				p.closeStream()
 
 				s, ok := status.FromError(err)
-				// If the current server is not leader, then it will try to the next server.
+				// 如果当前的服务器不是领导者，那么它将尝试到下一个服务器。
 				if ok && s.Code() == codes.FailedPrecondition {
 					p.serverIndex.Store((p.serverIndex.Load() + 1) % int32(len(p.serverAddr)))
 				} else {
@@ -210,13 +208,12 @@ func (p *ActorPlacement) Start() {
 		}
 	}()
 
-	// Send the current host status to placement to register the member and
-	// maintain the status of member by placement.
+	// 向placement 发送当前的主机状态，用于注册，并通过placement维持成员的状态。
 	p.shutdownConnLoop.Add(1)
 	go func() {
 		defer p.shutdownConnLoop.Done()
 		for !p.shutdown.Load() {
-			// Wait until stream is connected.
+			// 等待流连接建立
 			func() {
 				p.streamConnectedCond.L.Lock()
 				defer p.streamConnectedCond.L.Unlock()
@@ -230,13 +227,13 @@ func (p *ActorPlacement) Start() {
 				break
 			}
 
-			// appHealthFn is the health status of actor service application. This allows placement to update
-			// the member list and hashing table quickly.
 			if !p.appHealthFn() {
+				// 应用不健康
 				// app is unresponsive, close the stream and disconnect from the placement service.
 				// Then Placement will remove this host from the member list.
+				// 应用程序没有响应，关闭流并断开与放置服务的链接。
+				// 然后Placement将从成员列表中删除该主机。
 				log.Debug("disconnecting from placement service by the unhealthy app.")
-
 				p.closeStream()
 				continue
 			}
@@ -246,17 +243,16 @@ func (p *ActorPlacement) Start() {
 				Entities: p.actorTypes,
 				Id:       p.appID,
 				Load:     1, // Not used yet
-				// Port is redundant because Name should include port number
+				// Port是多余的，因为Name应该包含端口号
 			}
 
 			var err error
-			// Do lock to avoid being called with CloseSend concurrently
+			// 加锁 以避免被调用与close end并发
 			func() {
 				p.clientLock.RLock()
 				defer p.clientLock.RUnlock()
 
-				// p.clientStream is nil when the app is unhealthy and
-				// daprd is disconnected from the placement service.
+				// 当应用程序不健康、daprd与放置服务断开连接时，p.clientStream为nil。
 				if p.clientStream != nil {
 					err = p.clientStream.Send(&host)
 				}
@@ -267,7 +263,7 @@ func (p *ActorPlacement) Start() {
 				log.Debugf("failed to report status to placement service : %v", err)
 			}
 
-			// No delay if stream connection is not alive.
+			// 如果流连接不是活动的，则没有延迟。
 			p.streamConnectedCond.L.Lock()
 			streamConnAlive := p.streamConnAlive
 			p.streamConnectedCond.L.Unlock()
@@ -309,29 +305,31 @@ func (p *ActorPlacement) closeStream() {
 		defer p.streamConnectedCond.L.Unlock()
 
 		p.streamConnAlive = false
-		// Let waiters wake up from block
+		// 唤醒阻塞在锁的
 		p.streamConnectedCond.Broadcast()
 	}()
 }
 
+// 与placement建立流连接,包括重新建立连接通过不同的index
 func (p *ActorPlacement) establishStreamConn() (v1pb.Placement_ReportDaprStatusClient, *grpc.ClientConn) {
 	for !p.shutdown.Load() {
-		serverAddr := p.serverAddr[p.serverIndex.Load()]
+		serverAddr := p.serverAddr[p.serverIndex.Load()] // 拿到placement众多地址中的一个    daprd 注入时指定的值
 
-		// Stop reconnecting to placement until app is healthy.
+		// 停止与placement重新建立连接，知道 用户应用health Stop reconnecting to placement until app is healthy.
 		if !p.appHealthFn() {
+			//休眠0.5秒 再次检测应用程序健康状态
 			time.Sleep(placementReconnectInterval)
 			continue
 		}
 
-		log.Debugf("try to connect to placement service: %s", serverAddr)
+		log.Debugf("尝试与placement服务建立连接: %s", serverAddr)
 
 		opts, err := dapr_credentials.GetClientOptions(p.clientCert, security.TLSServerName)
 		if err != nil {
 			log.Errorf("failed to establish TLS credentials for actor placement service: %s", err)
 			return nil, nil
 		}
-
+		// grpc 是否监控
 		if diag.DefaultGRPCMonitoring.IsEnabled() {
 			opts = append(
 				opts,
@@ -339,25 +337,25 @@ func (p *ActorPlacement) establishStreamConn() (v1pb.Placement_ReportDaprStatusC
 		}
 
 		if len(p.serverAddr) == 1 && strings.HasPrefix(p.serverAddr[0], "dns:///") {
-			// In Kubernetes environment, dapr-placement headless service resolves multiple IP addresses.
-			// With round robin load balancer, Dapr can find the leader automatically.
+			// 在k8s环境中, dapr-placement 无头服务可以解析出多个ip
+			// 使用随机负载均衡器，
 			opts = append(opts, grpc.WithDefaultServiceConfig(grpcServiceConfig))
 		}
 
 		conn, err := grpc.Dial(serverAddr, opts...)
-	NEXT_SERVER:
+	NEXT_SERVER: // 主要是为了一定要与一个placement 建立连接
 		if err != nil {
 			log.Debugf("error connecting to placement service: %v", err)
 			if conn != nil {
 				conn.Close()
 			}
-			p.serverIndex.Store((p.serverIndex.Load() + 1) % int32(len(p.serverAddr)))
+			p.serverIndex.Store((p.serverIndex.Load() + 1) % int32(len(p.serverAddr))) // 下一个IP的索引
 			time.Sleep(placementReconnectInterval)
 			continue
 		}
 
-		client := v1pb.NewPlacementClient(conn)
-		stream, err := client.ReportDaprStatus(context.Background())
+		client := v1pb.NewPlacementClient(conn)                      // 单纯封装
+		stream, err := client.ReportDaprStatus(context.Background()) // 汇报dapr状态, 流函数
 		if err != nil {
 			goto NEXT_SERVER
 		}
@@ -369,32 +367,34 @@ func (p *ActorPlacement) establishStreamConn() (v1pb.Placement_ReportDaprStatusC
 	return nil, nil
 }
 
+// 处理placement的消息
 func (p *ActorPlacement) onPlacementOrder(in *v1pb.PlacementOrder) {
-	log.Debugf("placement order received: %s", in.Operation)
+	log.Debugf("接收到placement消息: %s", in.Operation)
 	diag.DefaultMonitoring.ActorPlacementTableOperationReceived(in.Operation)
 
-	// lock all incoming calls when an updated table arrives
+	// 只允许同时有一个update操作
 	p.operationUpdateLock.Lock()
 	defer p.operationUpdateLock.Unlock()
 
 	switch in.Operation {
-	case lockOperation:
+	case lockOperation: // 锁定
 		p.blockPlacements()
 
 		go func() {
-			// TODO: Use lock-free table update.
+			// TODO: 使用无锁表更新.
 			// current implementation is distributed two-phase locking algorithm.
 			// If placement experiences intermittently outage during updateplacement,
 			// user application will face 5 second blocking even if it can avoid deadlock.
 			// It can impact the entire system.
+			// 目前实现的是分布式两相锁算法。如果放置在更新放置过程中出现间歇性中断，即使可以避免死锁，用户应用程序也会面临5秒的阻塞。它会影响整个系统。
 			time.Sleep(time.Second * 5)
 			p.unblockPlacements()
 		}()
 
-	case unlockOperation:
+	case unlockOperation: // 解锁
 		p.unblockPlacements()
 
-	case updateOperation:
+	case updateOperation: // 更新
 		p.updatePlacements(in.Tables)
 	}
 }
@@ -405,6 +405,7 @@ func (p *ActorPlacement) blockPlacements() {
 }
 
 func (p *ActorPlacement) unblockPlacements() {
+	// 一定要已经加过锁
 	if p.tableIsBlocked.CAS(true, false) {
 		close(p.unblockSignal)
 	}
@@ -419,7 +420,7 @@ func (p *ActorPlacement) updatePlacements(in *v1pb.PlacementTables) {
 		if in.Version == p.placementTables.Version {
 			return
 		}
-
+		/// 这里是全量覆盖诶
 		tables := &hashing.ConsistentHashTables{Entries: make(map[string]*hashing.Consistent)}
 		for k, v := range in.Entries {
 			loadMap := map[string]*hashing.Host{}
@@ -438,7 +439,7 @@ func (p *ActorPlacement) updatePlacements(in *v1pb.PlacementTables) {
 		return
 	}
 
-	// May call LookupActor inside, so should not do this with placementTableLock locked.
+	// 可以在内部调用LookupActor，所以不应该在placementtablellock锁定的情况下这样做。
 	p.afterTableUpdateFn()
 
 	log.Infof("placement tables updated, version: %s", in.GetVersion())

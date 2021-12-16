@@ -29,14 +29,14 @@ type Config struct {
 }
 
 const (
-	defaultActorIdleTimeout     = time.Minute * 60
+	defaultActorIdleTimeout     = time.Minute * 60 // 空闲时间
 	defaultHeartbeatInterval    = time.Second * 1
-	defaultActorScanInterval    = time.Second * 30
+	defaultActorScanInterval    = time.Second * 30 //
 	defaultOngoingCallTimeout   = time.Second * 60
 	defaultReentrancyStackLimit = 32
 )
 
-// NewConfig returns the actor runtime configuration.
+// NewConfig 返回一个 actor 运行时配置
 func NewConfig(hostAddress, appID string, placementAddresses []string, hostedActors []string, port int,
 	actorScanInterval, actorIdleTimeout, ongoingCallTimeout string, drainRebalancedActors bool, namespace string,
 	reentrancy app_config.ReentrancyConfig, remindersStoragePartitions int) Config {
@@ -47,7 +47,7 @@ func NewConfig(hostAddress, appID string, placementAddresses []string, hostedAct
 		HostedActorTypes:              hostedActors,
 		Port:                          port,
 		HeartbeatInterval:             defaultHeartbeatInterval,
-		ActorDeactivationScanInterval: defaultActorScanInterval,
+		ActorDeactivationScanInterval: defaultActorScanInterval, // 失活扫描触发器
 		ActorIdleTimeout:              defaultActorIdleTimeout,
 		DrainOngoingCallTimeout:       defaultOngoingCallTimeout,
 		DrainRebalancedActors:         drainRebalancedActors,

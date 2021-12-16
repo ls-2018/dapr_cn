@@ -92,6 +92,7 @@ func (h *Channel) GetBaseAddress() string {
 // GetAppConfig 获取应用的配置
 // GET http://localhost:<app_port>/dapr/config
 func (h *Channel) GetAppConfig() (*config.ApplicationConfig, error) {
+	// 没有传输任何请求体数据
 	req := invokev1.NewInvokeMethodRequest(appConfigEndpoint) // "dapr/config"
 	req.WithHTTPExtension(nethttp.MethodGet, "")
 	req.WithRawData(nil, invokev1.JSONContentType)

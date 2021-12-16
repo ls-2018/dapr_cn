@@ -37,7 +37,7 @@ c3Rlci5sb2NhbDAKBggqhkjOPQQDAgNIADBFAiBscw216OcA8jt9tI1LmTywzNVV
 zfCt2fhdjXEK2GGEMAIhAKi0GsyI5b2hkrUkIEZm1kTLbeuw0GIguSvW89yUkXbT
 -----END CERTIFICATE-----`
 	//从一对PEM编码的数据中解析出一个公钥/私钥对。在成功返回时，Certificate.Leaf将为nil，因为证书的解析形式没有被保留。
-	res,_:=tls.X509KeyPair([]byte(certPem), []byte(keyPem))
+	res, _ := tls.X509KeyPair([]byte(certPem), []byte(keyPem))
 	fmt.Println(string(res.Certificate[0]))
 	fmt.Println(x509.NewCertPool().AppendCertsFromPEM([]byte(rootCA)))
 }

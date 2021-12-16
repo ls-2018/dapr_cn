@@ -65,16 +65,20 @@ type remoteApp struct {
 	address   string
 }
 
-// NewDirectMessaging returns a new direct messaging api.
+// NewDirectMessaging 返回一个消息直达的API, todo: 干什么用呢
 func NewDirectMessaging(
-	appID, namespace string,
-	port int, mode modes.DaprMode,
+	appID, namespace string,       // mesoid  			`dp-61b7fa0d5c5ca0f638670680-executorapp-4f9b5-787779868f-krfxp`,
+	port int, mode modes.DaprMode, // 50004  kubernetes
 	appChannel channel.AppChannel,
 	clientConnFn messageClientConnection,
-	resolver nr.Resolver,
-	tracingSpec config.TracingSpec, maxRequestBodySize int, proxy Proxy, readBufferSize int, streamRequestBody bool) DirectMessaging {
-	hAddr, _ := utils.GetHostAddress()
-	hName, _ := os.Hostname()
+	resolver nr.Resolver, //
+	tracingSpec config.TracingSpec,
+	maxRequestBodySize int,          //4
+	proxy Proxy, readBufferSize int, // nil 4
+	streamRequestBody bool,          // false
+) DirectMessaging {
+	hAddr, _ := utils.GetHostAddress() // 本地地址
+	hName, _ := os.Hostname()  // ls-Pro.local
 
 	dm := &directMessaging{
 		appChannel:          appChannel,

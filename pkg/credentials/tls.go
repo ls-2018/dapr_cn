@@ -18,6 +18,7 @@ func TLSConfigFromCertAndKey(certPem, keyPem []byte, serverName string, rootCA *
 	config := &tls.Config{
 		InsecureSkipVerify: false,
 		RootCAs:            rootCA,
+		//用来验证返回的证书上的主机名，除非给出InsecureSkipVerify。它也包括在客户端的握手中，以支持虚拟主机，除非它是一个IP地址。
 		ServerName:         serverName,
 		Certificates:       []tls.Certificate{cert},
 	}

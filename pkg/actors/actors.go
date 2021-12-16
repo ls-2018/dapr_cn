@@ -55,7 +55,7 @@ var log = logger.NewLogger("dapr.runtime.actor")
 
 var pattern = regexp.MustCompile(`^(R(?P<repetition>\d+)/)?P((?P<year>\d+)Y)?((?P<month>\d+)M)?((?P<week>\d+)W)?((?P<day>\d+)D)?(T((?P<hour>\d+)H)?((?P<minute>\d+)M)?((?P<second>\d+)S)?)?$`)
 
-// Actors allow calling into virtual actors as well as actor state management.
+// Actors 允许调用虚拟actors以及actor的状态管理。
 type Actors interface {
 	Call(ctx context.Context, req *invokev1.InvokeMethodRequest) (*invokev1.InvokeMethodResponse, error)
 	Init() error
@@ -124,7 +124,7 @@ const (
 	incompatibleStateStore = "state store does not support transactions which actors require to save state - please see https://docs.dapr.io/operations/components/setup-state-store/supported-state-stores/"
 )
 
-// NewActors create a new actors runtime with given config.
+// NewActors 使用提供的actor配置创建actor实例
 func NewActors(
 	stateStore state.Store,
 	appChannel channel.AppChannel,
@@ -145,7 +145,7 @@ func NewActors(
 		appChannel:               appChannel,
 		config:                   config,
 		store:                    stateStore,
-		transactionalStore:       transactionalStore,
+		transactionalStore:       transactionalStore, // transactional Store
 		grpcConnectionFn:         grpcConnectionFn,
 		actorsTable:              &sync.Map{},
 		activeTimers:             &sync.Map{},
@@ -182,12 +182,12 @@ func (a *actorsRuntime) Init() error {
 	}
 
 	hostname := fmt.Sprintf("%s:%d", a.config.HostAddress, a.config.Port)
-
+	// 表更新之后调用的函数
 	afterTableUpdateFn := func() {
 		a.drainRebalancedActors()
 		a.evaluateReminders()
 	}
-	appHealthFn := func() bool { return a.appHealthy.Load() }
+	appHealthFn := func() bool { return a.appHealthy.Load() } // 应用健康检查函数
 
 	a.placement = internal.NewActorPlacement(
 		a.config.PlacementAddresses, a.certChain,
@@ -195,24 +195,25 @@ func (a *actorsRuntime) Init() error {
 		appHealthFn,
 		afterTableUpdateFn)
 
-	go a.placement.Start()
+	go a.placement.Start() // 1、注册自身 2、接收来自placement的信息， 包括所有的节点
+	// todo
 	a.startDeactivationTicker(a.config.ActorDeactivationScanInterval, a.config.ActorIdleTimeout)
 
-	log.Infof("actor runtime started. actor idle timeout: %s. actor scan interval: %s",
+	log.Infof("actor运行时已启动. actor 空闲超时: %s. actor 扫描间隔: %s",
 		a.config.ActorIdleTimeout.String(), a.config.ActorDeactivationScanInterval.String())
 
-	// Be careful to configure healthz endpoint option. If app healthz returns unhealthy status, Dapr will
-	// disconnect from placement to remove the node from consistent hashing ring.
-	// i.e if app is busy state, the healthz status would be flaky, which leads to frequent
-	// actor rebalancing. It will impact the entire service.
+	//在配置healthz端点选项时要小心。
+	//如果app healthz返回不健康状态，Dapr将断开放置，将节点从一致的哈希环中移除。
+	//例如，如果应用程序是忙碌的状态，健康状态将是不稳定的，这导致频繁的演员再平衡。这将影响整个服务。
 	go a.startAppHealthCheck(
-		health.WithFailureThreshold(4),
-		health.WithInterval(5*time.Second),
-		health.WithRequestTimeout(2*time.Second))
+		health.WithFailureThreshold(4),           // 失败次数
+		health.WithInterval(5*time.Second),       // 检查周期
+		health.WithRequestTimeout(2*time.Second)) // 请求超时
 
 	return nil
 }
 
+// 启动应用健康检查
 func (a *actorsRuntime) startAppHealthCheck(opts ...health.Option) {
 	if len(a.config.HostedActorTypes) == 0 {
 		return
@@ -266,6 +267,7 @@ func (a *actorsRuntime) getActorTypeAndIDFromKey(key string) (string, string) {
 	return arr[0], arr[1]
 }
 
+// 创建失活触发器   30s 60m
 func (a *actorsRuntime) startDeactivationTicker(interval, actorIdleTimeout time.Duration) {
 	ticker := time.NewTicker(interval)
 	go func() {
@@ -1609,13 +1611,12 @@ func (a *actorsRuntime) Stop() {
 	}
 }
 
-// ValidateHostEnvironment validates that actors can be initialized properly given a set of parameters
-// And the mode the runtime is operating in.
+// ValidateHostEnvironment 验证在给定的一组参数和运行时的操作模式下，actor 可以被正确初始化。
 func ValidateHostEnvironment(mTLSEnabled bool, mode modes.DaprMode, namespace string) error {
 	switch mode {
 	case modes.KubernetesMode:
 		if mTLSEnabled && namespace == "" {
-			return errors.New("actors must have a namespace configured when running in Kubernetes mode")
+			return errors.New("actors 在Kubernetes模式下运行时，必须有一个配置好的命名空间")
 		}
 	}
 	return nil

@@ -18,8 +18,18 @@ async def get(req: Request):
 
 @app.get("/dapr/config")
 async def get(req: Request):
+    # 没有数据传过来
     return {
-        "state": "ok",
+        "entities": [],
+        "actorIdleTimeout": "",  # 60m
+        "actorScanInterval": "",  # 30s
+        "drainOngoingCallTimeout": "",  # 60s
+        "drainRebalancedActors": False,
+        "reentrancy": {
+            'enabled': False,
+            'maxStackDepth': 0  # 32
+        },
+        "remindersStoragePartitions": 0,
     }
 
 

@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 func PRE(
@@ -31,12 +32,11 @@ func PRE(
 	*metricPort = "9090"
 	*outputLevel = "info"
 	//*controlPlaneAddress = "dapr-api.dapr-system.svc.cluster.local:80"
-	*controlPlaneAddress = "dapr-api.dapr-system.svc.cluster.local:6500"
+	*controlPlaneAddress = "dapr-api.dapr-system.svc.cluster.local:6500" // daprd 注入时指定的值
 	*placementServiceHostAddr = "dapr-placement-server.dapr-system.svc.cluster.local:50005"
 	//*sentryAddress = "dapr-sentry.dapr-system.svc.cluster.local:80"
 	*sentryAddress = "dapr-sentry.dapr-system.svc.cluster.local:10080"
 
-	*appID = "dp-61b7fa0d5c5ca0f638670680-executorapp-4f9b5-787779868f-krfxp"
 	*appProtocol = "http"
 	// kubectl port-forward svc/dapr-sentry -n dapr-system 10080:80 &
 	*config = "appconfig" // 注入的时候，就确定了
@@ -52,14 +52,18 @@ func PRE(
 	command := exec.Command("zsh", "-c", "kubectl port-forward svc/dapr-api -n dapr-system 6500:80 &")
 	err := command.Run()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
 	command = exec.Command("zsh", "-c", "kubectl port-forward svc/dapr-sentry -n dapr-system 10080:80 &")
 	err = command.Run()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
+	}
+
+	command = exec.Command("zsh", "-c", "kubectl port-forward svc/dapr-placement-server -n dapr-system 50005:50005 &")
+	err = command.Run()
+	if err != nil {
+		panic(err)
 	}
 	// 以下证书，是从daprd的环境变量中截取的
 
@@ -94,9 +98,20 @@ BDAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB
 c3Rlci5sb2NhbDAKBggqhkjOPQQDAgNIADBFAiBscw216OcA8jt9tI1LmTywzNVV
 zfCt2fhdjXEK2GGEMAIhAKi0GsyI5b2hkrUkIEZm1kTLbeuw0GIguSvW89yUkXbT
 -----END CERTIFICATE-----`
+	nameSpace := "mesoid"
+	// kubectl -n mesoid exec -it pod/etcd-0 -- cat /var/run/secrets/kubernetes.io/serviceaccount/token
 
-	token := `eyJhbGciOiJSUzI1NiIsImtpZCI6IkE3UktoWU8yU2N5YTRMak9seTFHNHVSbGZvd0xlVXlSZDN1OF9NVDVOVmMifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiXSwiZXhwIjoxNjcwOTgzMDU2LCJpYXQiOjE2Mzk0NDcwNTYsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJtZXNvaWQiLCJwb2QiOnsibmFtZSI6ImRwLTYxYjdmYTBkNWM1Y2EwZjYzODY3MDY4MC1leGVjdXRvcmFwcC00ZjliNS03ODc3Nzk4NjhmLWtyZnhwIiwidWlkIjoiMzRlY2M1MmEtNDdlMC00YzNmLThlZDktM2NjN2EzZTYwMmEyIn0sInNlcnZpY2VhY2NvdW50Ijp7Im5hbWUiOiJkZWZhdWx0IiwidWlkIjoiN2Q3YTZlYWUtOWYxZS00ODJmLTk2YjgtYjdlMmZlNDA3NDc5In0sIndhcm5hZnRlciI6MTYzOTQ1MDY2M30sIm5iZiI6MTYzOTQ0NzA1Niwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50Om1lc29pZDpkZWZhdWx0In0.xC0YNeahfbPcBCzslg93Sr6DKZceeNlX3OHwc_1Pap65OYVe4Zzu1nZsAE66WLQps4VjYnt5lQsGLJQdcc2gAeUv_Ju7MM5nIkHbjjQgN1OLh3OqhE8b4UfLxEmcF8SZrQPLcHgDO25XwExbi7tDQ_uyV90FA48WWao6KOwFFnOfoF1rghkbWQGyzYRtRvCNEFktsaWOocwQo9Tz6SECAL0mvKYn2gGMgWCl-q06T7DZu-n4FOjPVQ8mZpHxb-MWYD_hr1ZaI2LNW5YxehUfiO8Q795kBiVUR17y_IkqudzEoK5YAK4BoVYbU1GhFDznsDbPR2zYbtlWGjx9hBqT7A`
-
+	taskId := "61b1a6e4382df1ff8c3cdff1"
+	command = exec.Command("zsh", "-c", fmt.Sprintf("kubectl -n %s get pods|grep worker |grep %s |grep Running|awk 'NR==1'|awk '{print $1}'", nameSpace, taskId))
+	podNameBytes, _ := command.CombinedOutput()
+	*appID = strings.Trim(string(podNameBytes), "\n")
+	getToken := fmt.Sprintf("kubectl -n mesoid exec -it pod/%s -c worker-agent -- cat /var/run/secrets/kubernetes.io/serviceaccount/token > /tmp/token", *appID)
+	fmt.Println(getToken)
+	command = exec.Command("zsh", "-c", getToken)
+	err = command.Run()
+	if err != nil {
+		panic(err)
+	}
 	os.Setenv("DAPR_CERT_CHAIN", crt)
 	os.Setenv("DAPR_CERT_KEY", key)
 	//ca
@@ -107,17 +122,14 @@ zfCt2fhdjXEK2GGEMAIhAKi0GsyI5b2hkrUkIEZm1kTLbeuw0GIguSvW89yUkXbT
 	rootCertPath := "/tmp/ca.crt"
 	issuerCertPath := "/tmp/issuer.crt"
 	issuerKeyPath := "/tmp/issuer.key"
-	kubeTknPath := "/tmp/token"
 
 	_ = ioutil.WriteFile(rootCertPath, []byte(ca), 0644)
 	_ = ioutil.WriteFile(issuerCertPath, []byte(crt), 0644)
 	_ = ioutil.WriteFile(issuerKeyPath, []byte(key), 0644)
-	_ = ioutil.WriteFile(kubeTknPath, []byte(token), 0644)
 
-	os.Setenv("NAMESPACE", "mesoid")
-	os.Setenv("SENTRY_LOCAL_IDENTITY", "mesoid:default") // 用于验证 token 是不是这个sa的,注入的时候指定的
-	*auth.GetKubeTknPath() = kubeTknPath
-
+	os.Setenv("NAMESPACE", nameSpace)
+	os.Setenv("SENTRY_LOCAL_IDENTITY", nameSpace+":default") // 用于验证 token 是不是这个sa的,注入的时候指定的
+	*auth.GetKubeTknPath() = "/tmp/token"
 }
 
 // GetK8s 此处改用加载本地配置文件 ~/.kube/config
@@ -137,4 +149,32 @@ func GetK8s() *raw_k8s.Clientset {
 
 func demo() {
 	fmt.Println(nr_kubernetes.NewResolver)
+}
+func RunCommand(name string, arg ...string) error {
+	cmd := exec.Command(name, arg...)
+	// 命令的错误输出和标准输出都连接到同一个管道
+	stdout, err := cmd.StdoutPipe()
+	cmd.Stderr = cmd.Stdout
+
+	if err != nil {
+		return err
+	}
+
+	if err = cmd.Start(); err != nil {
+		return err
+	}
+	// 从管道中实时获取输出并打印到终端
+	for {
+		tmp := make([]byte, 1024)
+		_, err := stdout.Read(tmp)
+		fmt.Print(string(tmp))
+		if err != nil {
+			break
+		}
+	}
+
+	if err = cmd.Wait(); err != nil {
+		return err
+	}
+	return nil
 }

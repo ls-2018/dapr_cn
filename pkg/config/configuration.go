@@ -346,7 +346,7 @@ func containsKey(s []string, key string) bool {
 
 	return index < len(s) && s[index] == key
 }
-
+//IsFeatureEnabled 是否启用了该功能
 func IsFeatureEnabled(features []FeatureSpec, target Feature) bool {
 	for _, feature := range features {
 		if feature.Name == target {

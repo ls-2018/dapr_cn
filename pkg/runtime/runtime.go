@@ -165,7 +165,7 @@ type DaprRuntime struct {
 	scopedSubscriptions    map[string][]string
 	scopedPublishings      map[string][]string
 	allowedTopics          map[string][]string
-	appChannel             channel.AppChannel // 并不是go的channel ,是一层抽象
+	appChannel             channel.AppChannel // 并不是go的channel ,是一层抽象,与APP之间的通信
 	daprHTTPAPI            http.API
 
 	operatorClient     operatorv1pb.OperatorClient // operator = controlPlaneAddress = dapr-api.dapr-system.svc.cluster.local:80 == localhost:6500
@@ -438,9 +438,10 @@ func (a *DaprRuntime) initRuntime(opts *runtimeOpts) error {
 	grpcAPI.SetAppChannel(a.appChannel)
 
 	a.loadAppConfiguration()
-
+	// 封装了k8s域名解析组件的工厂函数
 	a.initDirectMessaging(a.nameResolver)
 
+	// 将directMessaging封装到http、grpc
 	a.daprHTTPAPI.SetDirectMessaging(a.directMessaging)
 	grpcAPI.SetDirectMessaging(a.directMessaging)
 
@@ -1661,7 +1662,8 @@ func extractCloudEventProperty(cloudEvent map[string]interface{}, property strin
 }
 
 func (a *DaprRuntime) initActors() error {
-	err := actors.ValidateHostEnvironment(a.runtimeConfig.mtlsEnabled, a.runtimeConfig.Mode, a.namespace)
+	// 没什么实际功能
+	err := actors.ValidateHostEnvironment(a.runtimeConfig.mtlsEnabled, a.runtimeConfig.Mode, a.namespace) //true   kubernetes mesoid
 	if err != nil {
 		return err
 	}
@@ -2144,7 +2146,7 @@ func (a *DaprRuntime) loadAppConfiguration() {
 
 	if appConfig != nil {
 		a.appConfig = *appConfig
-		log.Info("application configuration loaded")
+		log.Info("应用配置已加载")
 	}
 }
 
