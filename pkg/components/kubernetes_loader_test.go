@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/dapr/dapr/utils"
 	"net"
 	"testing"
 	"time"
 
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -65,8 +65,10 @@ func getOperatorClient(address string) operatorv1pb.OperatorClient {
 }
 
 func TestLoadComponents(t *testing.T) {
-	port, _ := freeport.GetFreePort()
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	port, _ := utils.GetAvailablePort()
+	//x, _ := freeport.GetFreePort()
+	//port := strconv.Itoa(x)
+	lis, err := net.Listen("tcp", port)
 	assert.NoError(t, err)
 
 	s := grpc.NewServer()
@@ -80,7 +82,7 @@ func TestLoadComponents(t *testing.T) {
 	time.Sleep(time.Second * 1)
 
 	request := &KubernetesComponents{
-		client: getOperatorClient(fmt.Sprintf("localhost:%d", port)),
+		client: getOperatorClient(fmt.Sprintf("localhost:%s", port)),
 		config: config.KubernetesConfig{
 			ControlPlaneAddress: fmt.Sprintf("localhost:%v", port),
 		},

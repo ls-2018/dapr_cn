@@ -24,26 +24,26 @@ const (
 	componentKind = "Component"
 )
 
-// StandaloneComponents loads components in a standalone mode environment.
+// StandaloneComponents 在单机模式环境中加载组件。
 type StandaloneComponents struct {
 	config config.StandaloneConfig
 }
 
-// NewStandaloneComponents returns a new standalone loader.
+// NewStandaloneComponents 创建单机环境下的组件加载器
 func NewStandaloneComponents(configuration config.StandaloneConfig) *StandaloneComponents {
 	return &StandaloneComponents{
 		config: configuration,
 	}
 }
 
-// LoadComponents loads dapr components from a given directory.
+// LoadComponents 从给定目录加载组件
 func (s *StandaloneComponents) LoadComponents() ([]components_v1alpha1.Component, error) {
 	files, err := os.ReadDir(s.config.ComponentsPath)
 	if err != nil {
 		return nil, err
 	}
 
-	list := []components_v1alpha1.Component{}
+	var list []components_v1alpha1.Component
 
 	for _, file := range files {
 		if !file.IsDir() && s.isYaml(file.Name()) {
@@ -60,7 +60,7 @@ func (s *StandaloneComponents) LoadComponents() ([]components_v1alpha1.Component
 func (s *StandaloneComponents) loadComponentsFromFile(filename string) []components_v1alpha1.Component {
 	var errors []error
 
-	components := []components_v1alpha1.Component{}
+	var components []components_v1alpha1.Component
 	path := filepath.Join(s.config.ComponentsPath, filename)
 
 	b, err := os.ReadFile(path)
@@ -75,7 +75,7 @@ func (s *StandaloneComponents) loadComponentsFromFile(filename string) []compone
 	return components
 }
 
-// isYaml checks whether the file is yaml or not.
+// isYaml 检查文件扩展名
 func (s *StandaloneComponents) isYaml(fileName string) bool {
 	extension := strings.ToLower(filepath.Ext(fileName))
 	if extension == ".yaml" || extension == ".yml" {
@@ -84,10 +84,10 @@ func (s *StandaloneComponents) isYaml(fileName string) bool {
 	return false
 }
 
-// decodeYaml decodes the yaml document.
+// decodeYaml 解码yaml 文件
 func (s *StandaloneComponents) decodeYaml(b []byte) ([]components_v1alpha1.Component, []error) {
-	list := []components_v1alpha1.Component{}
-	errors := []error{}
+	var list []components_v1alpha1.Component
+	var errors []error
 	scanner := bufio.NewScanner(bytes.NewReader(b))
 	scanner.Split(s.splitYamlDoc)
 

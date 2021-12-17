@@ -5,5 +5,5 @@
 
 package cors
 
-// DefaultAllowedOrigins is the default origins allowed for the Dapr HTTP servers.
+// DefaultAllowedOrigins 是Dapr HTTP服务器所允许的默认源。
 const DefaultAllowedOrigins = "*"

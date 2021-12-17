@@ -26,7 +26,7 @@ const (
 	operatorMaxRetries  = 100
 )
 
-// KubernetesComponents loads components in a kubernetes environment.
+// KubernetesComponents 在kubernetes环境中加载组件。
 type KubernetesComponents struct {
 	config    config.KubernetesConfig
 	client    operatorv1pb.OperatorClient
@@ -43,7 +43,7 @@ func NewKubernetesComponents(configuration config.KubernetesConfig, namespace st
 	}
 }
 
-// LoadComponents // 返回一个给定控制面地址的客户端。
+// LoadComponents // 返回一个给定控制面地址的客户端。 从operator加载组件
 func (k *KubernetesComponents) LoadComponents() ([]components_v1alpha1.Component, error) {
 	// 获取所有自定义资源
 	// dapr.io/Components

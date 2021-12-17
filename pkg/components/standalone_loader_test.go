@@ -39,7 +39,7 @@ spec:
     value: value2
 `
 		err := writeTempConfig(filename, yaml)
-		// defer os.Remove(filename)
+		defer os.Remove(filename)
 		assert.Nil(t, err)
 		components := request.loadComponentsFromFile(filename)
 		assert.Len(t, components, 1)
