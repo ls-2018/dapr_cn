@@ -118,7 +118,7 @@ func (h *Channel) GetAppConfig() (*config.ApplicationConfig, error) {
 	return &config, nil
 }
 
-// InvokeMethod
+// InvokeMethod 调用
 func (h *Channel) InvokeMethod(ctx context.Context, req *invokev1.InvokeMethodRequest) (*invokev1.InvokeMethodResponse, error) {
 	// 必须调用了 pkg/channel/http/http_channel.go:96
 	httpExt := req.Message().GetHttpExtension()

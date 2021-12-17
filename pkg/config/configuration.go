@@ -51,25 +51,25 @@ type Configuration struct {
 	Spec ConfigurationSpec `json:"spec" yaml:"spec"`
 }
 
-// AccessControlList is an in-memory access control list config for fast lookup.
+// AccessControlList 是用于快速查找的内存访问控制列表配置。
 type AccessControlList struct {
-	DefaultAction string
-	TrustDomain   string
+	DefaultAction string //
+	TrustDomain   string //
 	PolicySpec    map[string]AccessControlListPolicySpec
 }
 
-// AccessControlListPolicySpec is an in-memory access control list config per app for fast lookup.
+// AccessControlListPolicySpec 是每个应用程序的内存访问控制列表配置，用于快速查找。
 type AccessControlListPolicySpec struct {
-	AppName             string
+	AppName             string // 应用名字
 	DefaultAction       string
 	TrustDomain         string
 	Namespace           string
-	AppOperationActions map[string]AccessControlListOperationAction
+	AppOperationActions map[string]AccessControlListOperationAction // 应用操作行为
 }
 
-// AccessControlListOperationAction is an in-memory access control list config per operation for fast lookup.
+// AccessControlListOperationAction 是每个操作的内存访问控制列表配置，用于快速查找。
 type AccessControlListOperationAction struct {
-	VerbAction       map[string]string
+	VerbAction       map[string]string // 其实就是http method
 	OperationPostFix string
 	OperationAction  string
 }
@@ -90,7 +90,7 @@ type SecretsSpec struct {
 	Scopes []SecretsScope `json:"scopes"`
 }
 
-// SecretsScope defines the scope for secrets.   定义了secret的范围。
+// SecretsScope   定义了secret的范围。
 type SecretsScope struct {
 	DefaultAccess  string   `json:"defaultAccess,omitempty" yaml:"defaultAccess,omitempty"`
 	StoreName      string   `json:"storeName" yaml:"storeName"`
@@ -107,7 +107,7 @@ type APISpec struct {
 	Allowed []APIAccessRule `json:"allowed,omitempty"`
 }
 
-// APIAccessRule describes an access rule for allowing a Dapr API to be enabled and accessible by an app.
+// APIAccessRule 描述了一个允许应用程序启用和访问Dapr API的访问规则。
 type APIAccessRule struct {
 	Name     string `json:"name"`
 	Version  string `json:"version"`
@@ -146,7 +146,7 @@ type MetricSpec struct {
 	Enabled bool `json:"enabled" yaml:"enabled"`
 }
 
-// AppPolicySpec defines the policy data structure for each app.
+// AppPolicySpec 为每个应用程序定义策略数据结构。
 type AppPolicySpec struct {
 	AppName             string         `json:"appId" yaml:"appId"`
 	DefaultAction       string         `json:"defaultAction" yaml:"defaultAction"`
@@ -155,14 +155,14 @@ type AppPolicySpec struct {
 	AppOperationActions []AppOperation `json:"operations" yaml:"operations"`
 }
 
-// AppOperation defines the data structure for each app operation.
+// AppOperation 定义每个应用程序操作的数据结构。
 type AppOperation struct {
 	Operation string   `json:"name" yaml:"name"`
 	HTTPVerb  []string `json:"httpVerb" yaml:"httpVerb"`
 	Action    string   `json:"action" yaml:"action"`
 }
 
-// AccessControlSpec is the spec object in ConfigurationSpec.
+// AccessControlSpec 是ConfigurationSpec中的spec对象。
 type AccessControlSpec struct {
 	DefaultAction string          `json:"defaultAction" yaml:"defaultAction"`
 	TrustDomain   string          `json:"trustDomain" yaml:"trustDomain"`
@@ -181,14 +181,14 @@ type MTLSSpec struct {
 	AllowedClockSkew string `json:"allowedClockSkew" yaml:"allowedClockSkew"`
 }
 
-// SpiffeID represents the separated fields in a spiffe id.
+// SpiffeID 表示spiffe id中分隔的字段。
 type SpiffeID struct {
 	TrustDomain string
 	Namespace   string
 	AppID       string
 }
 
-// FeatureSpec defines which preview features are enabled.
+// FeatureSpec 定义启用哪些预览功能。
 type FeatureSpec struct {
 	Name    Feature `json:"name" yaml:"name"`
 	Enabled bool    `json:"enabled" yaml:"enabled"`
@@ -224,7 +224,7 @@ func LoadStandaloneConfiguration(config string) (*Configuration, string, error) 
 		return nil, "", err
 	}
 
-	// 从yaml中解析环境变量
+	// 从yaml中解析环境变量,将环境变量中的值 替换yaml文件中的变量
 	b = []byte(os.ExpandEnv(string(b)))
 
 	// 加载默认配置
@@ -316,27 +316,24 @@ func sortAndValidateSecretsConfiguration(conf *Configuration) error {
 	return nil
 }
 
-// IsSecretAllowed Check if the secret is allowed to be accessed.
+// IsSecretAllowed 检查是否允许访问这个secret
 func (c SecretsScope) IsSecretAllowed(key string) bool {
-	// By default, set allow access for the secret store.
 	var access string = AllowAccess
-	// Check and set deny access.
 	if strings.EqualFold(c.DefaultAccess, DenyAccess) {
 		access = DenyAccess
 	}
 
-	// If the allowedSecrets list is not empty then check if the access is specifically allowed for this key.
+	// 如果allowwedsecrets列表不为空，那么检查是否特别允许对该密钥进行访问。
 	if len(c.AllowedSecrets) != 0 {
 		return containsKey(c.AllowedSecrets, key)
 	}
 
-	// Check key in deny list if deny list is present for the secret store.
-	// If the specific key is denied, then alone deny access.
+	// 如果秘密存储中存在拒绝列表，请在拒绝列表中检查密钥。如果指定的密钥被拒绝，则单独拒绝访问。
 	if deny := containsKey(c.DeniedSecrets, key); deny {
 		return !deny
 	}
 
-	// Check if defined default access is allow.
+	// 检查是否允许定义的默认访问。
 	return access == AllowAccess
 }
 
@@ -346,6 +343,7 @@ func containsKey(s []string, key string) bool {
 
 	return index < len(s) && s[index] == key
 }
+
 //IsFeatureEnabled 是否启用了该功能
 func IsFeatureEnabled(features []FeatureSpec, target Feature) bool {
 	for _, feature := range features {

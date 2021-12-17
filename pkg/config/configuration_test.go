@@ -6,11 +6,10 @@
 package config
 
 import (
+	"github.com/stretchr/testify/assert"
 	"os"
 	"sort"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestLoadStandaloneConfiguration(t *testing.T) {
