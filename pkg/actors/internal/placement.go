@@ -239,10 +239,10 @@ func (p *ActorPlacement) Start() {
 			}
 
 			host := v1pb.Host{
-				Name:     p.runtimeHostName,
-				Entities: p.actorTypes,
-				Id:       p.appID,
-				Load:     1, // Not used yet
+				Name:     p.runtimeHostName, // 10.10.16.72:50004  daprInternalGRPCPort
+				Entities: p.actorTypes,      // []string
+				Id:       p.appID,           // dp-61b1a6e4382df1ff8c3cdff1-workerapp
+				Load:     1,                 // Not used yet
 				// Port是多余的，因为Name应该包含端口号
 			}
 

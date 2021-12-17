@@ -196,6 +196,7 @@ func (a *actorsRuntime) Init() error {
 		afterTableUpdateFn)
 
 	go a.placement.Start() // 1、注册自身 2、接收来自placement的信息， 包括所有的节点
+	//a.placement.Start() // 1、注册自身 2、接收来自placement的信息， 包括所有的节点
 	// todo
 	a.startDeactivationTicker(a.config.ActorDeactivationScanInterval, a.config.ActorIdleTimeout)
 

@@ -185,6 +185,7 @@ type DaprRuntime struct {
 	proxy messaging.Proxy
 
 	// TODO: Remove feature flag once feature is ratified
+	//一旦功能被批准，删除功能标志
 	featureRoutingEnabled bool
 }
 
@@ -267,10 +268,10 @@ func (a *DaprRuntime) Run(opts ...Option) error {
 	}
 
 	d := time.Since(start).Seconds() * 1000
-	log.Infof("dapr initialized. Status: Running. Init Elapsed %vms", d)
+	log.Infof("dapr初始化。状态:运行。初始化运行%vms", d)
 
 	if a.daprHTTPAPI != nil {
-		// gRPC server start failure is logged as Fatal in initRuntime method. Setting the status only when runtime is initialized.
+		// 在initRuntime方法中将gRPC服务器启动失败记录为Fatal。仅在初始化运行时时设置状态。
 		a.daprHTTPAPI.MarkStatusAsReady()
 	}
 
@@ -449,11 +450,12 @@ func (a *DaprRuntime) initRuntime(opts *runtimeOpts) error {
 	if err != nil {
 		log.Warnf("failed to init actors: %s", err)
 	}
-
+	time.Sleep(time.Second)
 	a.daprHTTPAPI.SetActorRuntime(a.actor)
 	grpcAPI.SetActorRuntime(a.actor)
 
 	// TODO: Remove feature flag once feature is ratified
+	// 一旦功能被批准，删除功能标志
 	a.featureRoutingEnabled = config.IsFeatureEnabled(a.globalConfig.Spec.Features, config.PubSubRouting)
 
 	if opts.componentsCallback != nil {
@@ -469,9 +471,9 @@ func (a *DaprRuntime) initRuntime(opts *runtimeOpts) error {
 			log.Fatalf("failed to register components with callback: %s", err)
 		}
 	}
-
+	// 启动订阅bing
 	a.startSubscribing()
-	err = a.startReadingFromBindings()
+	err = a.startReadingFromBindings() // 从输入binding读取消息
 	if err != nil {
 		log.Warnf("failed to read from bindings: %s ", err)
 	}
