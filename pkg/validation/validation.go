@@ -37,7 +37,7 @@ func ValidateKubernetesAppID(appID string) error {
 	return errors.New(s)
 }
 
-// The function was taken as-is from: https://github.com/kubernetes/apimachinery/blob/fc49b38c19f02a58ebc476347e622142f19820b9/pkg/util/validation/validation.go
+// 函数是按原样取的: https://github.com/kubernetes/apimachinery/blob/fc49b38c19f02a58ebc476347e622142f19820b9/pkg/util/validation/validation.go
 func isDNS1123Label(value string) []string {
 	var errs []string
 	if len(value) > dns1123LabelMaxLength {
@@ -49,12 +49,12 @@ func isDNS1123Label(value string) []string {
 	return errs
 }
 
-// The function was taken as-is from: https://github.com/kubernetes/apimachinery/blob/fc49b38c19f02a58ebc476347e622142f19820b9/pkg/util/validation/validation.go
+// 函数是按原样取的: https://github.com/kubernetes/apimachinery/blob/fc49b38c19f02a58ebc476347e622142f19820b9/pkg/util/validation/validation.go
 func maxLenError(length int) string {
 	return fmt.Sprintf("must be no more than %d characters", length)
 }
 
-// The function was taken as-is from: https://github.com/kubernetes/apimachinery/blob/fc49b38c19f02a58ebc476347e622142f19820b9/pkg/util/validation/validation.go
+// 函数是按原样取的: https://github.com/kubernetes/apimachinery/blob/fc49b38c19f02a58ebc476347e622142f19820b9/pkg/util/validation/validation.go
 func regexError(msg string, fmt string, examples ...string) string {
 	if len(examples) == 0 {
 		return msg + " (regex used for validation is '" + fmt + "')"

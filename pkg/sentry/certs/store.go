@@ -17,7 +17,8 @@ const (
 	defaultSecretNamespace = "default"
 )
 
-// StoreCredentials saves the trust bundle in a Kubernetes secret store or locally on disk, depending on the hosting platform.
+// StoreCredentials
+//根据托管平台的不同，将信任包保存在Kubernetes秘密存储或本地磁盘上。
 func StoreCredentials(conf config.SentryConfig, rootCertPem, issuerCertPem, issuerKeyPem []byte) error {
 	if config.IsKubernetesHosted() {
 		return storeKubernetes(rootCertPem, issuerCertPem, issuerKeyPem)
@@ -44,8 +45,7 @@ func storeKubernetes(rootCertPem, issuerCertPem, issuerCertKey []byte) error {
 		},
 		Type: v1.SecretTypeOpaque,
 	}
-
-	// We update and not create because sentry expects a secret to already exist
+	// 我们更新而不是创建，因为sentry期望一个secret已经存在
 	_, err = kubeClient.CoreV1().Secrets(namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
 	if err != nil {
 		return errors.Wrap(err, "failed saving secret to kubernetes")

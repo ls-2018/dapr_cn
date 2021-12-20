@@ -1,6 +1,6 @@
 package config
 
-//pkg/runtime/config.go:19
+//  pkg/runtime/config.go:19
 
 const (
 	// HostAddress 实例地址

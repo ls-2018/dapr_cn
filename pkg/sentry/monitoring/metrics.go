@@ -13,30 +13,12 @@ import (
 
 var (
 	// Metrics definitions.
-	csrReceivedTotal = stats.Int64(
-		"sentry/cert/sign/request_received_total",
-		"收到的CSR的数量。",
-		stats.UnitDimensionless)
-	certSignSuccessTotal = stats.Int64(
-		"sentry/cert/sign/success_total",
-		"已成功发行的证书数量。",
-		stats.UnitDimensionless)
-	certSignFailedTotal = stats.Int64(
-		"sentry/cert/sign/failure_total",
-		"签署CSR时发生的错误数量。",
-		stats.UnitDimensionless)
-	serverTLSCertIssueFailedTotal = stats.Int64(
-		"sentry/servercert/issue_failed_total",
-		"服务器TLS证书发放失败的次数。",
-		stats.UnitDimensionless)
-	issuerCertChangedTotal = stats.Int64(
-		"sentry/issuercert/changed_total",
-		"当签发人的证书或钥匙被改变时，签发人证书更新的数量",
-		stats.UnitDimensionless)
-	issuerCertExpiryTimestamp = stats.Int64(
-		"sentry/issuercert/expiry_timestamp",
-		"发行人/根证书过期的unix时间戳，单位是秒。",
-		stats.UnitDimensionless)
+	csrReceivedTotal              = stats.Int64("sentry/cert/sign/request_received_total", "收到的CSR的数量。", stats.UnitDimensionless)
+	certSignSuccessTotal          = stats.Int64("sentry/cert/sign/success_total", "已成功发行的证书数量。", stats.UnitDimensionless)
+	certSignFailedTotal           = stats.Int64("sentry/cert/sign/failure_total", "签署CSR时发生的错误数量。", stats.UnitDimensionless)
+	serverTLSCertIssueFailedTotal = stats.Int64("sentry/servercert/issue_failed_total", "服务器TLS证书发放失败的次数。", stats.UnitDimensionless)
+	issuerCertChangedTotal        = stats.Int64("sentry/issuercert/changed_total", "当签发人的证书或钥匙被改变时，签发人证书更新的数量", stats.UnitDimensionless)
+	issuerCertExpiryTimestamp     = stats.Int64("sentry/issuercert/expiry_timestamp", "发行人/根证书过期的unix时间戳，单位是秒。", stats.UnitDimensionless)
 
 	// Metrics Tags.
 	failedReasonKey = tag.MustNewKey("reason")
