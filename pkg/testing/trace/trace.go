@@ -1,16 +1,14 @@
 package trace
 
 import (
-	"strconv"
-
-	"go.opencensus.io/trace"
-
 	"github.com/dapr/kit/logger"
+	"go.opencensus.io/trace"
+	"strconv"
 )
 
-// NewStringExporter returns a new string exporter instance.
+// NewStringExporter 返回一个新的字符串导出器实例。
 //
-// It is very useful in testing scenario where we want to validate trace propagation.
+// 在我们想验证跟踪传播的测试场景中，它非常有用。
 func NewStringExporter(buffer *string, logger logger.Logger) *Exporter {
 	return &Exporter{
 		Buffer: buffer,
@@ -18,13 +16,13 @@ func NewStringExporter(buffer *string, logger logger.Logger) *Exporter {
 	}
 }
 
-// Exporter is an OpenCensus string exporter.
+// Exporter OpenCensus 字符串导出器
 type Exporter struct {
 	Buffer *string
 	logger logger.Logger
 }
 
-// ExportSpan exports span content to the buffer.
+// ExportSpan
 func (se *Exporter) ExportSpan(sd *trace.SpanData) {
 	*se.Buffer = strconv.Itoa(int(sd.Status.Code))
 }

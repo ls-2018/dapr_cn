@@ -7,16 +7,16 @@ import (
 
 /* #nosec. */
 const (
-	// APITokenEnvVar is the environment variable for the api token.
+	// APITokenEnvVar api token多对应的环境变量
 	APITokenEnvVar    = "DAPR_API_TOKEN"
 	AppAPITokenEnvVar = "APP_API_TOKEN"
-	// APITokenHeader is header name for http/gRPC calls to hold the token.
+	// APITokenHeader http\grpc 调用所携带的header
 	APITokenHeader = "dapr-api-token"
 )
 
 var excludedRoutes = []string{"/healthz"}
 
-// GetAPIToken returns the value of the api token from an environment variable.
+// GetAPIToken 返回从环境变量中读取的 api token
 func GetAPIToken() string {
 	return os.Getenv(APITokenEnvVar)
 }
@@ -26,7 +26,7 @@ func GetAppToken() string {
 	return os.Getenv(AppAPITokenEnvVar)
 }
 
-// ExcludedRoute returns whether a given route should be excluded from a token check.
+// ExcludedRoute 返回一个给定的路由是否应该被排除在标记检查之外。
 func ExcludedRoute(route string) bool {
 	for _, r := range excludedRoutes {
 		if strings.Contains(route, r) {

@@ -25,7 +25,7 @@ const (
 	certType          = "CERTIFICATE"
 	sentryMaxRetries  = 100
 )
-
+// k8s集群内部pod
 var kubeTknPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
 func GetKubeTknPath() *string {
@@ -33,9 +33,9 @@ func GetKubeTknPath() *string {
 }
 
 type Authenticator interface {
-	GetTrustAnchors() *x509.CertPool
-	GetCurrentSignedCert() *SignedCertificate
-	CreateSignedWorkloadCert(id, namespace, trustDomain string) (*SignedCertificate, error)
+	GetTrustAnchors() *x509.CertPool // 获得信任的锚点
+	GetCurrentSignedCert() *SignedCertificate // 获取当前签名了的证书
+	CreateSignedWorkloadCert(id, namespace, trustDomain string) (*SignedCertificate, error)// 创建签名负载证书
 }
 
 type authenticator struct {
@@ -67,11 +67,12 @@ func newAuthenticator(sentryAddress string, trustAnchors *x509.CertPool, certCha
 }
 
 // GetTrustAnchors returns the extracted root cert that serves as the trust anchor.
+// 返回根证书。
 func (a *authenticator) GetTrustAnchors() *x509.CertPool {
 	return a.trustAnchors
 }
 
-// GetCurrentSignedCert returns the current and latest signed certificate.
+// GetCurrentSignedCert 返回当前的最新的签名的证书
 func (a *authenticator) GetCurrentSignedCert() *SignedCertificate {
 	a.certMutex.RLock()
 	defer a.certMutex.RUnlock()
@@ -161,7 +162,7 @@ func (a *authenticator) CreateSignedWorkloadCert(id, namespace, trustDomain stri
 	return signedCert, nil
 }
 
-// currently we support Kubernetes identities.
+// 目前我们支持Kubernetes的身份。
 func getToken() string {
 	b, _ := os.ReadFile(kubeTknPath)
 	return string(b)
