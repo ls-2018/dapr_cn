@@ -58,8 +58,7 @@ type injector struct {
 	authUIDs     []string
 }
 
-// toAdmissionResponse is a helper function to create an AdmissionResponse
-// with an embedded error.
+// toAdmissionResponse 是一个辅助函数，用于创建一个带有嵌入式错误的AdmissionResponse。
 func toAdmissionResponse(err error) *v1.AdmissionResponse {
 	return &v1.AdmissionResponse{
 		Result: &metav1.Status{

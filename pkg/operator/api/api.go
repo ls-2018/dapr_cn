@@ -54,7 +54,7 @@ type Server interface {
 type apiServer struct {
 	operatorv1pb.UnimplementedOperatorServer
 	Client client.Client
-	// notify all dapr runtime
+	// 通知所有dapr 运行时
 	connLock          sync.Mutex
 	allConnUpdateChan map[string]chan *componentsapi.Component
 }
@@ -140,6 +140,7 @@ func (a *apiServer) ListComponents(ctx context.Context, in *operatorv1pb.ListCom
 	return resp, nil
 }
 
+// 处理组件秘钥
 func processComponentSecrets(component *componentsapi.Component, namespace string, kubeClient client.Client) error {
 	for i, m := range component.Spec.Metadata {
 		if m.SecretKeyRef.Name != "" && (component.Auth.SecretStore == kubernetesSecretStore || component.Auth.SecretStore == "") {
@@ -249,7 +250,7 @@ func (a *apiServer) ComponentUpdate(in *operatorv1pb.ComponentUpdateRequest, srv
 	return nil
 }
 
-// chanGracefully control channel to close gracefully in multi-goroutines.
+// chanGracefully 控制通道在多goroutines中优雅地关闭。
 type chanGracefully struct {
 	ch       chan *componentsapi.Component
 	isClosed bool
@@ -264,7 +265,7 @@ func initChanGracefully(ch chan *componentsapi.Component) (
 	}
 }
 
-// Close chan be closed non-reentrantly.
+// Close chan be closed 一次性.
 func (c *chanGracefully) Close() {
 	c.Lock()
 	if !c.isClosed {
