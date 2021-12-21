@@ -890,27 +890,31 @@ func (a *api) getStateStoreName(reqCtx *fasthttp.RequestCtx) string {
 	return reqCtx.UserValue(storeNameParam).(string)
 }
 
+// 直接消息传递
 func (a *api) onDirectMessage(reqCtx *fasthttp.RequestCtx) {
-	targetID := a.findTargetID(reqCtx)
+	targetID := a.findTargetID(reqCtx) //  获取请求中的目标应用ID
 	if targetID == "" {
+		//{"errorCode":"ERR_DIRECT_INVOKE","message":"failed getting app id either from the URL path or the header dapr-app-id"}
 		msg := NewErrorResponse("ERR_DIRECT_INVOKE", messages.ErrDirectInvokeNoAppID)
 		respond(reqCtx, withError(fasthttp.StatusNotFound, msg))
 		return
 	}
-
+	// 请求方法
 	verb := strings.ToUpper(string(reqCtx.Method()))
+	//调用目标方法名
 	invokeMethodName := reqCtx.UserValue(methodParam).(string)
 
+	// 运行初始化时，就创建了对应的结构体
 	if a.directMessaging == nil {
 		msg := NewErrorResponse("ERR_DIRECT_INVOKE", messages.ErrDirectInvokeNotReady)
 		respond(reqCtx, withError(fasthttp.StatusInternalServerError, msg))
 		return
 	}
 
-	// Construct internal invoke method request
+	// 构建内部调用方法请求
 	req := invokev1.NewInvokeMethodRequest(invokeMethodName).WithHTTPExtension(verb, reqCtx.QueryArgs().String())
 	req.WithRawData(reqCtx.Request.Body(), string(reqCtx.Request.Header.ContentType()))
-	// Save headers to internal metadata
+	// 设置请求头
 	req.WithFastHTTPHeaders(&reqCtx.Request.Header)
 
 	resp, err := a.directMessaging.Invoke(reqCtx, targetID, req)
@@ -946,17 +950,18 @@ func (a *api) onDirectMessage(reqCtx *fasthttp.RequestCtx) {
 	respond(reqCtx, with(statusCode, body))
 }
 
-// findTargetID tries to find ID of the target service from the following three places:
-// 1. {id} in the URL's path.
-// 2. Basic authentication, http://dapr-app-id:<service-id>@localhost:3500/path.
-// 3. HTTP header: 'dapr-app-id'.
+// findTargetID 获取请求中的目标应用ID
 func (a *api) findTargetID(reqCtx *fasthttp.RequestCtx) string {
+	// 1、url 中的 app id
+	// 2、 header 中的 "dapr-app-id"
+	// 3、 basic auth 			header 中的Authorization: Basic base64encode(username+":"+password)
 	if id := reqCtx.UserValue(idParam); id == nil {
 		if appID := reqCtx.Request.Header.Peek(daprAppID); appID == nil {
 			if auth := reqCtx.Request.Header.Peek(fasthttp.HeaderAuthorization); auth != nil &&
 				strings.HasPrefix(string(auth), "Basic ") {
 				if s, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(string(auth), "Basic ")); err == nil {
 					pair := strings.Split(string(s), ":")
+					//
 					if len(pair) == 2 && pair[0] == daprAppID {
 						return pair[1]
 					}

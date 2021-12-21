@@ -101,7 +101,7 @@ zfCt2fhdjXEK2GGEMAIhAKi0GsyI5b2hkrUkIEZm1kTLbeuw0GIguSvW89yUkXbT
 	nameSpace := "mesoid"
 	// kubectl -n mesoid exec -it pod/etcd-0 -- cat /var/run/secrets/kubernetes.io/serviceaccount/token
 
-	taskId := "61b1a6e4382df1ff8c3cdff1"
+	taskId := "61c03c5f8ea49c26debd26a6"
 
 	command = exec.Command("zsh", "-c", fmt.Sprintf("kubectl -n %s get pods|grep worker |grep %s |grep Running|awk 'NR==1'|awk '{print $1}'", nameSpace, taskId))
 	podNameBytes, _ := command.CombinedOutput()

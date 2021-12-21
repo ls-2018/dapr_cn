@@ -52,9 +52,9 @@ func newConfig() *config {
 		raftInMemEnabled: true,
 		raftLogStorePath: "",
 
-		placementPort: defaultPlacementPort,
-		healthzPort:   defaultHealthzPort,
-		certChainPath: defaultCredentialsPath,
+		placementPort: defaultPlacementPort,   // 50005
+		healthzPort:   defaultHealthzPort,     // 8080
+		certChainPath: defaultCredentialsPath, // /var/run/dapr/credentials
 		tlsEnabled:    false,
 	}
 
@@ -85,7 +85,7 @@ func newConfig() *config {
 }
 
 func parsePeersFromFlag(val string) []raft.PeerInfo {
-	peers := []raft.PeerInfo{}
+	var peers []raft.PeerInfo
 
 	p := strings.Split(val, ",")
 	for _, addr := range p {

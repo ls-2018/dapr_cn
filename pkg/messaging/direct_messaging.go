@@ -38,7 +38,7 @@ var log = logger.NewLogger("dapr.runtime.direct_messaging")
 // applications to send the message using service invocation.
 type messageClientConnection func(ctx context.Context, address, id string, namespace string, skipTLS, recreateIfExists, enableSSL bool, customOpts ...grpc.DialOption) (*grpc.ClientConn, error)
 
-// DirectMessaging is the API interface for invoking a remote app.
+// DirectMessaging 调用远程目标应用的接口
 type DirectMessaging interface {
 	Invoke(ctx context.Context, targetAppID string, req *invokev1.InvokeMethodRequest) (*invokev1.InvokeMethodResponse, error)
 }
@@ -67,18 +67,18 @@ type remoteApp struct {
 
 // NewDirectMessaging 返回一个消息直达的API, todo: 干什么用呢
 func NewDirectMessaging(
-	appID, namespace string,       // mesoid  			`dp-61b7fa0d5c5ca0f638670680-executorapp-4f9b5-787779868f-krfxp`,
+	appID, namespace string, // mesoid  			`dp-61b7fa0d5c5ca0f638670680-executorapp-4f9b5-787779868f-krfxp`,
 	port int, mode modes.DaprMode, // 50004  kubernetes
 	appChannel channel.AppChannel,
 	clientConnFn messageClientConnection,
 	resolver nr.Resolver, //
 	tracingSpec config.TracingSpec,
-	maxRequestBodySize int,          //4
+	maxRequestBodySize int, //4
 	proxy Proxy, readBufferSize int, // nil 4
-	streamRequestBody bool,          // false
+	streamRequestBody bool, // false
 ) DirectMessaging {
 	hAddr, _ := utils.GetHostAddress() // 本地地址
-	hName, _ := os.Hostname()  // ls-Pro.local
+	hName, _ := os.Hostname()          // ls-Pro.local
 
 	dm := &directMessaging{
 		appChannel:          appChannel,
@@ -104,9 +104,9 @@ func NewDirectMessaging(
 	return dm
 }
 
-// Invoke takes a message requests and invokes an app, either local or remote.
+// Invoke 接收一个消息请求并调用一个应用程序，可以是本地的也可以是远程的。
 func (d *directMessaging) Invoke(ctx context.Context, targetAppID string, req *invokev1.InvokeMethodRequest) (*invokev1.InvokeMethodResponse, error) {
-	app, err := d.getRemoteApp(targetAppID)
+	app, err := d.getRemoteApp(targetAppID) // 远程应用的  域名  结构体
 	if err != nil {
 		return nil, err
 	}
@@ -114,10 +114,11 @@ func (d *directMessaging) Invoke(ctx context.Context, targetAppID string, req *i
 	if app.id == d.appID && app.namespace == d.namespace {
 		return d.invokeLocal(ctx, req)
 	}
+	// 说明请求 与本地代理的应用不一样，需要转发到其他应用
 	return d.invokeWithRetry(ctx, retry.DefaultLinearRetryCount, retry.DefaultLinearBackoffInterval, app, d.invokeRemote, req)
 }
 
-// requestAppIDAndNamespace takes an app id and returns the app id, namespace and error.
+// requestAppIDAndNamespace 接收一个应用程序ID，并返回应用程序ID、命名空间和错误。
 func (d *directMessaging) requestAppIDAndNamespace(targetAppID string) (string, string, error) {
 	items := strings.Split(targetAppID, ".")
 	if len(items) == 1 {
@@ -129,14 +130,14 @@ func (d *directMessaging) requestAppIDAndNamespace(targetAppID string) (string, 
 	}
 }
 
-// invokeWithRetry will call a remote endpoint for the specified number of retries and will only retry in the case of transient failures
-// TODO: check why https://github.com/grpc-ecosystem/go-grpc-middleware/blob/master/retry/examples_test.go doesn't recover the connection when target
-// Server shuts down.
+// invokeWithRetry 将调用一个远程端点进行指定次数的重试，并且只在瞬时失败的情况下重试。
+// TODO: check why https://github.com/grpc-ecosystem/go-grpc-middleware/blob/master/retry/examples_test.go
+// 当目标服务器关闭时，不会恢复连接。
 func (d *directMessaging) invokeWithRetry(
 	ctx context.Context,
-	numRetries int,
-	backoffInterval time.Duration,
-	app remoteApp,
+	numRetries int, // 重试次数
+	backoffInterval time.Duration, // 重试间隔
+	app remoteApp, // app id 、namespace、address[app 域名]
 	fn func(ctx context.Context, appID, namespace, appAddress string, req *invokev1.InvokeMethodRequest) (*invokev1.InvokeMethodResponse, error),
 	req *invokev1.InvokeMethodRequest) (*invokev1.InvokeMethodResponse, error) {
 	for i := 0; i < numRetries; i++ {
@@ -144,12 +145,12 @@ func (d *directMessaging) invokeWithRetry(
 		if err == nil {
 			return resp, nil
 		}
-		log.Debugf("retry count: %d, grpc call failed, ns: %s, addr: %s, appid: %s, err: %s",
-			i+1, app.namespace, app.address, app.id, err.Error())
+		log.Debugf("重试次数: %d, grpc调用失败, ns: %s, addr: %s, appid: %s, err: %s", i+1, app.namespace, app.address, app.id, err.Error())
 		time.Sleep(backoffInterval)
 
-		code := status.Code(err)
+		code := status.Code(err) // 解码错误信息
 		if code == codes.Unavailable || code == codes.Unauthenticated {
+			// 不可达、未认证
 			_, connerr := d.connectionCreatorFn(context.TODO(), app.address, app.id, app.namespace, false, true, false)
 			if connerr != nil {
 				return nil, connerr
@@ -158,7 +159,7 @@ func (d *directMessaging) invokeWithRetry(
 		}
 		return resp, err
 	}
-	return nil, errors.Errorf("failed to invoke target %s after %v retries", app.id, numRetries)
+	return nil, errors.Errorf("调用远端应用失败 %s 重试次数 %v", app.id, numRetries)
 }
 
 func (d *directMessaging) invokeLocal(ctx context.Context, req *invokev1.InvokeMethodRequest) (*invokev1.InvokeMethodResponse, error) {
@@ -239,14 +240,15 @@ func (d *directMessaging) addForwardedHeadersToMetadata(req *invokev1.InvokeMeth
 	addOrCreate(fasthttp.HeaderForwarded, forwardedHeaderValue)
 }
 
+// 获取目标应用地址[域名]
 func (d *directMessaging) getRemoteApp(appID string) (remoteApp, error) {
 	id, namespace, err := d.requestAppIDAndNamespace(appID)
 	if err != nil {
 		return remoteApp{}, err
 	}
 
-	request := nr.ResolveRequest{ID: id, Namespace: namespace, Port: d.grpcPort}
-	address, err := d.resolver.ResolveID(request)
+	request := nr.ResolveRequest{ID: id, Namespace: namespace, Port: d.grpcPort} // grpc内部通信的端口
+	address, err := d.resolver.ResolveID(request)                                // dp-61c03c5f8ea49c26debd26a6-executorapp-dapr.mesoid.svc.cluster.local:50004
 	if err != nil {
 		return remoteApp{}, err
 	}

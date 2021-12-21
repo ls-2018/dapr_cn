@@ -70,7 +70,7 @@ func (imr *InvokeMethodRequest) WithMetadata(md map[string][]string) *InvokeMeth
 	return imr
 }
 
-// WithFastHTTPHeaders sets fasthttp request headers.
+// WithFastHTTPHeaders 将fast http 请求头 封装到内部的请求中
 func (imr *InvokeMethodRequest) WithFastHTTPHeaders(header *fasthttp.RequestHeader) *InvokeMethodRequest {
 	md := map[string][]string{}
 	header.VisitAll(func(key []byte, value []byte) {

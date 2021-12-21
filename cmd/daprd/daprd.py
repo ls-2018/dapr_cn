@@ -33,6 +33,13 @@ async def get(req: Request):
     }
 
 
+@app.post('/post')
+async def post(req: Request):
+    body = await req.json()
+    print(body)
+    return body
+
+
 if __name__ == "__main__":
     import uvicorn
 

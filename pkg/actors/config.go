@@ -11,7 +11,7 @@ import (
 	app_config "github.com/dapr/dapr/pkg/config"
 )
 
-// Config is the actor runtime configuration.
+// Config actor 运行时配置
 type Config struct {
 	HostAddress                   string
 	AppID                         string

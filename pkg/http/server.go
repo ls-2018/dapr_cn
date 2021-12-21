@@ -250,6 +250,7 @@ func (s *server) getCorsHandler(allowedOrigins []string) *cors.CorsHandler {
 	})
 }
 
+// 编码URL
 func (s *server) unescapeRequestParametersHandler(next fasthttp.RequestHandler) fasthttp.RequestHandler {
 	return func(ctx *fasthttp.RequestCtx) {
 		parseError := false
@@ -258,6 +259,7 @@ func (s *server) unescapeRequestParametersHandler(next fasthttp.RequestHandler) 
 			case string:
 				if !parseError {
 					parameterValue := fmt.Sprintf("%v", value)
+					//go http请求如果参数中带有"等特殊字符，参数传输可能会出现问题，所以传输前需要进行参数编码。
 					parameterUnescapedValue, err := url.QueryUnescape(parameterValue)
 					if err == nil {
 						ctx.SetUserValueBytes(parameter, parameterUnescapedValue)
@@ -280,15 +282,21 @@ func (s *server) unescapeRequestParametersHandler(next fasthttp.RequestHandler) 
 
 func (s *server) getRouter(endpoints []Endpoint) *routing.Router {
 	router := routing.New()
+	//	{
+	//			Methods: []string{router.MethodWild},
+	//			Route:   "invoke/{id}/method/{method:*}",
+	//			Alias:   "{method:*}",
+	//			Version: apiVersionV1,     "v1.0"
+	//			Handler: a.onDirectMessage,
+	//		},
 	parameterFinder, _ := regexp.Compile("/{.*}")
 	for _, e := range endpoints {
 		if !s.endpointAllowed(e) {
 			continue
 		}
-
+		//eg  dapr_url = f"/v1.0/invoke/{app id}/method/api/v1/executor/"
 		path := fmt.Sprintf("/%s/%s", e.Version, e.Route)
 		s.handle(e, parameterFinder, path, router)
-
 		if e.Alias != "" {
 			path = fmt.Sprintf("/%s", e.Alias)
 			s.handle(e, parameterFinder, path, router)
@@ -300,8 +308,11 @@ func (s *server) getRouter(endpoints []Endpoint) *routing.Router {
 
 func (s *server) handle(e Endpoint, parameterFinder *regexp.Regexp, path string, router *routing.Router) {
 	for _, m := range e.Methods {
+		// 判断待匹配的字符串是不是  /{.*}
 		pathIncludesParameters := parameterFinder.MatchString(path)
+		// 添加路由
 		if pathIncludesParameters {
+			// 编码url
 			router.Handle(m, path, s.unescapeRequestParametersHandler(e.Handler))
 		} else {
 			router.Handle(m, path, e.Handler)
@@ -309,9 +320,11 @@ func (s *server) handle(e Endpoint, parameterFinder *regexp.Regexp, path string,
 	}
 }
 
+// 是否允许该端点
 func (s *server) endpointAllowed(endpoint Endpoint) bool {
 	var httpRules []config.APIAccessRule
 
+	// 允许的http路由
 	for _, rule := range s.apiSpec.Allowed {
 		if rule.Protocol == protocol {
 			httpRules = append(httpRules, rule)
@@ -322,6 +335,7 @@ func (s *server) endpointAllowed(endpoint Endpoint) bool {
 	}
 
 	for _, rule := range httpRules {
+		//  0 代表endpoint.Route 以rule.Name 开头
 		if (strings.Index(endpoint.Route, rule.Name) == 0 && endpoint.Version == rule.Version) || endpoint.Route == "healthz" {
 			return true
 		}

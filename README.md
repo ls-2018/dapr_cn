@@ -41,3 +41,8 @@ operator = controlPlaneAddress = dapr-api.dapr-system.svc.cluster.local:80
     -   /usr/local/go/src/crypto/x509/root_unix.go:20
         SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 ```
+
+
+### todo
+- 1、operator 自定义crd ; 使用kubebuilder
+- 2、placement  raft
