@@ -126,8 +126,8 @@ func (h *Channel) InvokeMethod(ctx context.Context, req *invokev1.InvokeMethodRe
 		return nil, status.Error(codes.InvalidArgument, "missing HTTP extension field")
 	}
 	// 必须调用了 pkg/channel/http/http_channel.go:96
-	if httpExt.GetVerb() == commonv1pb.HTTPExtension_NONE {
-		return nil, status.Error(codes.InvalidArgument, "invalid HTTP verb")
+	if httpExt.GetVerb() == commonv1pb.HTTPExtension_NONE {   // HTTPExtension_GET
+		return nil, status.Error(codes.InvalidArgument, "无效的 HTTP 请求方法")
 	}
 
 	var rsp *invokev1.InvokeMethodResponse
@@ -138,8 +138,8 @@ func (h *Channel) InvokeMethod(ctx context.Context, req *invokev1.InvokeMethodRe
 		rsp, err = h.invokeMethodV1(ctx, req)
 
 	default:
-		// Reject unsupported version
-		err = status.Error(codes.Unimplemented, fmt.Sprintf("Unsupported spec version: %d", req.APIVersion()))
+		// 拒绝不支持的版本
+		err = status.Error(codes.Unimplemented, fmt.Sprintf("不支持的版本: %d", req.APIVersion()))
 	}
 
 	return rsp, err

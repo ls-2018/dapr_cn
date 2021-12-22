@@ -36,7 +36,7 @@ const (
 	placementReconnectInterval    = 500 * time.Millisecond
 	statusReportHeartbeatInterval = 1 * time.Second // 1秒汇报一次状态
 
-	grpcServiceConfig = `{"loadBalancingPolicy":"round_robin"}`
+	grpcServiceConfig = `{"loadBalancingPolicy":"round_robin"}` // 轮询
 )
 
 // ActorPlacement 维护actor实例的成员 和一致性哈希当用于与placement service 进行服务发现时
@@ -360,7 +360,7 @@ func (p *ActorPlacement) establishStreamConn() (v1pb.Placement_ReportDaprStatusC
 			goto NEXT_SERVER
 		}
 
-		log.Debugf("established connection to placement service at %s", conn.Target())
+		log.Debugf("建立了与 placement 的链接 at %s", conn.Target())
 		return stream, conn
 	}
 

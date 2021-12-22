@@ -150,7 +150,7 @@ func (imr *InvokeMethodRequest) Actor() *internalv1pb.Actor {
 	return imr.r.GetActor()
 }
 
-// Message gets InvokeRequest Message object.
+// Message 返回调用请求的消息体
 func (imr *InvokeMethodRequest) Message() *commonv1pb.InvokeRequest {
 	return imr.r.Message
 }

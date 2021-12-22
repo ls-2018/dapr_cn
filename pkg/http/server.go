@@ -303,6 +303,11 @@ func (s *server) getRouter(endpoints []Endpoint) *routing.Router {
 		}
 	}
 
+	for k, v := range router.List() {
+		for _, path := range v {
+			log.Infof("%v----%v\n", k, path)
+		}
+	}
 	return router
 }
 

@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	//需要对具有多个端点（即多个实例）的目标服务请求进行负载平衡。
+	//需要对具有多个端点（即多个实例）的目标服务请求进行负载平衡。  轮询
 	grpcServiceConfig = `{"loadBalancingPolicy":"round_robin"}`
 	dialTimeout       = time.Second * 30
 )

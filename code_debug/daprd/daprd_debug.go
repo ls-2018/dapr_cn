@@ -66,7 +66,6 @@ func PRE(
 		panic(err)
 	}
 	// 以下证书，是从daprd的环境变量中截取的
-
 	crt := `-----BEGIN CERTIFICATE-----
 MIIBxTCCAWqgAwIBAgIQc55uyj2aQwZ44JcP0YBp7DAKBggqhkjOPQQDAjAxMRcw
 FQYDVQQKEw5kYXByLmlvL3NlbnRyeTEWMBQGA1UEAxMNY2x1c3Rlci5sb2NhbDAe
@@ -103,10 +102,11 @@ zfCt2fhdjXEK2GGEMAIhAKi0GsyI5b2hkrUkIEZm1kTLbeuw0GIguSvW89yUkXbT
 
 	taskId := "61c03c5f8ea49c26debd26a6"
 
+	*appID = "ls-demo"  // 不能包含.
+
 	command = exec.Command("zsh", "-c", fmt.Sprintf("kubectl -n %s get pods|grep worker |grep %s |grep Running|awk 'NR==1'|awk '{print $1}'", nameSpace, taskId))
 	podNameBytes, _ := command.CombinedOutput()
 	podName := strings.Trim(string(podNameBytes), "\n")
-	*appID = "dp-" + taskId + "-workerapp"
 
 	getToken := fmt.Sprintf("kubectl -n mesoid exec -it pod/%s -c worker-agent -- cat /var/run/secrets/kubernetes.io/serviceaccount/token > /tmp/token", podName)
 	fmt.Println(getToken)

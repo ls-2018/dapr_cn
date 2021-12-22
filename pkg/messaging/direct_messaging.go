@@ -114,7 +114,7 @@ func (d *directMessaging) Invoke(ctx context.Context, targetAppID string, req *i
 	if app.id == d.appID && app.namespace == d.namespace {
 		return d.invokeLocal(ctx, req)
 	}
-	// 说明请求 与本地代理的应用不一样，需要转发到其他应用
+	// 说明请求 与本地代理的应用不一样，需要转发到其他应用 , 封装invokeRemote 闭包一些 重试策略
 	return d.invokeWithRetry(ctx, retry.DefaultLinearRetryCount, retry.DefaultLinearBackoffInterval, app, d.invokeRemote, req)
 }
 
@@ -161,10 +161,10 @@ func (d *directMessaging) invokeWithRetry(
 	}
 	return nil, errors.Errorf("调用远端应用失败 %s 重试次数 %v", app.id, numRetries)
 }
-
+// 直接调用本地代理的服务
 func (d *directMessaging) invokeLocal(ctx context.Context, req *invokev1.InvokeMethodRequest) (*invokev1.InvokeMethodResponse, error) {
 	if d.appChannel == nil {
-		return nil, errors.New("cannot invoke local endpoint: app channel not initialized")
+		return nil, errors.New("无法调用本地端点：应用程序通道未初始化")
 	}
 
 	return d.appChannel.InvokeMethod(ctx, req)
