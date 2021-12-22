@@ -135,7 +135,7 @@ func (imr *InvokeMethodRequest) APIVersion() internalv1pb.APIVersion {
 	return imr.r.GetVer()
 }
 
-// Metadata gets Metadata of InvokeMethodRequest.
+// Metadata 返回 InvokeMethodRequest 的Metadata 字段
 func (imr *InvokeMethodRequest) Metadata() DaprInternalMetadata {
 	return imr.r.GetMetadata()
 }
@@ -155,26 +155,26 @@ func (imr *InvokeMethodRequest) Message() *commonv1pb.InvokeRequest {
 	return imr.r.Message
 }
 
-// RawData returns content_type and byte array body.
+// RawData 返回content_type和byte array body。
 func (imr *InvokeMethodRequest) RawData() (string, []byte) {
 	m := imr.r.Message
 	if m == nil || m.Data == nil {
 		return "", nil
 	}
 
-	contentType := m.GetContentType()
-	dataTypeURL := m.GetData().GetTypeUrl()
-	dataValue := m.GetData().GetValue()
+	contentType := m.GetContentType()       // application/json
+	dataTypeURL := m.GetData().GetTypeUrl() // ""
+	dataValue := m.GetData().GetValue()     // {"a": 800.2914473430634}
 
-	// set content_type to application/json only if typeurl is unset and data is given
-	if contentType == "" && (dataTypeURL == "" && dataValue != nil) {
+	// 仅当typeurl未设置且数据已给定时，将content_type设置为application/json。
+	if contentType == "" && dataTypeURL == "" && dataValue != nil {
 		contentType = JSONContentType
 	}
 
 	return contentType, dataValue
 }
 
-// Adds a new header to the existing set.
+// AddHeaders Adds a new header to the existing set.
 func (imr *InvokeMethodRequest) AddHeaders(header *fasthttp.RequestHeader) {
 	md := map[string][]string{}
 	header.VisitAll(func(key []byte, value []byte) {

@@ -28,33 +28,31 @@ import (
 )
 
 const (
-	// GRPCContentType is the MIME media type for grpc.
 	GRPCContentType = "application/grpc"
-	// JSONContentType is the MIME media type for JSON.
 	JSONContentType = "application/json"
-	// ProtobufContentType is the MIME media type for Protobuf.
+	// ProtobufContentType  是Protobuf的MIME媒体类型。
 	ProtobufContentType = "application/x-protobuf"
 
-	// ContentTypeHeader is the header key of content-type.
+	// ContentTypeHeader 是content-type的标题键。
 	ContentTypeHeader = "content-type"
-	// DaprHeaderPrefix is the prefix if metadata is defined by non user-defined http headers.
+	// DaprHeaderPrefix 是前缀，如果元数据是由非用户定义的http头定义的。
 	DaprHeaderPrefix = "dapr-"
-	// gRPCBinaryMetadata is the suffix of grpc metadata binary value.
+	// gRPCBinaryMetadata 是grpc元数据二进制值的后缀。
 	gRPCBinaryMetadataSuffix = "-bin"
 
-	// W3C trace correlation headers.
+	// W3C追踪相关头文件.
 	traceparentHeader = "traceparent"
 	tracestateHeader  = "tracestate"
 	tracebinMetadata  = "grpc-trace-bin"
 
-	// DestinationIDHeader is the header carrying the value of the invoked app id.
+	// DestinationIDHeader 是带有被调用的应用程序ID值的头。
 	DestinationIDHeader = "destination-app-id"
 
-	// ErrorInfo metadata value is limited to 64 chars
+	// ErrorInfo元数据值被限制在64个字符以内
 	// https://github.com/googleapis/googleapis/blob/master/google/rpc/error_details.proto#L126
 	maxMetadataValueLen = 63
 
-	// ErrorInfo metadata for HTTP response.
+	// HTTP响应的ErrorInfo元数据。
 	errorInfoDomain            = "dapr.io"
 	errorInfoHTTPCodeMetadata  = "http.code"
 	errorInfoHTTPErrorMetadata = "http.error_message"
@@ -173,13 +171,13 @@ func InternalMetadataToGrpcMetadata(ctx context.Context, internalMD DaprInternal
 	if IsGRPCProtocol(internalMD) {
 		processGRPCToGRPCTraceHeader(ctx, md, grpctracebinValue)
 	} else {
-		// if httpProtocol, then pass HTTP traceparent and HTTP tracestate header values, attach it in grpc-trace-bin header
+		// if httpProtocol, 然后传递HTTP traceparent和HTTP tracestate头值，将其附加到grpc-trace-bin头中。
 		processHTTPToGRPCTraceHeader(ctx, md, traceparentValue, tracestateValue)
 	}
 	return md
 }
 
-// IsGRPCProtocol checks if metadata is originated from gRPC API.
+// IsGRPCProtocol 检查元数据是否来自于gRPC API。
 func IsGRPCProtocol(internalMD DaprInternalMetadata) bool {
 	originContentType := ""
 	if val, ok := internalMD[ContentTypeHeader]; ok {
@@ -200,12 +198,12 @@ func reservedGRPCMetadataToDaprPrefixHeader(key string) string {
 	return key
 }
 
-// InternalMetadataToHTTPHeader converts internal metadata pb to HTTP headers.
+// InternalMetadataToHTTPHeader 将内部元数据pb转换为HTTP头文件。1、应用请求  2、dapr返回响应
 func InternalMetadataToHTTPHeader(ctx context.Context, internalMD DaprInternalMetadata, setHeader func(string, string)) {
 	var traceparentValue, tracestateValue, grpctracebinValue string
 	for k, listVal := range internalMD {
 		keyName := strings.ToLower(k)
-		// get both the trace headers for HTTP/GRPC and continue
+		// 获取HTTP/GRPC的跟踪头并继续
 		switch keyName {
 		case traceparentHeader:
 			traceparentValue = listVal.Values[0]
@@ -226,7 +224,7 @@ func InternalMetadataToHTTPHeader(ctx context.Context, internalMD DaprInternalMe
 		setHeader(reservedGRPCMetadataToDaprPrefixHeader(keyName), listVal.Values[0])
 	}
 	if IsGRPCProtocol(internalMD) {
-		// if grpcProtocol, then get grpc-trace-bin value, and attach it in HTTP traceparent and HTTP tracestate header
+		// if grpcProtocol, 然后得到grpc-trace-bin的值，并将其附加到HTTP traceparent和HTTP tracestate头中。
 		processGRPCToHTTPTraceHeaders(ctx, grpctracebinValue, setHeader)
 	} else {
 		processHTTPToHTTPTraceHeaders(ctx, traceparentValue, tracestateValue, setHeader)
@@ -377,7 +375,7 @@ func processHTTPToHTTPTraceHeaders(ctx context.Context, traceparentValue, traceS
 		}
 	}
 }
-
+// 处理http头到grpc头
 func processHTTPToGRPCTraceHeader(ctx context.Context, md metadata.MD, traceparentValue, traceStateValue string) {
 	var sc trace.SpanContext
 	var ok bool
@@ -428,12 +426,13 @@ func cloneBytes(data []byte) []byte {
 	if data == nil {
 		return nil
 	}
+	// 一次性分配内存
 	cloneData := make([]byte, len(data))
 	copy(cloneData, data)
 	return cloneData
 }
 
-// ProtobufToJSON serializes Protobuf message to json format.
+// ProtobufToJSON 将Protobuf消息序列化为json格式。
 func ProtobufToJSON(message protoreflect.ProtoMessage) ([]byte, error) {
 	marshaler := protojson.MarshalOptions{
 		Indent:          "",

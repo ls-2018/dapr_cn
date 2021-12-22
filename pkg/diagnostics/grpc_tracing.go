@@ -217,13 +217,14 @@ func SpanContextFromIncomingGRPCMetadata(ctx context.Context) (trace.SpanContext
 	return sc, ok
 }
 
-// SpanContextToGRPCMetadata appends binary serialized SpanContext to the outgoing GRPC context.
+// SpanContextToGRPCMetadata 将二进制序列化的SpanContext追加到传出的GRPC上下文中。
 func SpanContextToGRPCMetadata(ctx context.Context, spanContext trace.SpanContext) context.Context {
+	// 二进制追踪span
 	traceContextBinary := propagation.Binary(spanContext)
 	if len(traceContextBinary) == 0 {
 		return ctx
 	}
-
+	// grpc-trace-bin
 	return metadata.AppendToOutgoingContext(ctx, grpcTraceContextKey, string(traceContextBinary))
 }
 

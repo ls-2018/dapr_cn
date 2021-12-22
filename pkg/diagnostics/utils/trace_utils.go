@@ -18,7 +18,7 @@ import (
 const (
 	defaultSamplingRate = 1e-4
 
-	// daprFastHTTPContextKey is the context value of span in fasthttp.RequestCtx.
+	// daprFastHTTPContextKey 在fasthttp.RequestCtx 存储 span的key
 	daprFastHTTPContextKey = "daprSpanContextKey"
 )
 
@@ -55,7 +55,7 @@ func IsTracingEnabled(rate string) bool {
 	return GetTraceSamplingRate(rate) != 0
 }
 
-// SpanFromContext returns the SpanContext stored in a context, or nil if there isn't one.
+// SpanFromContext 返回存储在上下文中的SpanContext，如果没有，则返回nil。
 func SpanFromContext(ctx context.Context) *trace.Span {
 	if reqCtx, ok := ctx.(*fasthttp.RequestCtx); ok {
 		val := reqCtx.UserValue(daprFastHTTPContextKey)
@@ -64,7 +64,7 @@ func SpanFromContext(ctx context.Context) *trace.Span {
 		}
 		return val.(*trace.Span)
 	}
-
+	//如果不是fasthttp.RequestCtx  ，返回存在在ctx中的span
 	return trace.FromContext(ctx)
 }
 

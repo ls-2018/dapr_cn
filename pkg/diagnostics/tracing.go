@@ -73,7 +73,7 @@ const (
 // Effectively const, but isn't a const from upstream.
 var messagingDestinationTopicKind = semconv.MessagingDestinationKindKeyTopic.Value.AsString()
 
-// SpanContextToW3CString returns the SpanContext string representation.
+// SpanContextToW3CString 返回SpanContext的字符串表示法。
 func SpanContextToW3CString(sc trace.SpanContext) string {
 	return fmt.Sprintf("%x-%x-%x-%x",
 		[]byte{supportedVersion},
@@ -82,7 +82,7 @@ func SpanContextToW3CString(sc trace.SpanContext) string {
 		[]byte{byte(sc.TraceOptions)})
 }
 
-// TraceStateToW3CString extracts the TraceState from given SpanContext and returns its string representation.
+// TraceStateToW3CString 从给定的SpanContext中提取TraceState并返回其字符串表示。
 func TraceStateToW3CString(sc trace.SpanContext) string {
 	pairs := make([]string, 0, len(sc.Tracestate.Entries()))
 	if sc.Tracestate != nil {
@@ -90,14 +90,14 @@ func TraceStateToW3CString(sc trace.SpanContext) string {
 			pairs = append(pairs, strings.Join([]string{entry.Key, entry.Value}, "="))
 		}
 		h := strings.Join(pairs, ",")
-		if h != "" && len(h) <= maxTracestateLen {
+		if h != "" && len(h) <= maxTracestateLen { //512
 			return h
 		}
 	}
 	return ""
 }
 
-// SpanContextFromW3CString extracts a span context from given string which got earlier from SpanContextToW3CString format.
+// SpanContextFromW3CString 从先前从SpanContextToW3CString格式得到的给定字符串中提取一个跨度上下文。
 func SpanContextFromW3CString(h string) (sc trace.SpanContext, ok bool) {
 	if h == "" {
 		return trace.SpanContext{}, false

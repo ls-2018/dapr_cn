@@ -126,7 +126,7 @@ func (h *Channel) InvokeMethod(ctx context.Context, req *invokev1.InvokeMethodRe
 		return nil, status.Error(codes.InvalidArgument, "missing HTTP extension field")
 	}
 	// 必须调用了 pkg/channel/http/http_channel.go:96
-	if httpExt.GetVerb() == commonv1pb.HTTPExtension_NONE {   // HTTPExtension_GET
+	if httpExt.GetVerb() == commonv1pb.HTTPExtension_NONE { // HTTPExtension_GET
 		return nil, status.Error(codes.InvalidArgument, "无效的 HTTP 请求方法")
 	}
 
@@ -138,7 +138,7 @@ func (h *Channel) InvokeMethod(ctx context.Context, req *invokev1.InvokeMethodRe
 		rsp, err = h.invokeMethodV1(ctx, req)
 
 	default:
-		// 拒绝不支持的版本
+		// 拒绝不支持的版本,不会走到这
 		err = status.Error(codes.Unimplemented, fmt.Sprintf("不支持的版本: %d", req.APIVersion()))
 	}
 
@@ -152,12 +152,12 @@ func (h *Channel) invokeMethodV1(ctx context.Context, req *invokev1.InvokeMethod
 		h.ch <- 1
 	}
 
-	// Emit metric when request is sent
+	// 在发送请求时记录度量值
 	verb := string(channelReq.Header.Method())
 	diag.DefaultHTTPMonitoring.ClientRequestStarted(ctx, verb, req.Message().Method, int64(len(req.Message().Data.GetValue())))
 	startRequest := time.Now()
 
-	// Send request to user application
+	// 向用户应用发送请求
 	resp := fasthttp.AcquireResponse()
 	err := h.client.Do(channelReq, resp)
 	defer func() {
@@ -177,7 +177,8 @@ func (h *Channel) invokeMethodV1(ctx context.Context, req *invokev1.InvokeMethod
 	}
 
 	rsp := h.parseChannelResponse(req, resp)
-	diag.DefaultHTTPMonitoring.ClientRequestCompleted(ctx, verb, req.Message().GetMethod(), strconv.Itoa(int(rsp.Status().Code)), int64(resp.Header.ContentLength()), elapsedMs)
+	diag.DefaultHTTPMonitoring.ClientRequestCompleted(ctx, verb, req.Message().GetMethod(),
+		strconv.Itoa(int(rsp.Status().Code)), int64(resp.Header.ContentLength()), elapsedMs)
 
 	return rsp, nil
 }
@@ -186,19 +187,20 @@ func (h *Channel) invokeMethodV1(ctx context.Context, req *invokev1.InvokeMethod
 func (h *Channel) constructRequest(ctx context.Context, req *invokev1.InvokeMethodRequest) *fasthttp.Request {
 	channelReq := fasthttp.AcquireRequest()
 
-	// Construct app channel URI: VERB http://localhost:3000/method?query1=value1
+	// 构建应用程序通道URI: VERB http://localhost:3000/method?query1=value1
 	uri := fmt.Sprintf("%s/%s", h.baseAddress, req.Message().GetMethod())
 	channelReq.SetRequestURI(uri)
 	channelReq.URI().SetQueryString(req.EncodeHTTPQueryString())
 	channelReq.Header.SetMethod(req.Message().HttpExtension.Verb.String())
 
-	// Recover headers
+	// 恢复header
 	invokev1.InternalMetadataToHTTPHeader(ctx, req.Metadata(), channelReq.Header.Set)
 
-	// HTTP client needs to inject traceparent header for proper tracing stack.
+	// HTTP客户端需要注入traceparent头，以获得正确的追踪堆栈。
 	span := diag_utils.SpanFromContext(ctx)
-	httpFormat := &tracecontext.HTTPFormat{}
-	tp, ts := httpFormat.SpanContextToHeaders(span.SpanContext())
+	tp, ts := new(tracecontext.HTTPFormat).SpanContextToHeaders(span.SpanContext()) // 将SpanContext序列化为traceparent和tracestate头文件。
+	// tp 00-8cd311a613d20f585e33f9cdee3bd5f6-9f5e10cf8ace2a2b-00
+	// ts ""
 	channelReq.Header.Set("traceparent", tp)
 	if ts != "" {
 		channelReq.Header.Set("tracestate", ts)
@@ -216,6 +218,7 @@ func (h *Channel) constructRequest(ctx context.Context, req *invokev1.InvokeMeth
 	return channelReq
 }
 
+// 解析用户应用返回消息
 func (h *Channel) parseChannelResponse(req *invokev1.InvokeMethodRequest, resp *fasthttp.Response) *invokev1.InvokeMethodResponse {
 	var statusCode int
 	var contentType string
@@ -225,7 +228,7 @@ func (h *Channel) parseChannelResponse(req *invokev1.InvokeMethodRequest, resp *
 	contentType = (string)(resp.Header.ContentType())
 	body = resp.Body()
 
-	// Convert status code
+	// 转换状态码
 	rsp := invokev1.NewInvokeMethodResponse(int32(statusCode), "", nil)
 	rsp.WithFastHTTPHeaders(&resp.Header).WithRawData(body, contentType)
 

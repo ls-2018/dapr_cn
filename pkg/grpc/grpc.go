@@ -81,7 +81,8 @@ func (g *Manager) GetGRPCConnection(ctx context.Context, address, id string,
 	skipTLS, recreateIfExists, sslEnabled bool,
 	customOpts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	g.lock.RLock()
-	// 判断是否已经已经存在，且不用重新创建
+	// 判断是否已经已经存在，且不用重新创建  dp-61c2cb20562850d49d47d1c7-executorapp-dapr.mesoid.svc.cluster.local:50004
+	// 应用+grpc内部通信地址
 	if val, ok := g.connectionPool[address]; ok && !recreateIfExists {
 		g.lock.RUnlock()
 		return val, nil

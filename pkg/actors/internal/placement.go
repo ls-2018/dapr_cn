@@ -239,7 +239,7 @@ func (p *ActorPlacement) Start() {
 			}
 
 			host := v1pb.Host{
-				Name:     p.runtimeHostName, // 10.10.16.72:50004  daprInternalGRPCPort
+				Name:     p.runtimeHostName, // 10.10.16.72:50002  daprInternalGRPCPort
 				Entities: p.actorTypes,      // []string
 				Id:       p.appID,           // dp-61b1a6e4382df1ff8c3cdff1-workerapp
 				Load:     1,                 // Not used yet

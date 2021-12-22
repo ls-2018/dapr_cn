@@ -894,7 +894,6 @@ func (a *api) getStateStoreName(reqCtx *fasthttp.RequestCtx) string {
 func (a *api) onDirectMessage(reqCtx *fasthttp.RequestCtx) {
 	targetID := a.findTargetID(reqCtx) //  获取请求中的目标应用ID
 	if targetID == "" {
-		//{"errorCode":"ERR_DIRECT_INVOKE","message":"failed getting app id either from the URL path or the header dapr-app-id"}
 		msg := NewErrorResponse("ERR_DIRECT_INVOKE", messages.ErrDirectInvokeNoAppID)
 		respond(reqCtx, withError(fasthttp.StatusNotFound, msg))
 		return
@@ -918,10 +917,9 @@ func (a *api) onDirectMessage(reqCtx *fasthttp.RequestCtx) {
 	req.WithFastHTTPHeaders(&reqCtx.Request.Header)
 
 	resp, err := a.directMessaging.Invoke(reqCtx, targetID, req)
-	// err does not represent user application response
+	// err 不代表用户应用程序的响应
 	if err != nil {
-		// Allowlists policies that are applied on the callee side can return a Permission Denied error.
-		// For everything else, treat it as a gRPC transport error
+		// 在被叫方应用的Allowlists策略可以返回一个Permission Denied错误。 对于其他一切，将其视为gRPC传输错误
 		statusCode := fasthttp.StatusInternalServerError
 		if status.Code(err) == codes.PermissionDenied {
 			statusCode = invokev1.HTTPStatusFromCode(codes.PermissionDenied)
@@ -935,9 +933,9 @@ func (a *api) onDirectMessage(reqCtx *fasthttp.RequestCtx) {
 	contentType, body := resp.RawData()
 	reqCtx.Response.Header.SetContentType(contentType)
 
-	// Construct response
+	// 构造反应
 	statusCode := int(resp.Status().Code)
-	if !resp.IsHTTPResponse() {
+	if !resp.IsHTTPResponse() { // 如果不是http响应码
 		statusCode = invokev1.HTTPStatusFromCode(codes.Code(statusCode))
 		if statusCode != fasthttp.StatusOK {
 			if body, err = invokev1.ProtobufToJSON(resp.Status()); err != nil {

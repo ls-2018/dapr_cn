@@ -68,7 +68,7 @@ type remoteApp struct {
 // NewDirectMessaging 返回一个消息直达的API, todo: 干什么用呢
 func NewDirectMessaging(
 	appID, namespace string, // mesoid  			`dp-61b7fa0d5c5ca0f638670680-executorapp-4f9b5-787779868f-krfxp`,
-	port int, mode modes.DaprMode, // 50004  kubernetes
+	port int, mode modes.DaprMode, // 50002  kubernetes
 	appChannel channel.AppChannel,
 	clientConnFn messageClientConnection,
 	resolver nr.Resolver, //
@@ -178,13 +178,14 @@ func (d *directMessaging) setContextSpan(ctx context.Context) context.Context {
 }
 
 func (d *directMessaging) invokeRemote(ctx context.Context, appID, namespace, appAddress string, req *invokev1.InvokeMethodRequest) (*invokev1.InvokeMethodResponse, error) {
+	// 创建与远端dapr的连接, k8s 内直接通过域名进行的连接，因此不会拿到所有被调用程序的地址
 	conn, err := d.connectionCreatorFn(context.TODO(), appAddress, appID, namespace, false, false, false)
 	if err != nil {
 		return nil, err
 	}
 
 	ctx = d.setContextSpan(ctx)
-
+	//在元数据中添加转发的头信息
 	d.addForwardedHeadersToMetadata(req)
 	d.addDestinationAppIDHeaderToMetadata(appID, req)
 
@@ -206,10 +207,11 @@ func (d *directMessaging) addDestinationAppIDHeaderToMetadata(appID string, req 
 		Values: []string{appID},
 	}
 }
-
+//在元数据中添加转发的头信息
 func (d *directMessaging) addForwardedHeadersToMetadata(req *invokev1.InvokeMethodRequest) {
 	metadata := req.Metadata()
-
+	//map[Accept:values:"*/*" Accept-Encoding:values:"gzip, deflate" Connection:values:"keep-alive" Content-Length:values:"25" Host:values:"localhost:3500" User-Agent:values:"python-requests/2.26.0"]
+	//
 	var forwardedHeaderValue string
 
 	addOrCreate := func(header string, value string) {
@@ -222,17 +224,15 @@ func (d *directMessaging) addForwardedHeadersToMetadata(req *invokev1.InvokeMeth
 		}
 	}
 
-	if d.hostAddress != "" {
+	if d.hostAddress != "" { // 调用方地址
 		// Add X-Forwarded-For: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
 		addOrCreate(fasthttp.HeaderXForwardedFor, d.hostAddress)
-
 		forwardedHeaderValue += "for=" + d.hostAddress + ";by=" + d.hostAddress + ";"
 	}
 
 	if d.hostName != "" {
 		// Add X-Forwarded-Host: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Host
 		addOrCreate(fasthttp.HeaderXForwardedHost, d.hostName)
-
 		forwardedHeaderValue += "host=" + d.hostName
 	}
 
@@ -248,7 +248,7 @@ func (d *directMessaging) getRemoteApp(appID string) (remoteApp, error) {
 	}
 
 	request := nr.ResolveRequest{ID: id, Namespace: namespace, Port: d.grpcPort} // grpc内部通信的端口
-	address, err := d.resolver.ResolveID(request)                                // dp-61c03c5f8ea49c26debd26a6-executorapp-dapr.mesoid.svc.cluster.local:50004
+	address, err := d.resolver.ResolveID(request)                                // dp-61c03c5f8ea49c26debd26a6-executorapp-dapr.mesoid.svc.cluster.local:50002
 	if err != nil {
 		return remoteApp{}, err
 	}

@@ -58,9 +58,9 @@ const (
 
 	// DirectMessaging.
 	ErrDirectInvoke         = "fail to invoke, id: %s, err: %s"
-	ErrDirectInvokeNoAppID  = "failed getting app id either from the URL path or the header dapr-app-id"
-	ErrDirectInvokeMethod   = "invalid method name"
-	ErrDirectInvokeNotReady = "invoke API is not ready"
+	ErrDirectInvokeNoAppID  = "无法从url 或header中获取 dapr-app-id"
+	ErrDirectInvokeMethod   = "无效的方法名"
+	ErrDirectInvokeNotReady = "调用的API未就绪"
 
 	// Metadata.
 	ErrMetadataGet = "failed deserializing metadata: %s"

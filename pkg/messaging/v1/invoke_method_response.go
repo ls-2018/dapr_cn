@@ -46,7 +46,7 @@ func (imr *InvokeMethodResponse) WithMessage(pb *commonv1pb.InvokeResponse) *Inv
 	return imr
 }
 
-// WithRawData sets Message using byte data and content type.
+// WithRawData 设置使用字节数据和内容类型的消息。
 func (imr *InvokeMethodResponse) WithRawData(data []byte, contentType string) *InvokeMethodResponse {
 	if contentType == "" {
 		contentType = JSONContentType
@@ -54,7 +54,7 @@ func (imr *InvokeMethodResponse) WithRawData(data []byte, contentType string) *I
 
 	imr.r.Message.ContentType = contentType
 
-	// Clone data to prevent GC from deallocating data
+	// 克隆数据以防止GC删除数据
 	imr.r.Message.Data = &anypb.Any{Value: cloneBytes(data)}
 
 	return imr
@@ -66,9 +66,10 @@ func (imr *InvokeMethodResponse) WithHeaders(headers metadata.MD) *InvokeMethodR
 	return imr
 }
 
-// WithFastHTTPHeaders populates fasthttp response header to gRPC header metadata.
+// WithFastHTTPHeaders 将fasthttp响应头填充到gRPC头元数据中。
 func (imr *InvokeMethodResponse) WithFastHTTPHeaders(header *fasthttp.ResponseHeader) *InvokeMethodResponse {
 	md := DaprInternalMetadata{}
+	//可能 a=[1,2,3,4,]
 	header.VisitAll(func(key []byte, value []byte) {
 		md[string(key)] = &internalv1pb.ListStringValue{
 			Values: []string{string(value)},
@@ -91,7 +92,7 @@ func (imr *InvokeMethodResponse) Status() *internalv1pb.Status {
 	return imr.r.GetStatus()
 }
 
-// IsHTTPResponse returns true if response status code is http response status.
+// IsHTTPResponse 如果响应状态代码是http响应状态，返回true。
 func (imr *InvokeMethodResponse) IsHTTPResponse() bool {
 	// gRPC status code <= 15 - https://github.com/grpc/grpc/blob/master/doc/statuscodes.md
 	// HTTP status code >= 100 - https://tools.ietf.org/html/rfc2616#section-10

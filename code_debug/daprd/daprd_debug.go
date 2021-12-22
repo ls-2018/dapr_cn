@@ -2,7 +2,6 @@ package daprd_debug
 
 import (
 	"fmt"
-	nr_kubernetes "github.com/dapr/components-contrib/nameresolution/kubernetes"
 	auth "github.com/dapr/dapr/pkg/runtime/security"
 	"io/ioutil"
 	raw_k8s "k8s.io/client-go/kubernetes"
@@ -44,7 +43,7 @@ func PRE(
 	*mode = "kubernetes"
 	*daprHTTPPort = "3500"
 	*daprAPIGRPCPort = "50003"
-	*daprInternalGRPCPort = "50004"
+	*daprInternalGRPCPort = "50001"
 	*appPort = "3001"
 
 	*daprHTTPMaxRequestSize = -1
@@ -100,9 +99,17 @@ zfCt2fhdjXEK2GGEMAIhAKi0GsyI5b2hkrUkIEZm1kTLbeuw0GIguSvW89yUkXbT
 	nameSpace := "mesoid"
 	// kubectl -n mesoid exec -it pod/etcd-0 -- cat /var/run/secrets/kubernetes.io/serviceaccount/token
 
-	taskId := "61c03c5f8ea49c26debd26a6"
+	taskId := "61c2cb20562850d49d47d1c7"
+	*appID = "remote"
 
-	*appID = "ls-demo"  // 不能包含.
+	command = exec.Command("zsh", "-c", "kubectl port-forward svc/dp-"+taskId+"-executorapp-dapr -n "+nameSpace+" 50001:50001 &")
+	err = command.Run()
+	if err != nil {
+		panic(err)
+	}
+
+	//*appID = "ls-demo"  // 不能包含.
+	UpdateHosts(fmt.Sprintf("dp-%s-executorapp-dapr.%s.svc.cluster.local", taskId, nameSpace))
 
 	command = exec.Command("zsh", "-c", fmt.Sprintf("kubectl -n %s get pods|grep worker |grep %s |grep Running|awk 'NR==1'|awk '{print $1}'", nameSpace, taskId))
 	podNameBytes, _ := command.CombinedOutput()
@@ -150,9 +157,6 @@ func GetK8s() *raw_k8s.Clientset {
 	return kubeClient
 }
 
-func demo() {
-	fmt.Println(nr_kubernetes.NewResolver)
-}
 func RunCommand(name string, arg ...string) error {
 	cmd := exec.Command(name, arg...)
 	// 命令的错误输出和标准输出都连接到同一个管道
@@ -180,4 +184,16 @@ func RunCommand(name string, arg ...string) error {
 		return err
 	}
 	return nil
+}
+
+func UpdateHosts(domain string) {
+	file, err := ioutil.ReadFile("/etc/hosts_bak")
+	if err != nil {
+		panic(err)
+	}
+	change := string(file) + "\n\n\n\n127.0.0.1                    " + domain + "\n"
+	err = ioutil.WriteFile("/etc/hosts", []byte(change), 777)
+	if err != nil {
+		panic(err)
+	}
 }
