@@ -26,7 +26,7 @@ func New(name string, factoryMethod func() state.Store) State {
 	}
 }
 
-// Registry is an interface for a component that returns registered state store implementations.
+// Registry 是一个组件的接口，用于返回注册的状态存储实现。
 type Registry interface {
 	Register(components ...State)
 	Create(name, version string) (state.Store, error)

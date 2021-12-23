@@ -41,7 +41,7 @@ type Key struct {
 	gcm  cipher.AEAD
 }
 
-// ComponentEncryptionKey checks if a component definition contains an encryption key and extracts it using the supplied secret store.
+// ComponentEncryptionKey  检查一个组件的定义是否包含一个加密密钥，并使用提供的秘密存储提取它。
 func ComponentEncryptionKey(component v1alpha1.Component, secretStore secretstores.SecretStore) (ComponentEncryptionKeys, error) {
 	if secretStore == nil {
 		return ComponentEncryptionKeys{}, nil

@@ -27,7 +27,7 @@ operator = controlPlaneAddress = dapr-api.dapr-system.svc.cluster.local:80
 - daprd sidecar负责流量代理、etc
   - 启动过程中会拿着从环境变量获取到ca,cert,key 与 operator 建立grpc连接 ;
   - 会与sentry 通信, 证书签名
-  - 会与operator通信，加载组件；去获取dapr的全局配置
+  - 会与operator通信，加载组件配置[crd]；去获取dapr的全局配置
   - 会与placement通信，服务注册、发现
   - 
   - dapr actor 会将自身信息注册到placement,同时placement会将相同信息广播到相同的actor实例上

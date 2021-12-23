@@ -563,15 +563,16 @@ func (a *api) onBulkGetState(reqCtx *fasthttp.RequestCtx) {
 }
 
 func (a *api) getStateStoreWithRequestValidation(reqCtx *fasthttp.RequestCtx) (state.Store, string, error) {
+	// 必须已应有组件声明
 	if a.stateStores == nil || len(a.stateStores) == 0 {
 		msg := NewErrorResponse("ERR_STATE_STORES_NOT_CONFIGURED", messages.ErrStateStoresNotConfigured)
 		respond(reqCtx, withError(fasthttp.StatusInternalServerError, msg))
 		log.Debug(msg)
 		return nil, "", errors.New(msg.Message)
 	}
-
+	//http://localhost:3500/v1.0/state/redis-statestore/b 获取状态存储的名字  pkg/http/api.go:197
 	storeName := a.getStateStoreName(reqCtx)
-
+	// 调用的组件必须存在
 	if a.stateStores[storeName] == nil {
 		msg := NewErrorResponse("ERR_STATE_STORE_NOT_FOUND", fmt.Sprintf(messages.ErrStateStoreNotFound, storeName))
 		respond(reqCtx, withError(fasthttp.StatusBadRequest, msg))

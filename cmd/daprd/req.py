@@ -1,6 +1,3 @@
-import json
-import random
-
 import requests
 
 url = 'http://127.0.0.1:3001/post'
@@ -9,9 +6,12 @@ dapr_url = "http://localhost:3500/v1.0/invoke/dp-61c2cb20562850d49d47d1c7-execut
 # dapr_url = "http://localhost:3500/v1.0/healthz"
 
 # res = requests.post(dapr_url, json.dumps({'a': random.random() * 1000}))
-res = requests.get(dapr_url, )
-print(res.text)
-print(res.status_code)
+# res = requests.get(dapr_url, )
+#
+#
+#
+# print(res.text)
+# print(res.status_code)
 # INFO[0000] GET----/v1.0/state/{storeName}/{key}
 # INFO[0000] GET----/v1.0/secrets/{secretStoreName}/bulk
 # INFO[0000] GET----/v1.0/secrets/{secretStoreName}/{key}
@@ -49,3 +49,6 @@ print(res.status_code)
 # INFO[0000] DELETE----/v1.0/actors/{actorType}/{actorId}/timers/{name}
 # INFO[0000] *----/v1.0/invoke/{id}/method/{method:*}
 # INFO[0000] *----/{method:*}
+
+
+print(requests.get('http://localhost:3500/v1.0/state/redis-statestore/b'))

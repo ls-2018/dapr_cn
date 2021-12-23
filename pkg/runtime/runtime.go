@@ -1171,17 +1171,18 @@ func (a *DaprRuntime) initConfiguration(s components_v1alpha1.Component) error {
 	return nil
 }
 
-// Refer for state store api decision  https://github.com/dapr/dapr/blob/master/docs/decision_records/api/API-008-multi-state-store-api-design.md
+// 请参考状态存储api的决定  https://github.com/dapr/dapr/blob/master/docs/decision_records/api/API-008-multi-state-store-api-design.md
 func (a *DaprRuntime) initState(s components_v1alpha1.Component) error {
-	store, err := a.stateStoreRegistry.Create(s.Spec.Type, s.Spec.Version)
+	// 调用 github.com/dapr/components-contrib/state.Store 里的构造函数
+	store, err := a.stateStoreRegistry.Create(s.Spec.Type, s.Spec.Version) // 也没干什么事，就是封装
 	if err != nil {
 		log.Warnf("error creating state store %s (%s/%s): %s", s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, err)
 		diag.DefaultMonitoring.ComponentInitFailed(s.Spec.Type, "creation")
 		return err
 	}
 	if store != nil {
-		secretStoreName := a.authSecretStoreOrDefault(s)
-
+		secretStoreName := a.authSecretStoreOrDefault(s)// 获取存储secret的方式，   没设置,且运行在k8s 则为kubernets
+		// 判断 State.Encryption 在全局配置中有没有开启
 		if config.IsFeatureEnabled(a.globalConfig.Spec.Features, config.StateEncryption) {
 			secretStore := a.getSecretStore(secretStoreName)
 			encKeys, encErr := encryption.ComponentEncryptionKey(s, secretStore)
@@ -1198,7 +1199,7 @@ func (a *DaprRuntime) initState(s components_v1alpha1.Component) error {
 				}
 			}
 		}
-
+		//将用户填写的spec.metadata 中包含{uuid}的键值对 转换成属性
 		props := a.convertMetadataItemsToProperties(s.Spec.Metadata)
 		err = store.Init(state.Metadata{
 			Properties: props,
@@ -2028,7 +2029,7 @@ func (a *DaprRuntime) processComponentSecrets(component components_v1alpha1.Comp
 			continue
 		}
 
-		secretStoreName := a.authSecretStoreOrDefault(component)
+		secretStoreName := a.authSecretStoreOrDefault(component) // 获取存储
 		secretStore := a.getSecretStore(secretStoreName)
 		if secretStore == nil {
 			log.Warnf("component %s references a secret store that isn't loaded: %s", component.Name, secretStoreName)
@@ -2230,7 +2231,7 @@ func (a *DaprRuntime) initSecretStore(c components_v1alpha1.Component) error {
 	diag.DefaultMonitoring.ComponentInitialized(c.Spec.Type)
 	return nil
 }
-
+//将用户填写的spec.metadata 中包含{uuid}的键值对 转换成属性
 func (a *DaprRuntime) convertMetadataItemsToProperties(items []components_v1alpha1.MetadataItem) map[string]string {
 	properties := map[string]string{}
 	for _, c := range items {

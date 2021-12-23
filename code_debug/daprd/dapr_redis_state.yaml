@@ -6,7 +6,7 @@
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  name: statestore
+  name: redis-statestore
   namespace: mesoid
 spec:
   type: state.redis
@@ -19,6 +19,12 @@ spec:
       value: "1234"
     - name: actorStateStore
       value: true
+auth:
+  secretStore: "auth"
+
+
+
+
 ---
 apiVersion: v1
 kind: ConfigMap

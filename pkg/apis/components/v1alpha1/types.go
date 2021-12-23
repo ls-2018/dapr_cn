@@ -18,9 +18,9 @@ import (
 
 // Component dapr组件的描述
 type Component struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta `json:",inline"` // 这两个字段是k8s资源自己定义的
 	// +optional
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`// 这两个字段是k8s资源自己定义的
 	// +optional
 	Spec ComponentSpec `json:"spec,omitempty"`
 	// +optional
@@ -29,13 +29,13 @@ type Component struct {
 	Scopes []string `json:"scopes,omitempty"`
 }
 
-// ComponentSpec is the spec for a component.
+// ComponentSpec 组件的定义
 type ComponentSpec struct {
-	Type    string `json:"type"`
-	Version string `json:"version"`
+	Type    string `json:"type"` // 组件类型，   :   大类型.组件实现
+	Version string `json:"version"` // 版本
 	// +optional
 	IgnoreErrors bool           `json:"ignoreErrors"`
-	Metadata     []MetadataItem `json:"metadata"`
+	Metadata     []MetadataItem `json:"metadata"` // 用户自己设置的键值对,可以引用k8s里secret的值
 	// +optional
 	InitTimeout string `json:"initTimeout"`
 }
@@ -46,10 +46,10 @@ type MetadataItem struct {
 	// +optional
 	Value DynamicValue `json:"value,omitempty"`
 	// +optional
-	SecretKeyRef SecretKeyRef `json:"secretKeyRef,omitempty"`
+	SecretKeyRef SecretKeyRef `json:"secretKeyRef,omitempty"`  // k8s中的引用对象
 }
 
-// SecretKeyRef is a reference to a secret holding the value for the metadata item. Name is the secret name, and key is the field in the secret.
+// SecretKeyRef 是对持有元数据项值的秘密的引用。Name是秘密的名称，key是秘密中的字段。
 type SecretKeyRef struct {
 	Name string `json:"name"`
 	Key  string `json:"key"`

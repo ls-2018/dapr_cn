@@ -141,6 +141,13 @@ zfCt2fhdjXEK2GGEMAIhAKi0GsyI5b2hkrUkIEZm1kTLbeuw0GIguSvW89yUkXbT
 	os.Setenv("NAMESPACE", nameSpace)
 	os.Setenv("SENTRY_LOCAL_IDENTITY", nameSpace+":default") // 用于验证 token 是不是这个sa的,注入的时候指定的
 	*auth.GetKubeTknPath() = "/tmp/token"
+
+	command = exec.Command("zsh", "-c", "kubectl port-forward svc/dapr-redis-svc -n "+nameSpace+" 45454:45454 &")
+	err = command.Run()
+	if err != nil {
+		panic(err)
+	}
+
 }
 
 // GetK8s 此处改用加载本地配置文件 ~/.kube/config
@@ -192,7 +199,8 @@ func UpdateHosts(domain string) {
 	if err != nil {
 		panic(err)
 	}
-	change := string(file) + "\n\n\n\n127.0.0.1                    " + domain + "\n"
+	change := string(file) + "\n127.0.0.1                    " + domain + "\n"
+	change += "\n127.0.0.1                    " + "dapr-redis-svc" + "\n"
 	err = ioutil.WriteFile("/etc/hosts", []byte(change), 777)
 	if err != nil {
 		panic(err)
