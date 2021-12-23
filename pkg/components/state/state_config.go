@@ -45,13 +45,13 @@ func SaveStateConfiguration(storeName string, metadata map[string]string) error 
 	statesConfiguration[storeName] = &StoreConfiguration{keyPrefixStrategy: strategy}
 	return nil
 }
-
+//GetModifiedStateKey 获取修改后的状态键
 func GetModifiedStateKey(key, storeName, appID string) (string, error) {
 	if err := checkKeyIllegal(key); err != nil {
 		return "", err
 	}
-	stateConfiguration := getStateConfiguration(storeName)
-	switch stateConfiguration.keyPrefixStrategy {
+	stateConfiguration := getStateConfiguration(storeName) // 从全局对象中获取的
+	switch stateConfiguration.keyPrefixStrategy { // appid
 	case strategyNone:
 		return key, nil
 	case strategyStoreName:
@@ -83,7 +83,7 @@ func getStateConfiguration(storeName string) *StoreConfiguration {
 
 	return c
 }
-
+// 检查包不包含 ||
 func checkKeyIllegal(key string) error {
 	if strings.Contains(key, daprSeparator) {
 		return errors.Errorf("input key/keyPrefix '%s' can't contain '%s'", key, daprSeparator)

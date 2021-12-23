@@ -101,7 +101,7 @@ const (
 	secretStoreNameParam = "secretStoreName"
 	secretNameParam      = "key"
 	nameParam            = "name"
-	consistencyParam     = "consistency"
+	consistencyParam     = "consistency" // 一致性
 	concurrencyParam     = "concurrency"
 	pubsubnameparam      = "pubsubname"
 	traceparentHeader    = "traceparent"
@@ -588,12 +588,12 @@ func (a *api) onGetState(reqCtx *fasthttp.RequestCtx) {
 		log.Debug(err)
 		return
 	}
-
+	// 获取url query param 中的数据
 	metadata := getMetadataFromRequest(reqCtx)
 
-	key := reqCtx.UserValue(stateKeyParam).(string)
-	consistency := string(reqCtx.QueryArgs().Peek(consistencyParam))
-	k, err := state_loader.GetModifiedStateKey(key, storeName, a.id)
+	key := reqCtx.UserValue(stateKeyParam).(string) // 获取查询的key
+	consistency := string(reqCtx.QueryArgs().Peek(consistencyParam)) // 一致性
+	k, err := state_loader.GetModifiedStateKey(key, storeName, a.id) // 应用ID
 	if err != nil {
 		msg := NewErrorResponse("ERR_MALFORMED_REQUEST", fmt.Sprintf(messages.ErrMalformedRequest, err))
 		respond(reqCtx, withError(fasthttp.StatusBadRequest, msg))
@@ -1487,6 +1487,7 @@ func (a *api) onGetOutboundHealthz(reqCtx *fasthttp.RequestCtx) {
 	}
 }
 
+//
 func getMetadataFromRequest(reqCtx *fasthttp.RequestCtx) map[string]string {
 	metadata := map[string]string{}
 	reqCtx.QueryArgs().VisitAll(func(key []byte, value []byte) {

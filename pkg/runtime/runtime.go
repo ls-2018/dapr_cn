@@ -158,7 +158,7 @@ type DaprRuntime struct {
 	json                   jsoniter.API
 	httpMiddlewareRegistry http_middleware_loader.Registry // 中间件工厂map
 	hostAddress            string
-	actorStateStoreName    string
+	actorStateStoreName    string // 将yaml中设置了actorStateStore 保存到这里，【名字】
 	actorStateStoreCount   int
 	authenticator          security.Authenticator
 	namespace              string
@@ -1174,6 +1174,7 @@ func (a *DaprRuntime) initConfiguration(s components_v1alpha1.Component) error {
 // 请参考状态存储api的决定  https://github.com/dapr/dapr/blob/master/docs/decision_records/api/API-008-multi-state-store-api-design.md
 func (a *DaprRuntime) initState(s components_v1alpha1.Component) error {
 	// 调用 github.com/dapr/components-contrib/state.Store 里的构造函数
+	//todo  keyPrefix
 	store, err := a.stateStoreRegistry.Create(s.Spec.Type, s.Spec.Version) // 也没干什么事，就是封装
 	if err != nil {
 		log.Warnf("error creating state store %s (%s/%s): %s", s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, err)
@@ -1218,7 +1219,7 @@ func (a *DaprRuntime) initState(s components_v1alpha1.Component) error {
 			return err
 		}
 
-		// set specified actor store if "actorStateStore" is true in the spec.
+		// 如果 "actorStateStore "在yaml中为真，则设置指定的角色存储。
 		actorStoreSpecified := props[actorStateStore]
 		if actorStoreSpecified == "true" {
 			if a.actorStateStoreCount++; a.actorStateStoreCount == 1 {
@@ -1229,7 +1230,7 @@ func (a *DaprRuntime) initState(s components_v1alpha1.Component) error {
 	}
 
 	if a.hostingActors() && (a.actorStateStoreName == "" || a.actorStateStoreCount != 1) {
-		log.Warnf("either no actor state store or multiple actor state stores are specified in the configuration, actor stores specified: %d", a.actorStateStoreCount)
+		log.Warnf("在配置中没有指定行为体状态存储或多个行为体状态存储，则指定的行为体存储为: %d", a.actorStateStoreCount)
 	}
 
 	return nil
@@ -1867,10 +1868,10 @@ func (a *DaprRuntime) processComponentAndDependents(comp components_v1alpha1.Com
 			return err
 		}
 	case <-time.After(timeout):
-		return fmt.Errorf("init timeout for component %s exceeded after %s", comp.Name, timeout.String())
+		return fmt.Errorf("组件的初始超时 %s 超过了 %s", comp.Name, timeout.String())
 	}
 
-	log.Infof("component loaded. name: %s, type: %s/%s", comp.ObjectMeta.Name, comp.Spec.Type, comp.Spec.Version)
+	log.Infof("组件加载完成. name: %s, type: %s/%s", comp.ObjectMeta.Name, comp.Spec.Type, comp.Spec.Version)
 	a.appendOrReplaceComponents(comp)
 	// 记录指标
 	diag.DefaultMonitoring.ComponentLoaded()
