@@ -100,7 +100,8 @@ zfCt2fhdjXEK2GGEMAIhAKi0GsyI5b2hkrUkIEZm1kTLbeuw0GIguSvW89yUkXbT
 	// kubectl -n mesoid exec -it pod/etcd-0 -- cat /var/run/secrets/kubernetes.io/serviceaccount/token
 
 	taskId := "61c2cb20562850d49d47d1c7"
-	*appID = "remote"
+	//
+	*appID = "dp-61c2cb20562850d49d47d1c7-executorapp"
 
 	command = exec.Command("zsh", "-c", "kubectl port-forward svc/dp-"+taskId+"-executorapp-dapr -n "+nameSpace+" 50001:50001 &")
 	err = command.Run()

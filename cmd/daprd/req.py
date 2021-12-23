@@ -8,8 +8,8 @@ dapr_url = "http://localhost:3500/v1.0/invoke/dp-61c2cb20562850d49d47d1c7-execut
 
 # dapr_url = "http://localhost:3500/v1.0/healthz"
 
-res = requests.post(dapr_url, json.dumps({'a': random.random() * 1000}))
-# res = requests.get(dapr_url, )
+# res = requests.post(dapr_url, json.dumps({'a': random.random() * 1000}))
+res = requests.get(dapr_url, )
 print(res.text)
 print(res.status_code)
 # INFO[0000] GET----/v1.0/state/{storeName}/{key}

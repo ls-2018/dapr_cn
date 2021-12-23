@@ -90,7 +90,7 @@ func NewDirectMessaging(
 		resolver:            resolver,
 		tracingSpec:         tracingSpec,
 		hostAddress:         hAddr,
-		hostName:            hName,
+		hostName:            hName + ".cluster.local",// myself
 		maxRequestBodySize:  maxRequestBodySize,
 		proxy:               proxy,
 		readBufferSize:      readBufferSize,
@@ -161,6 +161,7 @@ func (d *directMessaging) invokeWithRetry(
 	}
 	return nil, errors.Errorf("调用远端应用失败 %s 重试次数 %v", app.id, numRetries)
 }
+
 // 直接调用本地代理的服务
 func (d *directMessaging) invokeLocal(ctx context.Context, req *invokev1.InvokeMethodRequest) (*invokev1.InvokeMethodResponse, error) {
 	if d.appChannel == nil {
@@ -187,13 +188,14 @@ func (d *directMessaging) invokeRemote(ctx context.Context, appID, namespace, ap
 	ctx = d.setContextSpan(ctx)
 	//在元数据中添加转发的头信息
 	d.addForwardedHeadersToMetadata(req)
-	d.addDestinationAppIDHeaderToMetadata(appID, req)
+	d.addDestinationAppIDHeaderToMetadata(appID, req) // 将目标应用ID 添加到header
 
 	clientV1 := internalv1pb.NewServiceInvocationClient(conn)
 
 	var opts []grpc.CallOption
+	// 最大接收的消息大小，最大发送的消息大小
+	// pkg/runtime/cli.go:188
 	opts = append(opts, grpc.MaxCallRecvMsgSize(d.maxRequestBodySize*1024*1024), grpc.MaxCallSendMsgSize(d.maxRequestBodySize*1024*1024))
-
 	resp, err := clientV1.CallLocal(ctx, req.Proto(), opts...)
 	if err != nil {
 		return nil, err
@@ -207,6 +209,7 @@ func (d *directMessaging) addDestinationAppIDHeaderToMetadata(appID string, req 
 		Values: []string{appID},
 	}
 }
+
 //在元数据中添加转发的头信息
 func (d *directMessaging) addForwardedHeadersToMetadata(req *invokev1.InvokeMethodRequest) {
 	metadata := req.Metadata()
@@ -235,7 +238,7 @@ func (d *directMessaging) addForwardedHeadersToMetadata(req *invokev1.InvokeMeth
 		addOrCreate(fasthttp.HeaderXForwardedHost, d.hostName)
 		forwardedHeaderValue += "host=" + d.hostName
 	}
-
+	//for=10.10.16.232;by=10.10.16.232;host=liushuodeMacBook-Pro.local   //  发起方、代理方、代理方主机名
 	// Add Forwarded header: https://tools.ietf.org/html/rfc7239
 	addOrCreate(fasthttp.HeaderForwarded, forwardedHeaderValue)
 }

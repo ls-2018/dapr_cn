@@ -57,7 +57,7 @@ const (
 	ErrBulkSecretGet            = "failed getting secrets from secret store %s: %s"
 
 	// DirectMessaging.
-	ErrDirectInvoke         = "fail to invoke, id: %s, err: %s"
+	ErrDirectInvoke         = "调用失败, APP id: %s, err: %s"
 	ErrDirectInvokeNoAppID  = "无法从url 或header中获取 dapr-app-id"
 	ErrDirectInvokeMethod   = "无效的方法名"
 	ErrDirectInvokeNotReady = "调用的API未就绪"

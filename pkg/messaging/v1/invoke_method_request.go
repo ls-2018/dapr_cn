@@ -140,7 +140,7 @@ func (imr *InvokeMethodRequest) Metadata() DaprInternalMetadata {
 	return imr.r.GetMetadata()
 }
 
-// Proto returns InternalInvokeRequest Proto object.
+// Proto 返回 InternalInvokeRequest Proto 对象。
 func (imr *InvokeMethodRequest) Proto() *internalv1pb.InternalInvokeRequest {
 	return imr.r
 }
