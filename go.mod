@@ -62,6 +62,7 @@ require (
 
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
+	github.com/mitchellh/go-ps v1.0.0
 	go.uber.org/ratelimit v0.2.0
 )
 
@@ -230,6 +231,7 @@ require (
 	github.com/tklauser/numcpus v0.2.2 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/vmware/vmware-go-kcl v0.0.0-20191104173950-b6c74c3fe74e // indirect
+	github.com/weaveworks/procspy v0.0.0-20150706124340-cb970aa190c3 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.0.2 // indirect
 	github.com/xdg-go/stringprep v1.0.2 // indirect
@@ -281,6 +283,7 @@ require (
 )
 
 replace (
+	github.com/dapr/components-contrib => ../components_contrib_cn
 	gopkg.in/couchbaselabs/gocbconnstr.v1 => github.com/couchbaselabs/gocbconnstr v1.0.5
 	k8s.io/client => github.com/kubernetes-client/go v0.0.0-20190928040339-c757968c4c36
 )

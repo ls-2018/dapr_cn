@@ -17,8 +17,29 @@ spec:
       value: "dapr-redis-svc:45454"
     - name: redisPassword
       value: "1234"
+
+#    -name: redisUsername
+#    -name: redisDB
+#    -name: redisType
+#    -name: redisMaxRetries
+#    -name: redisMinRetryInterval
+#    -name: redisMaxRetryInterval
+#    -name: writeTimeout
+#    -name: readTimeout
+#    -name: dialTimeout
+#    -name: poolSize
+#    -name: minIdleConns
+#    -name: maxConnAge
+#    -name: poolTimeout
+#    -name: idleTimeout
+#    -name: idleCheckFrequency
+#    -name: sentinelMasterName
+#    -name: failover
+#    -name: enableTLS
+
     - name: actorStateStore
       value: true
+#       default 3
 auth:
   secretStore: "auth"
 

@@ -1203,10 +1203,10 @@ func (a *DaprRuntime) initState(s components_v1alpha1.Component) error {
 		props := a.convertMetadataItemsToProperties(s.Spec.Metadata)
 		err = store.Init(state.Metadata{
 			Properties: props,
-		})
+		}) // 建立连接
 		if err != nil {
 			diag.DefaultMonitoring.ComponentInitFailed(s.Spec.Type, "init")
-			log.Warnf("error initializing state store %s (%s/%s): %s", s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, err)
+			log.Warnf("初始化状态存储的错误 %s (%s/%s): %s", s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, err)
 			return err
 		}
 
@@ -1214,7 +1214,7 @@ func (a *DaprRuntime) initState(s components_v1alpha1.Component) error {
 		err = state_loader.SaveStateConfiguration(s.ObjectMeta.Name, props)
 		if err != nil {
 			diag.DefaultMonitoring.ComponentInitFailed(s.Spec.Type, "init")
-			log.Warnf("error save state keyprefix: %s", err.Error())
+			log.Warnf("错误保存状态keyprefix: %s", err.Error())
 			return err
 		}
 
@@ -1743,7 +1743,7 @@ func (a *DaprRuntime) loadComponents(opts *runtimeOpts) error {
 		return errors.Errorf("components loader for mode %s not found", a.runtimeConfig.Mode)
 	}
 
-	log.Info("loading components")
+	log.Info("加载组件中")
 	comps, err := loader.LoadComponents()
 	if err != nil {
 		return err
@@ -1837,7 +1837,7 @@ go processComponents(){
 */
 
 func (a *DaprRuntime) processComponentAndDependents(comp components_v1alpha1.Component) error {
-	log.Debugf("loading component. name: %s, type: %s/%s", comp.ObjectMeta.Name, comp.Spec.Type, comp.Spec.Version)
+	log.Debugf("开始加载组件. name: %s, type: %s/%s", comp.ObjectMeta.Name, comp.Spec.Type, comp.Spec.Version)
 	res := a.preprocessOneComponent(&comp) // 预处理组件,demo中组件没有元信息;故对此处没什么逻辑
 	if res.unreadyDependency != "" {
 		a.pendingComponentDependents[res.unreadyDependency] = append(a.pendingComponentDependents[res.unreadyDependency], comp)

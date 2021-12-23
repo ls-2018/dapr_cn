@@ -11,7 +11,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 )
 
 func PRE(
@@ -48,22 +50,12 @@ func PRE(
 
 	*daprHTTPMaxRequestSize = -1
 	*enableMTLS = true
-	command := exec.Command("zsh", "-c", "kubectl port-forward svc/dapr-api -n dapr-system 6500:80 &")
-	err := command.Run()
-	if err != nil {
-		panic(err)
-	}
-	command = exec.Command("zsh", "-c", "kubectl port-forward svc/dapr-sentry -n dapr-system 10080:80 &")
-	err = command.Run()
-	if err != nil {
-		panic(err)
-	}
-
-	command = exec.Command("zsh", "-c", "kubectl port-forward svc/dapr-placement-server -n dapr-system 50005:50005 &")
-	err = command.Run()
-	if err != nil {
-		panic(err)
-	}
+	KillProcess(6500)
+	go SubCommand([]string{"zsh", "-c", "kubectl port-forward svc/dapr-api -n dapr-system 6500:80"})
+	KillProcess(10080)
+	go SubCommand([]string{"zsh", "-c", "kubectl port-forward svc/dapr-sentry -n dapr-system 10080:80"})
+	KillProcess(50005)
+	go SubCommand([]string{"zsh", "-c", "kubectl port-forward svc/dapr-placement-server -n dapr-system 50005:50005 "})
 	// 以下证书，是从daprd的环境变量中截取的
 	crt := `-----BEGIN CERTIFICATE-----
 MIIBxTCCAWqgAwIBAgIQc55uyj2aQwZ44JcP0YBp7DAKBggqhkjOPQQDAjAxMRcw
@@ -103,26 +95,17 @@ zfCt2fhdjXEK2GGEMAIhAKi0GsyI5b2hkrUkIEZm1kTLbeuw0GIguSvW89yUkXbT
 	//
 	*appID = "dp-61c2cb20562850d49d47d1c7-executorapp"
 
-	command = exec.Command("zsh", "-c", "kubectl port-forward svc/dp-"+taskId+"-executorapp-dapr -n "+nameSpace+" 50001:50001 &")
-	err = command.Run()
-	if err != nil {
-		panic(err)
-	}
-
+	KillProcess(50001)
+	go SubCommand([]string{"zsh", "-c", "kubectl port-forward svc/dp-" + taskId + "-executorapp-dapr -n " + nameSpace + " 50001:50001 &"})
 	//*appID = "ls-demo"  // 不能包含.
 	UpdateHosts(fmt.Sprintf("dp-%s-executorapp-dapr.%s.svc.cluster.local", taskId, nameSpace))
 
-	command = exec.Command("zsh", "-c", fmt.Sprintf("kubectl -n %s get pods|grep worker |grep %s |grep Running|awk 'NR==1'|awk '{print $1}'", nameSpace, taskId))
+	command := exec.Command("zsh", "-c", fmt.Sprintf("kubectl -n %s get pods|grep worker |grep %s |grep Running|awk 'NR==1'|awk '{print $1}'", nameSpace, taskId))
 	podNameBytes, _ := command.CombinedOutput()
 	podName := strings.Trim(string(podNameBytes), "\n")
 
 	getToken := fmt.Sprintf("kubectl -n mesoid exec -it pod/%s -c worker-agent -- cat /var/run/secrets/kubernetes.io/serviceaccount/token > /tmp/token", podName)
-	fmt.Println(getToken)
-	command = exec.Command("zsh", "-c", getToken)
-	err = command.Run()
-	if err != nil {
-		panic(err)
-	}
+	go SubCommand([]string{"zsh", "-c", getToken})
 	os.Setenv("DAPR_CERT_CHAIN", crt)
 	os.Setenv("DAPR_CERT_KEY", key)
 	//ca
@@ -141,13 +124,9 @@ zfCt2fhdjXEK2GGEMAIhAKi0GsyI5b2hkrUkIEZm1kTLbeuw0GIguSvW89yUkXbT
 	os.Setenv("NAMESPACE", nameSpace)
 	os.Setenv("SENTRY_LOCAL_IDENTITY", nameSpace+":default") // 用于验证 token 是不是这个sa的,注入的时候指定的
 	*auth.GetKubeTknPath() = "/tmp/token"
-
-	command = exec.Command("zsh", "-c", "kubectl port-forward svc/dapr-redis-svc -n "+nameSpace+" 45454:45454 &")
-	err = command.Run()
-	if err != nil {
-		panic(err)
-	}
-
+	KillProcess(45454)
+	go SubCommand([]string{"zsh", "-c", "kubectl port-forward svc/dapr-redis-svc -n " + nameSpace + " 45454:45454"})
+	time.Sleep(time.Second * 2)
 }
 
 // GetK8s 此处改用加载本地配置文件 ~/.kube/config
@@ -204,5 +183,33 @@ func UpdateHosts(domain string) {
 	err = ioutil.WriteFile("/etc/hosts", []byte(change), 777)
 	if err != nil {
 		panic(err)
+	}
+}
+
+func KillProcess(port int) {
+	command := exec.Command("zsh", "-c", "kill-port.sh "+strconv.Itoa(port))
+	err := command.Run()
+	if err != nil {
+		panic(err)
+	}
+}
+
+func SubCommand(opt []string) {
+	cmd := exec.Command(opt[0], opt[1:]...)
+	stdout, err := cmd.StdoutPipe()
+	cmd.Stderr = cmd.Stdout
+	if err != nil {
+		panic(err)
+	}
+	if err = cmd.Start(); err != nil {
+		panic(err)
+	}
+	for {
+		tmp := make([]byte, 1024)
+		_, err := stdout.Read(tmp)
+		fmt.Print(string(tmp))
+		if err != nil {
+			break
+		}
 	}
 }

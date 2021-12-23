@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
-	"os"
+	"os/exec"
 )
 
 func main() {
-	os.Setenv("A","123")
-	b:=[]byte(`"${A}"XZXC`)
-	b = []byte(os.ExpandEnv(string(b)))
-	fmt.Println(string(b),"---")
+	x()
+}
+
+func x() {
+	out, _ := exec.Command( "zsh","-c","which kill-port.sh").CombinedOutput()
+	fmt.Println(string(out))
 }

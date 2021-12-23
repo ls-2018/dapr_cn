@@ -22,25 +22,26 @@ const (
 
 	daprSeparator = "||"
 )
-
+// 全局对象   ，存储实例
 var statesConfiguration = map[string]*StoreConfiguration{}
 
 type StoreConfiguration struct {
-	keyPrefixStrategy string
+	keyPrefixStrategy string // k,v存储 , 默认给key 添加一个前缀
 }
 
+// SaveStateConfiguration 保存状态配置
 func SaveStateConfiguration(storeName string, metadata map[string]string) error {
-	strategy := metadata[strategyKey]
+	strategy := metadata[strategyKey] // keyPrefix
 	strategy = strings.ToLower(strategy)
 	if strategy == "" {
-		strategy = strategyDefault
+		strategy = strategyDefault // appid
 	} else {
 		err := checkKeyIllegal(metadata[strategyKey])
 		if err != nil {
 			return err
 		}
 	}
-
+	//                   redis-statestore
 	statesConfiguration[storeName] = &StoreConfiguration{keyPrefixStrategy: strategy}
 	return nil
 }
