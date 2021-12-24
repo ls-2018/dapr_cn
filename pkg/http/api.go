@@ -1509,7 +1509,7 @@ func getMetadataFromRequest(reqCtx *fasthttp.RequestCtx) map[string]string {
 
 	return metadata
 }
-
+//ok
 func (a *api) onPostStateTransaction(reqCtx *fasthttp.RequestCtx) {
 	if a.stateStores == nil || len(a.stateStores) == 0 {
 		msg := NewErrorResponse("ERR_STATE_STORES_NOT_CONFIGURED", messages.ErrStateStoresNotConfigured)
@@ -1642,7 +1642,7 @@ func (a *api) onQueryState(reqCtx *fasthttp.RequestCtx) {
 		// error has been already logged
 		return
 	}
-
+	// 判断该接口是否实现了query
 	querier, ok := store.(state.Querier)
 	if !ok {
 		msg := NewErrorResponse("ERR_METHOD_NOT_FOUND", fmt.Sprintf(messages.ErrNotFound, "Query"))

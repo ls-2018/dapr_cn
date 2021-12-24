@@ -54,6 +54,19 @@ import requests
 #     # }
 # })).text)
 # print(requests.get('http://localhost:3500/v1.0/state/redis-statestore/a').text)
-print(requests.post('http://localhost:3500/v1.0-alpha1/state/redis-statestore/query',json.dumps(
-
+print(requests.post('http://localhost:3500/v1.0-alpha1/state/redis-statestore/query', json.dumps(
+    {
+        'query': {
+            'filters': {
+            },
+            'sort': [{
+                'key': "",
+                "order": ""
+            }],
+            'page': {
+                "limit": 1,
+                'token': ""
+            }
+        }
+    }
 )))
