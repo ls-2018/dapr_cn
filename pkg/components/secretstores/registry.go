@@ -55,7 +55,7 @@ func (s *secretStoreRegistry) Register(components ...SecretStore) {
 	}
 }
 
-// Create instantiates a secret store based on `name`.
+// Create 基于' name '实例化一个秘密存储。
 func (s *secretStoreRegistry) Create(name, version string) (secretstores.SecretStore, error) {
 	if method, ok := s.getSecretStore(name, version); ok {
 		return method(), nil

@@ -286,7 +286,7 @@ func (s *server) getGRPCServer() (*grpc_go.Server, error) {
 }
 
 func (s *server) startWorkloadCertRotation() {
-	s.logger.Infof("starting workload cert expiry watcher. current cert expires on: %s", s.signedCert.Expiry.String())
+	s.logger.Infof("启动证书过期监视器，当前证书的过期时间: %s", s.signedCert.Expiry.String())
 	// 每隔3秒判断一次
 	//	allowedClockSkew = time.Minute * 10 时钟偏移
 	//	workloadCertTTL = time.Hour * 10  证书的有效期 + allowedClockSkew

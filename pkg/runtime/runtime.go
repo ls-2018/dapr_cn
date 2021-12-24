@@ -2213,7 +2213,7 @@ func (a *DaprRuntime) initSecretStore(c components_v1alpha1.Component) error {
 	// 会调用组件注册时，配置的工厂函数
 	secretStore, err := a.secretStoresRegistry.Create(c.Spec.Type, c.Spec.Version) // secretstores.kubernetes  v1
 	if err != nil {
-		log.Warnf("failed to create secret store %s/%s: %s", c.Spec.Type, c.Spec.Version, err)
+		log.Warnf("未能创建秘密存储 %s/%s: %s", c.Spec.Type, c.Spec.Version, err)
 		diag.DefaultMonitoring.ComponentInitFailed(c.Spec.Type, "creation")
 		return err
 	}
@@ -2222,7 +2222,7 @@ func (a *DaprRuntime) initSecretStore(c components_v1alpha1.Component) error {
 		Properties: a.convertMetadataItemsToProperties(c.Spec.Metadata),
 	})
 	if err != nil {
-		log.Warnf("failed to init secret store %s/%s named %s: %s", c.Spec.Type, c.Spec.Version, c.ObjectMeta.Name, err)
+		log.Warnf("初始化秘密存储失败 %s/%s named %s: %s", c.Spec.Type, c.Spec.Version, c.ObjectMeta.Name, err)
 		diag.DefaultMonitoring.ComponentInitFailed(c.Spec.Type, "init")
 		return err
 	}
