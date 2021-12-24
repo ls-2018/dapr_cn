@@ -17,6 +17,8 @@ spec:
       value: "dapr-redis-svc:45454"
     - name: redisPassword
       value: "1234"
+    - name: keyPrefix
+      value: "{uuid}"
 
 #    -name: redisUsername
 #    -name: redisDB

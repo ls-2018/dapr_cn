@@ -28,7 +28,7 @@ func AddEncryptedStateStore(storeName string, keys ComponentEncryptionKeys) bool
 	return true
 }
 
-// EncryptedStateStore returns a bool that indicates if a state stores supports encryption.
+// EncryptedStateStore 返回一个表示状态存储是否支持加密的bool。
 func EncryptedStateStore(storeName string) bool {
 	_, ok := encryptedStateStores[storeName]
 	return ok

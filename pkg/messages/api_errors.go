@@ -3,16 +3,16 @@ package messages
 const (
 	// Http.
 	ErrNotFound             = "method %q is 没有发现"
-	ErrMalformedRequest     = "failed 反序列化 HTTP body: %s"
+	ErrMalformedRequest     = "反序列化 HTTP body失败: %s"
 	ErrMalformedRequestData = "can't 序列化 request data field: %s"
 
 	// State.
-	ErrStateStoresNotConfigured = "state store is 没有配置"
-	ErrStateStoreNotFound       = "state store %s 没有发现"
+	ErrStateStoresNotConfigured = "状态存储 is 没有配置"
+	ErrStateStoreNotFound       = "状态存储 %s 没有发现"
 	ErrStateGet                 = "fail to get %s from state store %s: %s"
-	ErrStateDelete              = "failed deleting state with key %s: %s"
-	ErrStateSave                = "failed saving state in state store %s: %s"
-	ErrStateQuery               = "failed query in state store %s: %s"
+	ErrStateDelete              = "失败的删除状态与键 %s: %s"
+	ErrStateSave                = "在状态存储器中保存状态失败 %s: %s"
+	ErrStateQuery               = "在状态存储中查询失败 %s: %s"
 
 	// StateTransaction.
 	ErrStateStoreNotSupported     = "state store %s doesn't support transaction"

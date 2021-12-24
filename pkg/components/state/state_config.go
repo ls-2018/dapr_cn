@@ -22,6 +22,7 @@ const (
 
 	daprSeparator = "||"
 )
+
 // 全局对象   ，存储实例
 var statesConfiguration = map[string]*StoreConfiguration{}
 
@@ -45,18 +46,19 @@ func SaveStateConfiguration(storeName string, metadata map[string]string) error 
 	statesConfiguration[storeName] = &StoreConfiguration{keyPrefixStrategy: strategy}
 	return nil
 }
+
 //GetModifiedStateKey 获取修改后的状态键
 func GetModifiedStateKey(key, storeName, appID string) (string, error) {
 	if err := checkKeyIllegal(key); err != nil {
 		return "", err
 	}
 	stateConfiguration := getStateConfiguration(storeName) // 从全局对象中获取的
-	switch stateConfiguration.keyPrefixStrategy { // appid
-	case strategyNone:
+	switch stateConfiguration.keyPrefixStrategy {          // appid
+	case strategyNone: // none
 		return key, nil
-	case strategyStoreName:
-		return fmt.Sprintf("%s%s%s", storeName, daprSeparator, key), nil
-	case strategyAppid:
+	case strategyStoreName: // name
+		return fmt.Sprintf("%s%s%s", storeName, daprSeparator, key), nil // x||key
+	case strategyAppid: // appid ，默认是此值
 		if appID == "" {
 			return key, nil
 		}
@@ -83,6 +85,7 @@ func getStateConfiguration(storeName string) *StoreConfiguration {
 
 	return c
 }
+
 // 检查包不包含 ||
 func checkKeyIllegal(key string) error {
 	if strings.Contains(key, daprSeparator) {

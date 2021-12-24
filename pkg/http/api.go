@@ -561,7 +561,7 @@ func (a *api) onBulkGetState(reqCtx *fasthttp.RequestCtx) {
 	b, _ := a.json.Marshal(bulkResp)
 	respond(reqCtx, withJSON(fasthttp.StatusOK, b))
 }
-
+// 获取 存储实例、以及实例名称
 func (a *api) getStateStoreWithRequestValidation(reqCtx *fasthttp.RequestCtx) (state.Store, string, error) {
 	// 必须已应有组件声明
 	if a.stateStores == nil || len(a.stateStores) == 0 {
@@ -799,7 +799,7 @@ func (a *api) onPostState(reqCtx *fasthttp.RequestCtx) {
 		return
 	}
 
-	reqs := []state.SetRequest{}
+	var reqs []state.SetRequest
 	err = a.json.Unmarshal(reqCtx.PostBody(), &reqs)
 	if err != nil {
 		msg := NewErrorResponse("ERR_MALFORMED_REQUEST", err.Error())
@@ -813,14 +813,14 @@ func (a *api) onPostState(reqCtx *fasthttp.RequestCtx) {
 	}
 
 	for i, r := range reqs {
-		reqs[i].Key, err = state_loader.GetModifiedStateKey(r.Key, storeName, a.id)
+		reqs[i].Key, err = state_loader.GetModifiedStateKey(r.Key, storeName, a.id)// 覆盖原来的key
 		if err != nil {
 			msg := NewErrorResponse("ERR_MALFORMED_REQUEST", err.Error())
 			respond(reqCtx, withError(fasthttp.StatusBadRequest, msg))
 			log.Debug(err)
 			return
 		}
-
+		// 判断存储实例 是否支持加密存储
 		if encryption.EncryptedStateStore(storeName) {
 			data := []byte(fmt.Sprintf("%v", r.Value))
 			val, encErr := encryption.TryEncryptValue(storeName, data)

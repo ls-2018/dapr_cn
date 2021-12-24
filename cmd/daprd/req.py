@@ -1,3 +1,5 @@
+import json
+
 import requests
 
 url = 'http://127.0.0.1:3001/post'
@@ -51,4 +53,20 @@ dapr_url = "http://localhost:3500/v1.0/invoke/dp-61c2cb20562850d49d47d1c7-execut
 # INFO[0000] *----/{method:*}
 
 
-print(requests.get('http://localhost:3500/v1.0/state/redis-statestore/b'))
+# print(requests.get('http://localhost:3500/v1.0/state/redis-statestore/b'))
+print(requests.post('http://localhost:3500/v1.0/state/redis-statestore', json.dumps(
+    [
+        {
+            "key": '1a',
+            'value': 1232,
+            'etag': "2",
+            # "metadata": {
+            #     "ttlInSeconds": "5"
+            # }
+        },
+        # {"key": 'a1', 'value': 4},
+        # {"key": 'a2', 'value': 2},
+        # {"key": 'a3', 'value': 3},
+    ]
+)).text)
+# print(requests.get('http://localhost:3500/v1.0/state/redis-statestore/1a').text)
