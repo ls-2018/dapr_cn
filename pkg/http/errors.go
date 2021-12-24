@@ -5,7 +5,7 @@
 
 package http
 
-// ErrorResponse is an HTTP response message sent back to calling clients by the Dapr Runtime HTTP API.
+// ErrorResponse 是一个由Dapr Runtime HTTP API发送回给调用客户的HTTP响应信息。
 type ErrorResponse struct {
 	ErrorCode string `json:"errorCode"`
 	Message   string `json:"message"`

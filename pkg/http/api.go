@@ -102,7 +102,7 @@ const (
 	secretNameParam      = "key"
 	nameParam            = "name"
 	consistencyParam     = "consistency" // 一致性
-	concurrencyParam     = "concurrency"
+	concurrencyParam     = "concurrency" // 并发
 	pubsubnameparam      = "pubsubname"
 	traceparentHeader    = "traceparent"
 	tracestateHeader     = "tracestate"
@@ -202,7 +202,7 @@ func (a *api) constructStateEndpoints() []Endpoint {
 			Methods: []string{fasthttp.MethodPost, fasthttp.MethodPut},
 			Route:   "state/{storeName}",
 			Version: apiVersionV1,
-			Handler: a.onPostState, // 更新、创建状态
+			Handler: a.onPostState, // 更新、创建状态; 同一个key只能创建一次
 		},
 		{
 			Methods: []string{fasthttp.MethodDelete},
@@ -561,6 +561,7 @@ func (a *api) onBulkGetState(reqCtx *fasthttp.RequestCtx) {
 	b, _ := a.json.Marshal(bulkResp)
 	respond(reqCtx, withJSON(fasthttp.StatusOK, b))
 }
+
 // 获取 存储实例、以及实例名称
 func (a *api) getStateStoreWithRequestValidation(reqCtx *fasthttp.RequestCtx) (state.Store, string, error) {
 	// 必须已应有组件声明
@@ -582,6 +583,7 @@ func (a *api) getStateStoreWithRequestValidation(reqCtx *fasthttp.RequestCtx) (s
 	return a.stateStores[storeName], storeName, nil
 }
 
+//ok
 func (a *api) onGetState(reqCtx *fasthttp.RequestCtx) {
 	store, storeName, err := a.getStateStoreWithRequestValidation(reqCtx)
 	if err != nil {
@@ -591,7 +593,7 @@ func (a *api) onGetState(reqCtx *fasthttp.RequestCtx) {
 	// 获取url query param 中的数据
 	metadata := getMetadataFromRequest(reqCtx)
 
-	key := reqCtx.UserValue(stateKeyParam).(string) // 获取查询的key
+	key := reqCtx.UserValue(stateKeyParam).(string)                  // 获取查询的key
 	consistency := string(reqCtx.QueryArgs().Peek(consistencyParam)) // 一致性
 	k, err := state_loader.GetModifiedStateKey(key, storeName, a.id) // 应用ID
 	if err != nil {
@@ -635,6 +637,7 @@ func (a *api) onGetState(reqCtx *fasthttp.RequestCtx) {
 	respond(reqCtx, withJSON(fasthttp.StatusOK, resp.Data), withEtag(resp.ETag), withMetadata(resp.Metadata))
 }
 
+//提取Etag ,从header中的If-Match 获取
 func extractEtag(reqCtx *fasthttp.RequestCtx) (bool, string) {
 	var etag string
 	var hasEtag bool
@@ -649,6 +652,7 @@ func extractEtag(reqCtx *fasthttp.RequestCtx) (bool, string) {
 	return hasEtag, etag
 }
 
+//ok
 func (a *api) onDeleteState(reqCtx *fasthttp.RequestCtx) {
 	store, storeName, err := a.getStateStoreWithRequestValidation(reqCtx)
 	if err != nil {
@@ -657,7 +661,8 @@ func (a *api) onDeleteState(reqCtx *fasthttp.RequestCtx) {
 	}
 
 	key := reqCtx.UserValue(stateKeyParam).(string)
-
+	//并发性
+	//一致性
 	concurrency := string(reqCtx.QueryArgs().Peek(concurrencyParam))
 	consistency := string(reqCtx.QueryArgs().Peek(consistencyParam))
 
@@ -677,7 +682,7 @@ func (a *api) onDeleteState(reqCtx *fasthttp.RequestCtx) {
 		},
 		Metadata: metadata,
 	}
-
+	// 从header中的If-Match 获取
 	exists, etag := extractEtag(reqCtx)
 	if exists {
 		req.ETag = &etag
@@ -685,7 +690,7 @@ func (a *api) onDeleteState(reqCtx *fasthttp.RequestCtx) {
 
 	err = store.Delete(&req)
 	if err != nil {
-		statusCode, errMsg, resp := a.stateErrorResponse(err, "ERR_STATE_DELETE")
+		statusCode, errMsg, resp := a.stateErrorResponse(err, "ERR_STATE_DELETE") // 从err中解析出状态码，消息，
 		resp.Message = fmt.Sprintf(messages.ErrStateDelete, key, errMsg)
 
 		respond(reqCtx, withError(statusCode, resp))
@@ -792,6 +797,7 @@ func (a *api) getSecretStoreWithRequestValidation(reqCtx *fasthttp.RequestCtx) (
 	return a.secretStores[secretStoreName], secretStoreName, nil
 }
 
+// 创建状态
 func (a *api) onPostState(reqCtx *fasthttp.RequestCtx) {
 	store, storeName, err := a.getStateStoreWithRequestValidation(reqCtx)
 	if err != nil {
@@ -813,7 +819,7 @@ func (a *api) onPostState(reqCtx *fasthttp.RequestCtx) {
 	}
 
 	for i, r := range reqs {
-		reqs[i].Key, err = state_loader.GetModifiedStateKey(r.Key, storeName, a.id)// 覆盖原来的key
+		reqs[i].Key, err = state_loader.GetModifiedStateKey(r.Key, storeName, a.id) // 覆盖原来的key
 		if err != nil {
 			msg := NewErrorResponse("ERR_MALFORMED_REQUEST", err.Error())
 			respond(reqCtx, withError(fasthttp.StatusBadRequest, msg))
@@ -852,7 +858,7 @@ func (a *api) onPostState(reqCtx *fasthttp.RequestCtx) {
 	respond(reqCtx, withEmpty())
 }
 
-// stateErrorResponse takes a state store error and returns a corresponding status code, error message and modified user error.
+// stateErrorResponse 接收一个状态存储错误，并返回相应的状态代码、错误信息和修改后的用户错误。
 func (a *api) stateErrorResponse(err error, errorCode string) (int, string, ErrorResponse) {
 	var message string
 	var code int
@@ -870,8 +876,7 @@ func (a *api) stateErrorResponse(err error, errorCode string) (int, string, Erro
 	return fasthttp.StatusInternalServerError, message, r
 }
 
-// etagError checks if the error from the state store is an etag error and returns a bool for indication,
-// an status code and an error message.
+// etagError 检查来自状态存储的错误是否是etag错误，并返回一个bool作为指示，一个状态代码和一个错误信息。
 func (a *api) etagError(err error) (bool, int, string) {
 	e, ok := err.(*state.ETagError)
 	if !ok {
