@@ -68,6 +68,7 @@ func GetModifiedStateKey(key, storeName, appID string) (string, error) {
 	}
 }
 
+// GetOriginalStateKey 获取dapr加工前的key
 func GetOriginalStateKey(modifiedStateKey string) string {
 	splits := strings.Split(modifiedStateKey, daprSeparator)
 	if len(splits) <= 1 {

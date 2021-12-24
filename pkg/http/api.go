@@ -446,6 +446,7 @@ func (a *api) onOutputBindingMessage(reqCtx *fasthttp.RequestCtx) {
 	}
 }
 
+// ok
 func (a *api) onBulkGetState(reqCtx *fasthttp.RequestCtx) {
 	store, storeName, err := a.getStateStoreWithRequestValidation(reqCtx)
 	if err != nil {
@@ -463,7 +464,7 @@ func (a *api) onBulkGetState(reqCtx *fasthttp.RequestCtx) {
 	}
 
 	metadata := getMetadataFromRequest(reqCtx)
-
+	// 返回结果
 	bulkResp := make([]BulkGetResponse, len(req.Keys))
 	if len(req.Keys) == 0 {
 		b, _ := a.json.Marshal(bulkResp)
@@ -471,8 +472,9 @@ func (a *api) onBulkGetState(reqCtx *fasthttp.RequestCtx) {
 		return
 	}
 
-	// try bulk get first
+	// 先试着批量获取
 	reqs := make([]state.GetRequest, len(req.Keys))
+	// 获取修改后的key
 	for i, k := range req.Keys {
 		key, err1 := state_loader.GetModifiedStateKey(k, storeName, a.id)
 		if err1 != nil {
@@ -487,10 +489,10 @@ func (a *api) onBulkGetState(reqCtx *fasthttp.RequestCtx) {
 		}
 		reqs[i] = r
 	}
-	bulkGet, responses, err := store.BulkGet(reqs)
+	bulkGet, responses, err := store.BulkGet(reqs) // bulkGet 判断是不是批量获取的
 
 	if bulkGet {
-		// if store supports bulk get
+		// 如果store支持批量获取
 		if err != nil {
 			msg := NewErrorResponse("ERR_MALFORMED_REQUEST", fmt.Sprintf(messages.ErrMalformedRequest, err))
 			respond(reqCtx, withError(fasthttp.StatusBadRequest, msg))
@@ -499,25 +501,27 @@ func (a *api) onBulkGetState(reqCtx *fasthttp.RequestCtx) {
 		}
 
 		for i := 0; i < len(responses) && i < len(req.Keys); i++ {
+			// 清理dapr设置的前缀
 			bulkResp[i].Key = state_loader.GetOriginalStateKey(responses[i].Key)
 			if responses[i].Error != "" {
-				log.Debugf("bulk get: error getting key %s: %s", bulkResp[i].Key, responses[i].Error)
+				log.Debugf("批量获取：获取key错误 %s: %s", bulkResp[i].Key, responses[i].Error)
 				bulkResp[i].Error = responses[i].Error
 			} else {
-				bulkResp[i].Data = jsoniter.RawMessage(responses[i].Data)
+				bulkResp[i].Data = jsoniter.RawMessage(responses[i].Data) // 类型转换
 				bulkResp[i].ETag = responses[i].ETag
 				bulkResp[i].Metadata = responses[i].Metadata
 			}
 		}
 	} else {
-		// if store doesn't support bulk get, fallback to call get() method one by one
-		limiter := concurrency.NewLimiter(req.Parallelism)
+		// 如果store不支持批量获取，则退而求其次，逐一调用get()方法。
+		limiter := concurrency.NewLimiter(req.Parallelism) // 并发器
 
 		for i, k := range req.Keys {
 			bulkResp[i].Key = k
 
 			fn := func(param interface{}) {
 				r := param.(*BulkGetResponse)
+				// 获取修改后的键值对
 				k, err := state_loader.GetModifiedStateKey(r.Key, storeName, a.id)
 				if err != nil {
 					log.Debug(err)
@@ -531,7 +535,7 @@ func (a *api) onBulkGetState(reqCtx *fasthttp.RequestCtx) {
 
 				resp, err := store.Get(gr)
 				if err != nil {
-					log.Debugf("bulk get: error getting key %s: %s", r.Key, err)
+					log.Debugf("批量获取：获取key错误  %s: %s", r.Key, err)
 					r.Error = err.Error()
 				} else if resp != nil {
 					r.Data = jsoniter.RawMessage(resp.Data)
@@ -549,7 +553,7 @@ func (a *api) onBulkGetState(reqCtx *fasthttp.RequestCtx) {
 		for i := range bulkResp {
 			val, err := encryption.TryDecryptValue(storeName, bulkResp[i].Data)
 			if err != nil {
-				log.Debugf("bulk get error: %s", err)
+				log.Debugf("批量获取错误: %s", err)
 				bulkResp[i].Error = err.Error()
 				continue
 			}
@@ -1492,7 +1496,7 @@ func (a *api) onGetOutboundHealthz(reqCtx *fasthttp.RequestCtx) {
 	}
 }
 
-//
+// 获取 请求的URL参数中以metadata.开头的
 func getMetadataFromRequest(reqCtx *fasthttp.RequestCtx) map[string]string {
 	metadata := map[string]string{}
 	reqCtx.QueryArgs().VisitAll(func(key []byte, value []byte) {
@@ -1522,7 +1526,7 @@ func (a *api) onPostStateTransaction(reqCtx *fasthttp.RequestCtx) {
 		log.Debug(msg)
 		return
 	}
-
+	//transactionalStateStores  ==  stateStores
 	transactionalStore, ok := a.transactionalStateStores[storeName]
 	if !ok {
 		msg := NewErrorResponse("ERR_STATE_STORE_NOT_SUPPORTED", fmt.Sprintf(messages.ErrStateStoreNotSupported, storeName))
@@ -1544,15 +1548,14 @@ func (a *api) onPostStateTransaction(reqCtx *fasthttp.RequestCtx) {
 		return
 	}
 
-	operations := []state.TransactionalStateOperation{}
+	var operations []state.TransactionalStateOperation
 	for _, o := range req.Operations {
 		switch o.Operation {
 		case state.Upsert:
 			var upsertReq state.SetRequest
 			err := mapstructure.Decode(o.Request, &upsertReq)
 			if err != nil {
-				msg := NewErrorResponse("ERR_MALFORMED_REQUEST",
-					fmt.Sprintf(messages.ErrMalformedRequest, err.Error()))
+				msg := NewErrorResponse("ERR_MALFORMED_REQUEST", fmt.Sprintf(messages.ErrMalformedRequest, err.Error()))
 				respond(reqCtx, withError(fasthttp.StatusBadRequest, msg))
 				log.Debug(msg)
 				return
@@ -1590,8 +1593,7 @@ func (a *api) onPostStateTransaction(reqCtx *fasthttp.RequestCtx) {
 				Operation: state.Delete,
 			})
 		default:
-			msg := NewErrorResponse(
-				"ERR_NOT_SUPPORTED_STATE_OPERATION",
+			msg := NewErrorResponse("ERR_NOT_SUPPORTED_STATE_OPERATION",
 				fmt.Sprintf(messages.ErrNotSupportedStateOperation, o.Operation))
 			respond(reqCtx, withError(fasthttp.StatusBadRequest, msg))
 			log.Debug(msg)

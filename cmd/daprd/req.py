@@ -52,21 +52,3 @@ dapr_url = "http://localhost:3500/v1.0/invoke/dp-61c2cb20562850d49d47d1c7-execut
 # INFO[0000] *----/v1.0/invoke/{id}/method/{method:*}
 # INFO[0000] *----/{method:*}
 
-
-# print(requests.get('http://localhost:3500/v1.0/state/redis-statestore/b'))
-# print(requests.post('http://localhost:3500/v1.0/state/redis-statestore', json.dumps(
-#     [
-#         {
-#             "key": '1a',
-#             'value': 1232,
-#             'etag': "2",
-#             # "metadata": {
-#             #     "ttlInSeconds": "5"
-#             # }
-#         },
-#     ]
-# )).text)
-# print(requests.get('http://localhost:3500/v1.0/state/redis-statestore/1a').text)
-# If-Match 如果设置了必须与存储的版本一致
-# print(requests.delete('http://localhost:3500/v1.0/state/redis-statestore/1a', headers={"If-Match": "444"}))
-print(requests.post('http://localhost:3500/v1.0/state/redis-statestore/bulk', headers={"If-Match": "444"}))

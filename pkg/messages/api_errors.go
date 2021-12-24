@@ -15,9 +15,9 @@ const (
 	ErrStateQuery               = "在状态存储中查询失败 %s: %s"
 
 	// StateTransaction.
-	ErrStateStoreNotSupported     = "state store %s doesn't support transaction"
-	ErrNotSupportedStateOperation = "operation type %s not supported"
-	ErrStateTransaction           = "error while executing state transaction: %s"
+	ErrStateStoreNotSupported     = "状态存储 【%s】 不支持事务"
+	ErrNotSupportedStateOperation = "操作 【%s】 不支持"
+	ErrStateTransaction           = "执行状态存储事务时产生了错误: %s"
 
 	// Binding.
 	ErrInvokeOutputBinding = "error when invoke output binding %s: %s"

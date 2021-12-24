@@ -1177,7 +1177,7 @@ func (a *DaprRuntime) initState(s components_v1alpha1.Component) error {
 	//todo  keyPrefix
 	store, err := a.stateStoreRegistry.Create(s.Spec.Type, s.Spec.Version) // 也没干什么事，就是封装
 	if err != nil {
-		log.Warnf("error creating state store %s (%s/%s): %s", s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, err)
+		log.Warnf("创建状态存储的错误 %s (%s/%s): %s", s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, err)
 		diag.DefaultMonitoring.ComponentInitFailed(s.Spec.Type, "creation")
 		return err
 	}
@@ -1188,7 +1188,7 @@ func (a *DaprRuntime) initState(s components_v1alpha1.Component) error {
 			secretStore := a.getSecretStore(secretStoreName)
 			encKeys, encErr := encryption.ComponentEncryptionKey(s, secretStore)
 			if encErr != nil {
-				log.Errorf("error initializing state store encryption %s (%s/%s): %s", s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, encErr)
+				log.Errorf("错误初始化状态存储加密 %s (%s/%s): %s", s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, encErr)
 				diag.DefaultMonitoring.ComponentInitFailed(s.Spec.Type, "creation")
 				return encErr
 			}
@@ -1196,7 +1196,7 @@ func (a *DaprRuntime) initState(s components_v1alpha1.Component) error {
 			if encKeys.Primary.Key != "" {
 				ok := encryption.AddEncryptedStateStore(s.ObjectMeta.Name, encKeys)
 				if ok {
-					log.Infof("automatic encryption enabled for state store %s", s.ObjectMeta.Name)
+					log.Infof("启用状态存储的自动加密功能 %s", s.ObjectMeta.Name)
 				}
 			}
 		}

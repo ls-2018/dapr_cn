@@ -12,7 +12,7 @@ type OutputBindingRequest struct {
 	Operation string            `json:"operation"`
 }
 
-// BulkGetRequest is the request object to get a list of values for multiple keys from a state store.
+// BulkGetRequest 是请求对象，用于从状态存储中获取多个键的值的列表。
 type BulkGetRequest struct {
 	Metadata    map[string]string `json:"metadata"`
 	Keys        []string          `json:"keys"`
