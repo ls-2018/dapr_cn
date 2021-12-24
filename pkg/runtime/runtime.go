@@ -151,6 +151,7 @@ type DaprRuntime struct {
 	secretStores         map[string]secretstores.SecretStore
 
 	pubSubRegistry       pubsub_loader.Registry   // pubsub工厂map
+	//	pkg/runtime/runtime.go:1367
 	pubSubs              map[string]pubsub.PubSub // pubsub 实例
 	subscribeBindingList []string
 
@@ -1338,7 +1339,7 @@ func (a *DaprRuntime) getTopicRoutes() (map[string]TopicRoute, error) {
 func (a *DaprRuntime) initPubSub(c components_v1alpha1.Component) error {
 	pubSub, err := a.pubSubRegistry.Create(c.Spec.Type, c.Spec.Version)
 	if err != nil {
-		log.Warnf("error creating pub sub %s (%s/%s): %s", &c.ObjectMeta.Name, c.Spec.Type, c.Spec.Version, err)
+		log.Warnf("创建订阅发布发生错误 %s (%s/%s): %s", &c.ObjectMeta.Name, c.Spec.Type, c.Spec.Version, err)
 		diag.DefaultMonitoring.ComponentInitFailed(c.Spec.Type, "creation")
 		return err
 	}
@@ -1354,7 +1355,7 @@ func (a *DaprRuntime) initPubSub(c components_v1alpha1.Component) error {
 		Properties: properties,
 	})
 	if err != nil {
-		log.Warnf("error initializing pub sub %s/%s: %s", c.Spec.Type, c.Spec.Version, err)
+		log.Warnf("初始化pubsub出错 %s/%s: %s", c.Spec.Type, c.Spec.Version, err)
 		diag.DefaultMonitoring.ComponentInitFailed(c.Spec.Type, "init")
 		return err
 	}

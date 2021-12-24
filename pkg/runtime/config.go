@@ -41,7 +41,7 @@ const (
 
 // Config 持有Dapr Runtime配置。
 type Config struct {
-	ID                   string
+	ID                   string // 应用ID
 	HTTPPort             int
 	PublicPort           *int
 	ProfilePort          int
