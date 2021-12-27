@@ -548,6 +548,7 @@ func (a *DaprRuntime) beginPubSub(name string, ps pubsub.PubSub) error {
 	if !ok {
 		return nil
 	}
+	// 组件
 	for topic, route := range v.routes {
 		allowed := a.isPubSubOperationAllowed(name, topic, a.scopedSubscriptions[name])
 		if !allowed {
@@ -1237,6 +1238,7 @@ func (a *DaprRuntime) initState(s components_v1alpha1.Component) error {
 	return nil
 }
 
+//获取声明式订阅
 func (a *DaprRuntime) getDeclarativeSubscriptions() []runtime_pubsub.Subscription {
 	var subs []runtime_pubsub.Subscription
 
@@ -1247,7 +1249,7 @@ func (a *DaprRuntime) getDeclarativeSubscriptions() []runtime_pubsub.Subscriptio
 		subs = runtime_pubsub.DeclarativeSelfHosted(a.runtimeConfig.Standalone.ComponentsPath, log)
 	}
 
-	// only return valid subscriptions for this app id
+	// 只返回该应用ID的有效订阅
 	for i := len(subs) - 1; i >= 0; i-- {
 		s := subs[i]
 		if len(s.Scopes) == 0 {
@@ -1255,6 +1257,7 @@ func (a *DaprRuntime) getDeclarativeSubscriptions() []runtime_pubsub.Subscriptio
 		}
 
 		found := false
+		// 判断该组件的作用域是不是该应用ID
 		for _, scope := range s.Scopes {
 			if scope == a.runtimeConfig.ID {
 				found = true
@@ -1277,14 +1280,14 @@ func (a *DaprRuntime) getTopicRoutes() (map[string]TopicRoute, error) {
 	topicRoutes := make(map[string]TopicRoute)
 
 	if a.appChannel == nil {
-		log.Warn("app channel not initialized, make sure -app-port is specified if pubsub subscription is required")
+		log.Warn("应用程序通道未被初始化， 如果需要订阅pubsub，请确保 -app-port被指定")
 		return topicRoutes, nil
 	}
 
 	var subscriptions []runtime_pubsub.Subscription
 	var err error
 
-	// handle app subscriptions
+	// 处理应用程序的订阅配置
 	if a.runtimeConfig.ApplicationProtocol == HTTPProtocol {
 		subscriptions, err = runtime_pubsub.GetSubscriptionsHTTP(a.appChannel, log)
 	} else if a.runtimeConfig.ApplicationProtocol == GRPCProtocol {
@@ -1295,16 +1298,15 @@ func (a *DaprRuntime) getTopicRoutes() (map[string]TopicRoute, error) {
 		return nil, err
 	}
 
-	// handle declarative subscriptions
+	// 从k8s、本地文件夹获取所有订阅组件
 	ds := a.getDeclarativeSubscriptions()
 	for _, s := range ds {
 		skip := false
 
-		// don't register duplicate subscriptions
+		// 不要注册重复的订阅
 		for _, sub := range subscriptions {
 			if sub.PubsubName == s.PubsubName && sub.Topic == s.Topic {
-				log.Warnf("two identical subscriptions found (sources: declarative, app endpoint). pubsubname: %s, topic: %s",
-					s.PubsubName, s.Topic)
+				log.Warnf("发现两个相同的订阅 . pubsubname: %s, topic: %s", s.PubsubName, s.Topic)
 				skip = true
 				break
 			}
@@ -1329,7 +1331,7 @@ func (a *DaprRuntime) getTopicRoutes() (map[string]TopicRoute, error) {
 			for topic := range v.routes {
 				topics = append(topics, topic)
 			}
-			log.Infof("app is subscribed to the following topics: %v through pubsub=%s", topics, pubsubName)
+			log.Infof("应用程序订阅了以下主题: %v through pubsub=%s", topics, pubsubName)
 		}
 	}
 	a.topicRoutes = topicRoutes
@@ -1389,6 +1391,7 @@ func (a *DaprRuntime) Publish(req *pubsub.PublishRequest) error {
 func (a *DaprRuntime) GetPubSub(pubsubName string) pubsub.PubSub {
 	return a.pubSubs[pubsubName]
 }
+
 // 判断pubsub操作是否允许
 func (a *DaprRuntime) isPubSubOperationAllowed(pubsubName string, topic string, scopedTopics []string) bool {
 	inAllowedTopics := false
@@ -2299,7 +2302,7 @@ func componentDependency(compCategory ComponentCategory, name string) string {
 func (a *DaprRuntime) startSubscribing() {
 	for name, pubsub := range a.pubSubs {
 		if err := a.beginPubSub(name, pubsub); err != nil {
-			log.Errorf("error occurred while beginning pubsub %s: %s", name, err)
+			log.Errorf("开始pubsub时发生错误 %s: %s", name, err)
 		}
 	}
 }

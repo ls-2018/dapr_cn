@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 from fastapi import FastAPI
 from fastapi.routing import Request
 from starlette_exporter import PrometheusMiddleware
@@ -31,6 +32,23 @@ async def get(req: Request):
         },
         "remindersStoragePartitions": 0,
     }
+
+
+@app.get('/dapr/subscribe')
+async def sub(req: Request):
+    # print(await req.json())
+    return [
+        {
+            "pubsubname": "redis-pubsub",
+            "topic": "topic-a"
+        }
+    ]
+
+
+@app.post('/dsstatus')
+async def sub(req: Request):
+    print(await req.json())
+    return {'success': True}
 
 
 @app.post('/post')
