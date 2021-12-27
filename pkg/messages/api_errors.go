@@ -23,11 +23,11 @@ const (
 	ErrInvokeOutputBinding = "error when invoke output binding %s: %s"
 
 	// PubSub.
-	ErrPubsubNotConfigured      = "no pubsub is configured"
-	ErrPubsubEmpty              = "pubsub name is empty"
+	ErrPubsubNotConfigured      = "没有pubsub组件配置"
+	ErrPubsubEmpty              = "pubsub的怒不敢住不能为空" //     //
 	ErrPubsubNotFound           = "pubsub %s 没有发现"
-	ErrTopicEmpty               = "topic is empty in pubsub %s"
-	ErrPubsubCloudEventsSer     = "error when marshalling cloud event envelope for topic %s pubsub %s: %s"
+	ErrTopicEmpty               = "pubsub 配置的主题中不存在 %s"
+	ErrPubsubCloudEventsSer     = "当序列化事件信息时发生了错误 topic %s pubsub %s: %s"
 	ErrPubsubPublishMessage     = "error when publish to topic %s in pubsub %s: %s"
 	ErrPubsubForbidden          = "topic %s is not allowed for app id %s"
 	ErrPubsubCloudEventCreation = "cannot create cloudevent: %s"
@@ -63,7 +63,7 @@ const (
 	ErrDirectInvokeNotReady = "调用的API未就绪"
 
 	// Metadata.
-	ErrMetadataGet = "failed deserializing metadata: %s"
+	ErrMetadataGet = "失败的反序列化的元数据: %s"
 
 	// Healthz.
 	ErrHealthNotReady = "dapr is not ready"

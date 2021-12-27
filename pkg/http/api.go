@@ -57,7 +57,7 @@ type api struct {
 	actor                    actors.Actors
 	pubsubAdapter            runtime_pubsub.Adapter
 	sendToOutputBindingFn    func(name string, req *bindings.InvokeRequest) (*bindings.InvokeResponse, error)
-	id                       string
+	id                       string // 自己的应用ID
 	extendedMetadata         sync.Map
 	readyStatus              bool // 所有逻辑均准备后 ,置为true
 	outboundReadyStatus      bool // http服务开启后，置为true

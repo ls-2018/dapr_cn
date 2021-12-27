@@ -12,7 +12,7 @@ import (
 	contrib_pubsub "github.com/dapr/components-contrib/pubsub"
 )
 
-// CloudEvent is a request object to create a Dapr compliant cloudevent.
+// CloudEvent 是一个请求对象，用来创建一个兼容Dapr的cloudevent。
 type CloudEvent struct {
 	ID              string
 	Data            []byte
@@ -22,8 +22,9 @@ type CloudEvent struct {
 	TraceID         string
 }
 
-// NewCloudEvent encapusalates the creation of a Dapr cloudevent from an existing cloudevent or a raw payload.
+// NewCloudEvent 封装了从现有的云事件或原始负载创建Dapr云事件的过程。
 func NewCloudEvent(req *CloudEvent) (map[string]interface{}, error) {
+	// application/cloudevents+json
 	if contrib_contenttype.IsCloudEventContentType(req.DataContentType) {
 		return contrib_pubsub.FromCloudEvent(req.Data, req.Topic, req.Pubsub, req.TraceID)
 	}

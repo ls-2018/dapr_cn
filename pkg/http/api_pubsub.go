@@ -32,7 +32,7 @@ func (a *api) onPublish(reqCtx *fasthttp.RequestCtx) {
 
 		return
 	}
-
+	// 获取组件的名字
 	pubsubName := reqCtx.UserValue(pubsubnameparam).(string)
 	if pubsubName == "" {
 		msg := NewErrorResponse("ERR_PUBSUB_EMPTY", messages.ErrPubsubEmpty)
@@ -50,7 +50,7 @@ func (a *api) onPublish(reqCtx *fasthttp.RequestCtx) {
 
 		return
 	}
-
+	// 获取主题的名称
 	topic := reqCtx.UserValue(topicParam).(string)
 	if topic == "" {
 		msg := NewErrorResponse("ERR_TOPIC_EMPTY", fmt.Sprintf(messages.ErrTopicEmpty, pubsubName))
@@ -59,11 +59,11 @@ func (a *api) onPublish(reqCtx *fasthttp.RequestCtx) {
 
 		return
 	}
-
+	// 用户提交的数据
 	body := reqCtx.PostBody()
 	contentType := string(reqCtx.Request.Header.Peek("Content-Type"))
-	metadata := getMetadataFromRequest(reqCtx)
-	rawPayload, metaErr := contrib_metadata.IsRawPayload(metadata)
+	metadata := getMetadataFromRequest(reqCtx)                     // header前缀是metadata.
+	rawPayload, metaErr := contrib_metadata.IsRawPayload(metadata) // key 为 rawPayload
 	if metaErr != nil {
 		msg := NewErrorResponse("ERR_PUBSUB_REQUEST_METADATA",
 			fmt.Sprintf(messages.ErrMetadataGet, metaErr.Error()))
@@ -73,16 +73,17 @@ func (a *api) onPublish(reqCtx *fasthttp.RequestCtx) {
 		return
 	}
 
-	// Extract trace context from context.
+	// 从上下文中提取跟踪上下文。
 	span := diag_utils.SpanFromContext(reqCtx)
-	// Populate W3C traceparent to cloudevent envelope
+	// 填充W3C从tracparent到cloudevent的信封
 	corID := diag.SpanContextToW3CString(span.SpanContext())
 
 	data := body
-
+	// 不是原始负载
 	if !rawPayload {
+		//信封
 		envelope, err := runtime_pubsub.NewCloudEvent(&runtime_pubsub.CloudEvent{
-			ID:              a.id,
+			ID:              a.id, // 自己的应用ID
 			Topic:           topic,
 			DataContentType: contentType,
 			Data:            body,
@@ -97,9 +98,9 @@ func (a *api) onPublish(reqCtx *fasthttp.RequestCtx) {
 
 			return
 		}
-
+		//获取组件实现的一些特性
 		features := thepubsub.Features()
-
+		// 支持过期时间、就添加过期字段
 		pubsub.ApplyMetadata(envelope, features, metadata)
 
 		data, err = a.json.Marshal(envelope)
@@ -114,12 +115,24 @@ func (a *api) onPublish(reqCtx *fasthttp.RequestCtx) {
 	}
 
 	req := pubsub.PublishRequest{
-		PubsubName: pubsubName,
-		Topic:      topic,
-		Data:       data,
-		Metadata:   metadata,
+		PubsubName: pubsubName, // 组件名称
+		Topic:      topic,      // 主题名称
+		Data:       data,       // 发送的数据
+		Metadata:   metadata,   // 元数据
 	}
-
+	//{
+	//		"pubsubname":"redis-pubsub",
+	//		"traceid":"00-924ae7154e9e2894001b408b20cfa4c7-889e95bb1eca368b-00",
+	//		"id":"0db251bc-c96a-4b2a-b967-301ed25d56d6",
+	//		"type":"com.dapr.event.sent","source":"dp-61c2cb20562850d49d47d1c7-executorapp",
+	//		"topic":"topic-c",
+	//		"data":"{\"demo\": \"test\"}",
+	//		"expiration":"2021-12-27T06:56:48Z",
+	//		"specversion":"1.0",
+	//		"datacontenttype":"text/plain"
+	//}
+	// 调用实际的组件
+	//metaErr := thepubsub.Publish(&req)
 	err := a.pubsubAdapter.Publish(&req)
 	if err != nil {
 		status := fasthttp.StatusInternalServerError

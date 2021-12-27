@@ -31,11 +31,13 @@ spec:
       value: 3
     - name: maxLenApprox
       value: 3
-#   subscriptionScopes
+    - name: subscriptionScopes
+      value: "dp-61c2cb20562850d49d47d1c7-executorapp=e,f,g,h;"
     - name: publishingScopes
-      value: "dp-61c2cb20562850d49d47d1c7-executorapp=a,b,c,d;"
+      value: "dp-61c2cb20562850d49d47d1c7-executorapp=a,b,c,d,topic-a;"
+#       相当于二次限制
     - name: allowedTopics
-      value: ","
+      value: "a,b,c,d,f,e,g,h,topic-a"
 ---
 apiVersion: v1
 kind: ConfigMap

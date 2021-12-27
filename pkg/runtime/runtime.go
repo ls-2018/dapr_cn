@@ -150,7 +150,7 @@ type DaprRuntime struct {
 	secretStoresRegistry secretstores_loader.Registry // sceret工厂map
 	secretStores         map[string]secretstores.SecretStore
 
-	pubSubRegistry       pubsub_loader.Registry   // pubsub工厂map
+	pubSubRegistry pubsub_loader.Registry // pubsub工厂map
 	//	pkg/runtime/runtime.go:1367
 	pubSubs              map[string]pubsub.PubSub // pubsub 实例
 	subscribeBindingList []string
@@ -1183,7 +1183,7 @@ func (a *DaprRuntime) initState(s components_v1alpha1.Component) error {
 		return err
 	}
 	if store != nil {
-		secretStoreName := a.authSecretStoreOrDefault(s)// 获取存储secret的方式，   没设置,且运行在k8s 则为kubernets
+		secretStoreName := a.authSecretStoreOrDefault(s) // 获取存储secret的方式，   没设置,且运行在k8s 则为kubernets
 		// 判断 State.Encryption 在全局配置中有没有开启
 		if config.IsFeatureEnabled(a.globalConfig.Spec.Features, config.StateEncryption) {
 			secretStore := a.getSecretStore(secretStoreName)
@@ -1371,9 +1371,7 @@ func (a *DaprRuntime) initPubSub(c components_v1alpha1.Component) error {
 	return nil
 }
 
-// Publish is an adapter method for the runtime to pre-validate publish requests
-// And then forward them to the Pub/Sub component.
-// This method is used by the HTTP and gRPC APIs.
+// Publish 是一个适配器方法，用于运行时预验证发布请求 然后将它们转发给Pub/Sub组件。这个方法被HTTP和gRPC APIs使用。
 func (a *DaprRuntime) Publish(req *pubsub.PublishRequest) error {
 	thepubsub := a.GetPubSub(req.PubsubName)
 	if thepubsub == nil {
@@ -1387,15 +1385,15 @@ func (a *DaprRuntime) Publish(req *pubsub.PublishRequest) error {
 	return a.pubSubs[req.PubsubName].Publish(req)
 }
 
-// GetPubSub is an adapter method to find a pubsub by name.
+// GetPubSub 是一个适配器方法，可以通过名字找到一个pubsub。
 func (a *DaprRuntime) GetPubSub(pubsubName string) pubsub.PubSub {
 	return a.pubSubs[pubsubName]
 }
-
+// 判断pubsub操作是否允许
 func (a *DaprRuntime) isPubSubOperationAllowed(pubsubName string, topic string, scopedTopics []string) bool {
 	inAllowedTopics := false
 
-	// first check if allowedTopics contain it
+	//首先检查subscriptionScopes、publishingScopes是否包含它
 	if len(a.allowedTopics[pubsubName]) > 0 {
 		for _, t := range a.allowedTopics[pubsubName] {
 			if t == topic {
@@ -1410,8 +1408,7 @@ func (a *DaprRuntime) isPubSubOperationAllowed(pubsubName string, topic string, 
 	if len(scopedTopics) == 0 {
 		return true
 	}
-
-	// check if a granular scope has been applied
+	// 检查是否应用了粒度范围
 	allowedScope := false
 	for _, t := range scopedTopics {
 		if t == topic {
@@ -2233,6 +2230,7 @@ func (a *DaprRuntime) initSecretStore(c components_v1alpha1.Component) error {
 	diag.DefaultMonitoring.ComponentInitialized(c.Spec.Type)
 	return nil
 }
+
 //将用户填写的spec.metadata 中包含{uuid}的键值对 转换成属性
 func (a *DaprRuntime) convertMetadataItemsToProperties(items []components_v1alpha1.MetadataItem) map[string]string {
 	properties := map[string]string{}
