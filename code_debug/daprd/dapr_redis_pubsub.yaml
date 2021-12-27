@@ -2,7 +2,18 @@
 # Copyright (c) Microsoft Corporation and Dapr Contributors.
 # Licensed under the MIT License.
 # ------------------------------------------------------------
-
+apiVersion: dapr.io/v1alpha1
+kind: Subscription
+metadata:
+  name: redis-sub
+  namespace: mesoid
+spec:
+  topic: deathStarStatus
+  route: /dsstatus
+  pubsubname: redis-pubsub
+scopes:
+  - dp-61c2cb20562850d49d47d1c7-executorapp
+---
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
