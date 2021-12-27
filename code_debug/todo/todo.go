@@ -1,8 +1,8 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"os/exec"
 )
 
 func main() {
@@ -10,6 +10,15 @@ func main() {
 }
 
 func x() {
-	out, _ := exec.Command( "zsh","-c","which kill-port.sh").CombinedOutput()
-	fmt.Println(string(out))
+	ctx, _ := context.WithCancel(context.Background())
+	queue := make(chan int)
+	select {
+	// 处理取消的问题
+	case <-ctx.Done():
+		return
+
+	case msg := <-queue:
+		fmt.Println(msg)
+	}
+	fmt.Println(123)
 }
