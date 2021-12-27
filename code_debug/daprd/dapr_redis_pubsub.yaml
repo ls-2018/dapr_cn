@@ -27,6 +27,7 @@ spec:
       value: 3
     - name: queueDepth
       value: 3
+#     消费数据的并发发数
     - name: concurrency
       value: 3
     - name: maxLenApprox
