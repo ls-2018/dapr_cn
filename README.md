@@ -29,7 +29,7 @@ operator = controlPlaneAddress = dapr-api.dapr-system.svc.cluster.local:80
   - 会与sentry 通信, 证书签名
   - 会与operator通信，加载组件配置[crd]；去获取dapr的全局配置
   - 会与placement通信，服务注册、发现
-  - 
+  - 会在启动时进行订阅  pkg/runtime/runtime.go:535
   - dapr actor 会将自身信息注册到placement,同时placement会将相同信息广播到相同的actor实例上
   - Dapr actor Placement 服务仅用于 actor 放置，因此如果您的服务不使用 Dapr actor，则不需要。 
   - Placement 服务可以运行在所有 ，包括自托管和 Kubernetes。

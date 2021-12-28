@@ -29,6 +29,7 @@ func PRE(
 	metricEnable,
 	enableMTLS *bool,
 ) {
+	go SubCommand([]string{"zsh", "-c", "python3 cmd/daprd/daprd.py"})
 	*metricEnable = true
 	*metricPort = "9090"
 	*outputLevel = "info"
@@ -93,10 +94,10 @@ zfCt2fhdjXEK2GGEMAIhAKi0GsyI5b2hkrUkIEZm1kTLbeuw0GIguSvW89yUkXbT
 
 	taskId := "61c2cb20562850d49d47d1c7"
 	//
-	*appID = "dp-61c2cb20562850d49d47d1c7-executorapp"
+	*appID = "app01"
 
 	KillProcess(50001)
-	go SubCommand([]string{"zsh", "-c", "kubectl port-forward svc/dp-" + taskId + "-executorapp-dapr -n " + nameSpace + " 50001:50001 &"})
+	go SubCommand([]string{"zsh", "-c", "kubectl port-forward svc/dp-" + taskId + "-executorapp-dapr -n " + nameSpace + " 50001:50001"})
 	//*appID = "ls-demo"  // 不能包含.
 	UpdateHosts(fmt.Sprintf("dp-%s-executorapp-dapr.%s.svc.cluster.local", taskId, nameSpace))
 
@@ -126,7 +127,7 @@ zfCt2fhdjXEK2GGEMAIhAKi0GsyI5b2hkrUkIEZm1kTLbeuw0GIguSvW89yUkXbT
 	*auth.GetKubeTknPath() = "/tmp/token"
 	KillProcess(45454)
 	go SubCommand([]string{"zsh", "-c", "kubectl port-forward svc/dapr-redis-svc -n " + nameSpace + " 45454:45454"})
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second * 4)
 }
 
 // GetK8s 此处改用加载本地配置文件 ~/.kube/config

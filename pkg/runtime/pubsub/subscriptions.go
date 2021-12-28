@@ -57,7 +57,7 @@ type (
 func GetSubscriptionsHTTP(channel channel.AppChannel, log logger.Logger) ([]Subscription, error) {
 	var subscriptions []Subscription
 	var subscriptionItems []SubscriptionJSON
-
+	log.Info("获取应用程序关于subscribe的配置")
 	req := invokev1.NewInvokeMethodRequest("dapr/subscribe")
 	req.WithHTTPExtension(http.MethodGet, "")
 	req.WithRawData(nil, invokev1.JSONContentType)

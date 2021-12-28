@@ -5,14 +5,16 @@
 apiVersion: dapr.io/v1alpha1
 kind: Subscription
 metadata:
-  name: redis-sub
+  name: redis-sub-topic-a
   namespace: mesoid
 spec:
-  topic: deathStarStatus
+  topic: topic-a
   route: /dsstatus
   pubsubname: redis-pubsub
 scopes:
-  - dp-61c2cb20562850d49d47d1c7-executorapp
+  - app01
+#route 告诉 Dapr 将所有主题消息发送到应用程序中的 /dsstatus 端点。
+#scopes 为 app1 和 app2 启用订阅。
 ---
 apiVersion: dapr.io/v1alpha1
 kind: Component
@@ -28,6 +30,7 @@ spec:
       value: "dapr-redis-svc:45454"
     - name: redisPassword
       value: "1234"
+# 消费者组的ID
     - name: consumerID
       value: "123"
 #     毫秒
@@ -50,6 +53,28 @@ spec:
 #       相当于二次限制
     - name: allowedTopics
       value: "a,b,c,d,f,e,g,h,topic-a"
+---
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: redis-pubsub-v2
+  namespace: mesoid
+spec:
+  type: pubsub.redis
+  version: v1
+  metadata:
+    #   required
+    - name: redisHost
+      value: "dapr-redis-svc:45454"
+    - name: redisPassword
+      value: "1234"
+    # 消费者组的ID
+    - name: consumerID
+      value: "v2"
+    - name: subscriptionScopes
+      value: "dp-61c2cb20562850d49d47d1c7-executorapp=e,f,g,h;"
+    - name: publishingScopes
+      value: "dp-61c2cb20562850d49d47d1c7-executorapp=a,b,c,d,topic-a;"
 ---
 apiVersion: v1
 kind: ConfigMap

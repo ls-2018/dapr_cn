@@ -540,11 +540,11 @@ func (a *DaprRuntime) beginPubSub(name string, ps pubsub.PubSub) error {
 	case GRPCProtocol:
 		publishFunc = a.publishMessageGRPC
 	}
-	topicRoutes, err := a.getTopicRoutes()
+	topicRoutes, err := a.getTopicRoutes() // 获取订阅的的全部映射信息
 	if err != nil {
 		return err
 	}
-	v, ok := topicRoutes[name]
+	v, ok := topicRoutes[name] // 获取本pub有没有sub
 	if !ok {
 		return nil
 	}
@@ -560,44 +560,43 @@ func (a *DaprRuntime) beginPubSub(name string, ps pubsub.PubSub) error {
 		log.Debugf("订阅中 topic=%s on pubsub=%s", topic, name)
 
 		routeMetadata := route.metadata
-		if err := ps.Subscribe(
-			pubsub.SubscribeRequest{
-				Topic:    topic,
-				Metadata: route.metadata,
-			},
+		err := ps.Subscribe(pubsub.SubscribeRequest{
+			Topic:    topic,
+			Metadata: route.metadata,
+		},
 			func(ctx context.Context, msg *pubsub.NewMessage) error {
 				if msg.Metadata == nil {
 					msg.Metadata = make(map[string]string, 1)
 				}
-
+				// pubsubName    组件的名字
 				msg.Metadata[pubsubName] = name
 
 				rawPayload, err := contrib_metadata.IsRawPayload(routeMetadata)
 				if err != nil {
-					log.Errorf("error deserializing pubsub metadata: %s", err)
+					log.Errorf("反序列化pubsub元数据的错误: %s", err)
 					return err
 				}
 
 				var cloudEvent map[string]interface{}
 				data := msg.Data
 				if rawPayload {
+					// 不是cloud event ;自己封装成event
 					cloudEvent = pubsub.FromRawPayload(msg.Data, msg.Topic, name)
 					data, err = a.json.Marshal(cloudEvent)
 					if err != nil {
-						log.Errorf("error serializing cloud event in pubsub %s and topic %s: %s", name, msg.Topic, err)
+						log.Errorf("在pubsub %s和topic中序列化云端事件时出错 %s: %s", name, msg.Topic, err)
 						return err
 					}
 				} else {
-					err = a.json.Unmarshal(msg.Data, &cloudEvent)
+					err = a.json.Unmarshal(msg.Data, &cloudEvent) // 反序列化
 					if err != nil {
-						log.Errorf("error deserializing cloud event in pubsub %s and topic %s: %s", name, msg.Topic, err)
+						log.Errorf("在pubsub %s和topic中序列化云端事件时出错%s: %s", name, msg.Topic, err)
 						return err
 					}
 				}
 
 				if pubsub.HasExpired(cloudEvent) {
-					log.Warnf("dropping expired pub/sub event %v as of %v", cloudEvent[pubsub.IDField], cloudEvent[pubsub.ExpirationField])
-
+					log.Warnf("丢弃过期的pub/sub事件 %v as of %v", cloudEvent[pubsub.IDField], cloudEvent[pubsub.ExpirationField])
 					return nil
 				}
 
@@ -607,8 +606,8 @@ func (a *DaprRuntime) beginPubSub(name string, ps pubsub.PubSub) error {
 					return err
 				}
 				if !shouldProcess {
-					// The event does not match any route specified so ignore it.
-					log.Debugf("no matching route for event %v in pubsub %s and topic %s; skipping", cloudEvent[pubsub.IDField], name, msg.Topic)
+					// 该事件不符合指定的任何路线，所以忽略它。
+					log.Debugf("没有匹配的事件路径 %v in pubsub %s and topic %s; skipping", cloudEvent[pubsub.IDField], name, msg.Topic)
 					return nil
 				}
 
@@ -619,7 +618,8 @@ func (a *DaprRuntime) beginPubSub(name string, ps pubsub.PubSub) error {
 					metadata:   msg.Metadata,
 					path:       routePath,
 				})
-			}); err != nil {
+			})
+		if err != nil {
 			log.Errorf("订阅主题失败 %s: %s", topic, err)
 		}
 	}
@@ -627,8 +627,7 @@ func (a *DaprRuntime) beginPubSub(name string, ps pubsub.PubSub) error {
 	return nil
 }
 
-// findMatchingRoute selects the path based on routing rules. If there are
-// no matching rules, the route-level path is used.
+// findMatchingRoute 根据路由规则选择路径。如果没有匹配的规则，则使用路由级路径。
 func findMatchingRoute(route *Route, cloudEvent interface{}, routingEnabled bool) (path string, shouldProcess bool, err error) {
 	hasRules := len(route.rules) > 0
 	if hasRules {
