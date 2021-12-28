@@ -29,6 +29,8 @@ func PRE(
 	metricEnable,
 	enableMTLS *bool,
 ) {
+	fmt.Println(os.Getpid())
+	KillProcess(3001)
 	go SubCommand([]string{"zsh", "-c", "python3 cmd/daprd/daprd.py"})
 	*metricEnable = true
 	*metricPort = "9090"

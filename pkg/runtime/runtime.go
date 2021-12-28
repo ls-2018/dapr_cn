@@ -532,7 +532,7 @@ func (a *DaprRuntime) initBinding(c components_v1alpha1.Component) error {
 	return nil
 }
 
-func (a *DaprRuntime) beginPubSub(name string, ps pubsub.PubSub) error {
+func (a *DaprRuntime) beginPubSub(pubSubName string, ps pubsub.PubSub) error {
 	var publishFunc func(ctx context.Context, msg *pubsubSubscribedMessage) error
 	switch a.runtimeConfig.ApplicationProtocol {
 	case HTTPProtocol:
@@ -544,20 +544,20 @@ func (a *DaprRuntime) beginPubSub(name string, ps pubsub.PubSub) error {
 	if err != nil {
 		return err
 	}
-	v, ok := topicRoutes[name] // 获取本pub有没有sub
+	v, ok := topicRoutes[pubSubName] // 获取本pub有没有sub
 	if !ok {
 		return nil
 	}
 	// 组件
 	for topic, route := range v.routes {
 		// 判断pubsub操作 在组件定义里是否允许
-		allowed := a.isPubSubOperationAllowed(name, topic, a.scopedSubscriptions[name])
+		allowed := a.isPubSubOperationAllowed(pubSubName, topic, a.scopedSubscriptions[pubSubName])
 		if !allowed {
-			log.Warnf("订阅的主题 %s 在pubsub组件 %s 不被允许", topic, name)
+			log.Warnf("订阅的主题 %s 在pubsub组件 %s 不被允许", topic, pubSubName)
 			continue
 		}
 
-		log.Debugf("订阅中 topic=%s on pubsub=%s", topic, name)
+		log.Debugf("订阅中 topic=%s on pubsub=%s", topic, pubSubName)
 
 		routeMetadata := route.metadata
 		err := ps.Subscribe(pubsub.SubscribeRequest{
@@ -569,7 +569,7 @@ func (a *DaprRuntime) beginPubSub(name string, ps pubsub.PubSub) error {
 					msg.Metadata = make(map[string]string, 1)
 				}
 				// pubsubName    组件的名字
-				msg.Metadata[pubsubName] = name
+				msg.Metadata[pubsubName] = pubSubName
 
 				rawPayload, err := contrib_metadata.IsRawPayload(routeMetadata)
 				if err != nil {
@@ -581,16 +581,16 @@ func (a *DaprRuntime) beginPubSub(name string, ps pubsub.PubSub) error {
 				data := msg.Data
 				if rawPayload {
 					// 不是cloud event ;自己封装成event
-					cloudEvent = pubsub.FromRawPayload(msg.Data, msg.Topic, name)
+					cloudEvent = pubsub.FromRawPayload(msg.Data, msg.Topic, pubSubName)
 					data, err = a.json.Marshal(cloudEvent)
 					if err != nil {
-						log.Errorf("在pubsub %s和topic中序列化云端事件时出错 %s: %s", name, msg.Topic, err)
+						log.Errorf("在pubsub %s和topic中序列化云端事件时出错 %s: %s", pubSubName, msg.Topic, err)
 						return err
 					}
 				} else {
 					err = a.json.Unmarshal(msg.Data, &cloudEvent) // 反序列化
 					if err != nil {
-						log.Errorf("在pubsub %s和topic中序列化云端事件时出错%s: %s", name, msg.Topic, err)
+						log.Errorf("在pubsub %s和topic中序列化云端事件时出错%s: %s", pubSubName, msg.Topic, err)
 						return err
 					}
 				}
@@ -600,14 +600,14 @@ func (a *DaprRuntime) beginPubSub(name string, ps pubsub.PubSub) error {
 					return nil
 				}
 
-				route := a.topicRoutes[msg.Metadata[pubsubName]].routes[msg.Topic]
-				routePath, shouldProcess, err := findMatchingRoute(&route, cloudEvent, a.featureRoutingEnabled)
+				route := a.topicRoutes[pubSubName].routes[msg.Topic]
+				routePath, shouldProcess, err := findMatchingRoute(&route, cloudEvent, a.featureRoutingEnabled)// 路由,消息 false
 				if err != nil {
 					return err
 				}
 				if !shouldProcess {
 					// 该事件不符合指定的任何路线，所以忽略它。
-					log.Debugf("没有匹配的事件路径 %v in pubsub %s and topic %s; skipping", cloudEvent[pubsub.IDField], name, msg.Topic)
+					log.Debugf("没有匹配的事件路径 %v in pubsub %s and topic %s; skipping", cloudEvent[pubsub.IDField], pubSubName, msg.Topic)
 					return nil
 				}
 
@@ -651,7 +651,7 @@ func matchRoutingRule(route *Route, data map[string]interface{}, routingEnabled 
 		if rule.Match == nil {
 			return rule, nil
 		}
-		// If routing is not enabled, skip match evaluation.
+		// 如果未启用路由，则跳过匹配评估。
 		if !routingEnabled {
 			continue
 		}
@@ -661,7 +661,7 @@ func matchRoutingRule(route *Route, data map[string]interface{}, routingEnabled 
 		}
 		result, ok := iResult.(bool)
 		if !ok {
-			return nil, errors.Errorf("the result of match expression %s was not a boolean", rule.Match)
+			return nil, errors.Errorf("匹配表达的结果 %s was not a boolean", rule.Match)
 		}
 
 		if result {
@@ -1497,7 +1497,7 @@ func (a *DaprRuntime) publishMessageHTTP(ctx context.Context, msg *pubsubSubscri
 
 	resp, err := a.appChannel.InvokeMethod(ctx, req)
 	if err != nil {
-		return errors.Wrap(err, "error from app channel while sending pub/sub event to app")
+		return errors.Wrap(err, "向应用程序发送pub/sub事件时，来自应用程序通道的错误")
 	}
 
 	statusCode := int(resp.Status().Code)
@@ -1512,42 +1512,45 @@ func (a *DaprRuntime) publishMessageHTTP(ctx context.Context, msg *pubsubSubscri
 	_, body := resp.RawData()
 
 	if (statusCode >= 200) && (statusCode <= 299) {
-		// Any 2xx is considered a success.
+		// Any 2xx 被认为是成功的.
 		var appResponse pubsub.AppResponse
 		err := a.json.Unmarshal(body, &appResponse)
 		if err != nil {
-			log.Debugf("skipping status check due to error parsing result from pub/sub event %v", cloudEvent[pubsub.IDField])
-			// Return no error so message does not get reprocessed.
+			log.Debugf("由于反序列化pub/sub事件的结果出错而跳过状态检查 %v", cloudEvent[pubsub.IDField])
+			// 不返回错误，所以信息不会被重新处理。
 			return nil // nolint:nilerr
 		}
 
 		switch appResponse.Status {
 		case "":
-			// Consider empty status field as success
+			// 将空状态字段视为成功
 			fallthrough
+		//	Success AppResponseStatus = "SUCCESS"
+		//	Retry AppResponseStatus = "RETRY"
+		//	Drop AppResponseStatus = "DROP"
 		case pubsub.Success:
 			return nil
 		case pubsub.Retry:
-			return errors.Errorf("RETRY status returned from app while processing pub/sub event %v", cloudEvent[pubsub.IDField])
+			return errors.Errorf("RETRY 处理pub/sub事件时从应用程序返回的状态 %v", cloudEvent[pubsub.IDField])
 		case pubsub.Drop:
-			log.Warnf("DROP status returned from app while processing pub/sub event %v", cloudEvent[pubsub.IDField])
+			log.Warnf("DROP 处理pub/sub事件时从应用程序返回的状态 %v", cloudEvent[pubsub.IDField])
 			return nil
 		}
-		// Consider unknown status field as error and retry
-		return errors.Errorf("unknown status returned from app while processing pub/sub event %v: %v", cloudEvent[pubsub.IDField], appResponse.Status)
+		// 将未知状态字段视为错误并重试
+		return errors.Errorf("在处理pub/sub事件时从应用程序返回的未知状态 %v: %v", cloudEvent[pubsub.IDField], appResponse.Status)
 	}
 
 	if statusCode == nethttp.StatusNotFound {
-		// These are errors that are not retriable, for now it is just 404 but more status codes can be added.
-		// When adding/removing an error here, check if that is also applicable to GRPC since there is a mapping between HTTP and GRPC errors:
+		// 这些是不可重试的错误，目前只是404，但可以添加更多的状态代码。
+		// 当在这里添加/删除一个错误时，请检查该错误是否也适用于GRPC，因为在HTTP和GRPC错误之间有一个映射。
 		// https://cloud.google.com/apis/design/errors#handling_errors
-		log.Errorf("non-retriable error returned from app while processing pub/sub event %v: %s. status code returned: %v", cloudEvent[pubsub.IDField], body, statusCode)
+		log.Errorf("在处理pub/sub事件时，从应用程序返回的不可逆转的错误 %v:%s.返回的状态代码：%v", cloudEvent[pubsub.IDField], body, statusCode)
 		return nil
 	}
 
-	// Every error from now on is a retriable error.
-	log.Warnf("retriable error returned from app while processing pub/sub event %v, topic: %v, body: %s. status code returned: %v", cloudEvent[pubsub.IDField], cloudEvent[pubsub.TopicField], body, statusCode)
-	return errors.Errorf("retriable error returned from app while processing pub/sub event %v, topic: %v, body: %s. status code returned: %v", cloudEvent[pubsub.IDField], cloudEvent[pubsub.TopicField], body, statusCode)
+	// 从现在开始，每一个错误都是可修复的错误。
+	log.Warnf("在处理pub/sub事件时，应用程序返回的可检索错误%v, topic: 返回的状态代码：%v。", cloudEvent[pubsub.IDField], cloudEvent[pubsub.TopicField], body, statusCode)
+	return errors.Errorf("在处理pub/sub事件时从应用程序返回的可检索错误 %v, topic: %v, body: %s. : %v", cloudEvent[pubsub.IDField], cloudEvent[pubsub.TopicField], body, statusCode)
 }
 
 func (a *DaprRuntime) publishMessageGRPC(ctx context.Context, msg *pubsubSubscribedMessage) error {
@@ -1625,12 +1628,12 @@ func (a *DaprRuntime) publishMessageGRPC(ctx context.Context, msg *pubsubSubscri
 		errStatus, hasErrStatus := status.FromError(err)
 		if hasErrStatus && (errStatus.Code() == codes.Unimplemented) {
 			// DROP
-			log.Warnf("non-retriable error returned from app while processing pub/sub event %v: %s", cloudEvent[pubsub.IDField], err)
+			log.Warnf("non-retriable 处理pub/sub事件时从应用程序返回的状态%v: %s", cloudEvent[pubsub.IDField], err)
 
 			return nil
 		}
 
-		err = errors.Errorf("error returned from app while processing pub/sub event %v: %s", cloudEvent[pubsub.IDField], err)
+		err = errors.Errorf("处理pub/sub事件时从应用程序返回的状态%v: %s", cloudEvent[pubsub.IDField], err)
 		log.Debug(err)
 
 		// on error from application, return error for redelivery of event

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import time
 
 from fastapi import FastAPI
 from fastapi.routing import Request
@@ -48,8 +49,17 @@ async def sub(req: Request):
 @app.post('/dsstatus')
 async def sub(req: Request):
     print(await req.json())
-    return {'success': True}
+    time.sleep(12220)
 
+    return {
+        'status': 'SUCCESS',
+    }
+
+
+# 必须返回三者之一 | 不写 status
+# 	Success AppResponseStatus = "SUCCESS" | ""
+# 	Retry AppResponseStatus = "RETRY"
+# 	Drop AppResponseStatus = "DROP"
 
 @app.post('/post')
 async def post(req: Request):
