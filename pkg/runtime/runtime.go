@@ -550,74 +550,77 @@ func (a *DaprRuntime) beginPubSub(name string, ps pubsub.PubSub) error {
 	}
 	// 组件
 	for topic, route := range v.routes {
+		// 判断pubsub操作 在组件定义里是否允许
 		allowed := a.isPubSubOperationAllowed(name, topic, a.scopedSubscriptions[name])
 		if !allowed {
-			log.Warnf("subscription to topic %s on pubsub %s is not allowed", topic, name)
+			log.Warnf("订阅的主题 %s 在pubsub组件 %s 不被允许", topic, name)
 			continue
 		}
 
-		log.Debugf("subscribing to topic=%s on pubsub=%s", topic, name)
+		log.Debugf("订阅中 topic=%s on pubsub=%s", topic, name)
 
 		routeMetadata := route.metadata
-		if err := ps.Subscribe(pubsub.SubscribeRequest{
-			Topic:    topic,
-			Metadata: route.metadata,
-		}, func(ctx context.Context, msg *pubsub.NewMessage) error {
-			if msg.Metadata == nil {
-				msg.Metadata = make(map[string]string, 1)
-			}
+		if err := ps.Subscribe(
+			pubsub.SubscribeRequest{
+				Topic:    topic,
+				Metadata: route.metadata,
+			},
+			func(ctx context.Context, msg *pubsub.NewMessage) error {
+				if msg.Metadata == nil {
+					msg.Metadata = make(map[string]string, 1)
+				}
 
-			msg.Metadata[pubsubName] = name
+				msg.Metadata[pubsubName] = name
 
-			rawPayload, err := contrib_metadata.IsRawPayload(routeMetadata)
-			if err != nil {
-				log.Errorf("error deserializing pubsub metadata: %s", err)
-				return err
-			}
-
-			var cloudEvent map[string]interface{}
-			data := msg.Data
-			if rawPayload {
-				cloudEvent = pubsub.FromRawPayload(msg.Data, msg.Topic, name)
-				data, err = a.json.Marshal(cloudEvent)
+				rawPayload, err := contrib_metadata.IsRawPayload(routeMetadata)
 				if err != nil {
-					log.Errorf("error serializing cloud event in pubsub %s and topic %s: %s", name, msg.Topic, err)
+					log.Errorf("error deserializing pubsub metadata: %s", err)
 					return err
 				}
-			} else {
-				err = a.json.Unmarshal(msg.Data, &cloudEvent)
+
+				var cloudEvent map[string]interface{}
+				data := msg.Data
+				if rawPayload {
+					cloudEvent = pubsub.FromRawPayload(msg.Data, msg.Topic, name)
+					data, err = a.json.Marshal(cloudEvent)
+					if err != nil {
+						log.Errorf("error serializing cloud event in pubsub %s and topic %s: %s", name, msg.Topic, err)
+						return err
+					}
+				} else {
+					err = a.json.Unmarshal(msg.Data, &cloudEvent)
+					if err != nil {
+						log.Errorf("error deserializing cloud event in pubsub %s and topic %s: %s", name, msg.Topic, err)
+						return err
+					}
+				}
+
+				if pubsub.HasExpired(cloudEvent) {
+					log.Warnf("dropping expired pub/sub event %v as of %v", cloudEvent[pubsub.IDField], cloudEvent[pubsub.ExpirationField])
+
+					return nil
+				}
+
+				route := a.topicRoutes[msg.Metadata[pubsubName]].routes[msg.Topic]
+				routePath, shouldProcess, err := findMatchingRoute(&route, cloudEvent, a.featureRoutingEnabled)
 				if err != nil {
-					log.Errorf("error deserializing cloud event in pubsub %s and topic %s: %s", name, msg.Topic, err)
 					return err
 				}
-			}
+				if !shouldProcess {
+					// The event does not match any route specified so ignore it.
+					log.Debugf("no matching route for event %v in pubsub %s and topic %s; skipping", cloudEvent[pubsub.IDField], name, msg.Topic)
+					return nil
+				}
 
-			if pubsub.HasExpired(cloudEvent) {
-				log.Warnf("dropping expired pub/sub event %v as of %v", cloudEvent[pubsub.IDField], cloudEvent[pubsub.ExpirationField])
-
-				return nil
-			}
-
-			route := a.topicRoutes[msg.Metadata[pubsubName]].routes[msg.Topic]
-			routePath, shouldProcess, err := findMatchingRoute(&route, cloudEvent, a.featureRoutingEnabled)
-			if err != nil {
-				return err
-			}
-			if !shouldProcess {
-				// The event does not match any route specified so ignore it.
-				log.Debugf("no matching route for event %v in pubsub %s and topic %s; skipping", cloudEvent[pubsub.IDField], name, msg.Topic)
-				return nil
-			}
-
-			return publishFunc(ctx, &pubsubSubscribedMessage{
-				cloudEvent: cloudEvent,
-				data:       data,
-				topic:      msg.Topic,
-				metadata:   msg.Metadata,
-				path:       routePath,
-			})
-		}); err != nil {
-			log.Errorf("failed to subscribe to topic %s: %s", topic, err)
+				return publishFunc(ctx, &pubsubSubscribedMessage{
+					cloudEvent: cloudEvent,
+					data:       data,
+					topic:      msg.Topic,
+					metadata:   msg.Metadata,
+					path:       routePath,
+				})
+			}); err != nil {
+			log.Errorf("订阅主题失败 %s: %s", topic, err)
 		}
 	}
 
