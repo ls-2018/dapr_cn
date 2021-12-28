@@ -251,6 +251,7 @@ func (d *directMessaging) getRemoteApp(appID string) (remoteApp, error) {
 	}
 
 	request := nr.ResolveRequest{ID: id, Namespace: namespace, Port: d.grpcPort} // grpc内部通信的端口
+	// 会调用域名解析组件解析域名
 	address, err := d.resolver.ResolveID(request)                                // dp-61c03c5f8ea49c26debd26a6-executorapp-dapr.mesoid.svc.cluster.local:50002
 	if err != nil {
 		return remoteApp{}, err

@@ -11,6 +11,7 @@ import (
 	daprd_debug "github.com/dapr/dapr/code_debug/daprd"
 	"github.com/dapr/dapr/pkg/operator/client"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 
@@ -105,7 +106,6 @@ func FromFlags() (*DaprRuntime, error) {
 		waitUntilDaprOutboundReady(*daprHTTPPort)
 		os.Exit(0)
 	}
-
 
 	if *appID == "" {
 		return nil, errors.New("app-id parameter cannot be empty")
@@ -282,12 +282,16 @@ func FromFlags() (*DaprRuntime, error) {
 			//去拿k8s里dapr自定义资源Configuration  appconfig
 			globalConfig, configErr = global_config.LoadKubernetesConfiguration(*config, namespace, client)
 		case modes.StandaloneMode:
-			globalConfig, _, configErr = global_config.LoadStandaloneConfiguration(*config)
+			userHome, err := daprd_debug.Home()
+			if err != nil {
+				log.Fatal(err)
+			}
+			globalConfig, _, configErr = global_config.LoadStandaloneConfiguration(path.Join(userHome, ".dapr/config.yaml"))
 		}
 	}
 
 	if configErr != nil {
-		log.Fatalf("error loading configuration: %s", configErr)
+		log.Fatalf("加载配置出错: %s", configErr)
 	}
 	if globalConfig == nil {
 		log.Info("loading default configuration")

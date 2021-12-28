@@ -1,8 +1,10 @@
 package daprd_debug
 
 import (
+	"bytes"
 	"fmt"
 	auth "github.com/dapr/dapr/pkg/runtime/security"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	raw_k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -10,7 +12,9 @@ import (
 	"k8s.io/client-go/util/homedir"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -45,7 +49,7 @@ func PRE(
 	// kubectl port-forward svc/dapr-sentry -n dapr-system 10080:80 &
 	*config = "appconfig" // 注入的时候，就确定了
 	*appMaxConcurrency = -1
-	*mode = "kubernetes"
+	//*mode = "kubernetes"
 	*daprHTTPPort = "3500"
 	*daprAPIGRPCPort = "50003"
 	*daprInternalGRPCPort = "50001"
@@ -210,9 +214,62 @@ func SubCommand(opt []string) {
 	for {
 		tmp := make([]byte, 1024)
 		_, err := stdout.Read(tmp)
-		fmt.Print(string(tmp))
+
+		fmt.Print(strings.Join(strings.Split(string(tmp), "\n"), "\n[-----------SubCommand-------]"))
 		if err != nil {
 			break
 		}
 	}
+}
+
+func Home() (string, error) {
+	user, err := user.Current()
+	if nil == err {
+		return user.HomeDir, nil
+	}
+
+	// cross compile support
+
+	if "windows" == runtime.GOOS {
+		return homeWindows()
+	}
+
+	// Unix-like system, so just assume Unix
+	return homeUnix()
+}
+
+func homeUnix() (string, error) {
+	// First prefer the HOME environmental variable
+	if home := os.Getenv("HOME"); home != "" {
+		return home, nil
+	}
+
+	// If that fails, try the shell
+	var stdout bytes.Buffer
+	cmd := exec.Command("sh", "-c", "eval echo ~$USER")
+	cmd.Stdout = &stdout
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+
+	result := strings.TrimSpace(stdout.String())
+	if result == "" {
+		return "", errors.New("blank output when reading home directory")
+	}
+
+	return result, nil
+}
+
+func homeWindows() (string, error) {
+	drive := os.Getenv("HOMEDRIVE")
+	path := os.Getenv("HOMEPATH")
+	home := drive + path
+	if drive == "" || path == "" {
+		home = os.Getenv("USERPROFILE")
+	}
+	if home == "" {
+		return "", errors.New("HOMEDRIVE, HOMEPATH, and USERPROFILE are blank")
+	}
+
+	return home, nil
 }

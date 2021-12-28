@@ -356,7 +356,7 @@ func (a *DaprRuntime) initRuntime(opts *runtimeOpts) error {
 	a.nameResolutionRegistry.Register(opts.nameResolutions...)
 	err = a.initNameResolution()
 	if err != nil {
-		log.Warnf("failed to init name resolution: %s", err)
+		log.Warnf("初始化域名解析失败: %s", err)
 	}
 
 	a.pubSubRegistry.Register(opts.pubsubs...)
@@ -1439,7 +1439,7 @@ func (a *DaprRuntime) initNameResolution() error {
 		case modes.StandaloneMode:
 			resolverName = "mdns"
 		default:
-			return errors.Errorf("unable to determine name resolver for %s mode", string(a.runtimeConfig.Mode))
+			return errors.Errorf("无法确定域名解析 %s mode", string(a.runtimeConfig.Mode))
 		}
 	}
 
@@ -1455,7 +1455,6 @@ func (a *DaprRuntime) initNameResolution() error {
 		nr.AppPort:      strconv.Itoa(a.runtimeConfig.ApplicationPort),  //3001
 		nr.HostAddress:  a.hostAddress,                                  // 10.10.16.115
 		nr.AppID:        a.runtimeConfig.ID,                             // dp-618b5e4aa5ebc3924db86860-executorapp
-		// TODO - change other nr components to use above properties (specifically MDNS component)
 		//改变其他nr组件以使用上述属性（特别是MDNS组件）。
 		nr.MDNSInstanceName:    a.runtimeConfig.ID,                             // dp-618b5e4aa5ebc3924db86860-executorapp
 		nr.MDNSInstanceAddress: a.hostAddress,                                  // 10.10.16.115
@@ -1463,18 +1462,18 @@ func (a *DaprRuntime) initNameResolution() error {
 	}
 
 	if err != nil {
-		log.Warnf("error creating name resolution resolver %s: %s", resolverName, err)
+		log.Warnf("创建域名解析实例失败 %s: %s", resolverName, err)
 		return err
 	}
 	// 只是更改clusterDomain属性
 	if err = resolver.Init(resolverMetadata); err != nil {
-		log.Errorf("failed to initialize name resolution resolver %s: %s", resolverName, err)
+		log.Errorf("创建域名解析实例失败 %s: %s", resolverName, err)
 		return err
 	}
 
 	a.nameResolver = resolver
 
-	log.Infof("Initialized name resolution to %s", resolverName)
+	log.Infof("已初始化域名解析实例%s", resolverName)
 	return nil
 }
 

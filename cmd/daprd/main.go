@@ -315,9 +315,9 @@ func main() {
 			bindings_loader.NewInput("cron", func() bindings.InputBinding {
 				return cron.NewCron(logContrib)
 			}),
-			bindings_loader.NewInput("dingtalk.webhook", func() bindings.InputBinding {
-				return dingtalk_webhook.NewDingTalkWebhook(logContrib)
-			}),
+			//bindings_loader.NewInput("dingtalk.webhook", func() bindings.InputBinding {
+			//	return dingtalk_webhook.NewDingTalkWebhook(logContrib)
+			//}),
 			bindings_loader.NewInput("gcp.pubsub", func() bindings.InputBinding {
 				return pubsub.NewGCPPubSub(logContrib)
 			}),
@@ -336,9 +336,9 @@ func main() {
 			bindings_loader.NewInput("rethinkdb.statechange", func() bindings.InputBinding {
 				return statechange.NewRethinkDBStateChangeBinding(logContrib)
 			}),
-			bindings_loader.NewInput("twitter", func() bindings.InputBinding {
-				return twitter.NewTwitter(logContrib)
-			}),
+			//bindings_loader.NewInput("twitter", func() bindings.InputBinding {
+			//	return twitter.NewTwitter(logContrib)
+			//}),
 			bindings_loader.NewInput("zeebe.jobworker", func() bindings.InputBinding {
 				return bindings_zeebe_jobworker.NewZeebeJobWorker(logContrib)
 			}),
