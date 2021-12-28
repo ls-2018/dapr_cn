@@ -46,6 +46,8 @@ spec:
       value: 3
     - name: maxLenApprox
       value: 3
+#    https://docs.dapr.io/zh-hans/developing-applications/building-blocks/pubsub/pubsub-scopes/
+#    只有这里合规，Subscription才会生效
     - name: subscriptionScopes
       value: "dp-61c2cb20562850d49d47d1c7-executorapp=e,f,g,h;"
     - name: publishingScopes
