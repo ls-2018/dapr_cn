@@ -516,16 +516,17 @@ func (a *DaprRuntime) buildHTTPPipeline() (http_middleware.Pipeline, error) {
 }
 
 func (a *DaprRuntime) initBinding(c components_v1alpha1.Component) error {
+	// 判断本地注册中有没有该输出绑定的实现类
 	if a.bindingsRegistry.HasOutputBinding(c.Spec.Type, c.Spec.Version) {
-		if err := a.initOutputBinding(c); err != nil {
-			log.Errorf("failed to init output bindings: %s", err)
+		if err := a.initOutputBinding(c); err != nil { // Init
+			log.Errorf("初始化输出绑定失败: %s", err)
 			return err
 		}
 	}
-
+	// 判断本地注册中有没有该输入绑定的实现类
 	if a.bindingsRegistry.HasInputBinding(c.Spec.Type, c.Spec.Version) {
 		if err := a.initInputBinding(c); err != nil {
-			log.Errorf("failed to init input bindings: %s", err)
+			log.Errorf("初始化输入绑定失败: %s", err)
 			return err
 		}
 	}
@@ -601,7 +602,7 @@ func (a *DaprRuntime) beginPubSub(pubSubName string, ps pubsub.PubSub) error {
 				}
 
 				route := a.topicRoutes[pubSubName].routes[msg.Topic]
-				routePath, shouldProcess, err := findMatchingRoute(&route, cloudEvent, a.featureRoutingEnabled)// 路由,消息 false
+				routePath, shouldProcess, err := findMatchingRoute(&route, cloudEvent, a.featureRoutingEnabled) // 路由,消息 false
 				if err != nil {
 					return err
 				}
@@ -818,11 +819,11 @@ func (a *DaprRuntime) sendBatchOutputBindingsSequential(to []string, data []byte
 
 func (a *DaprRuntime) sendToOutputBinding(name string, req *bindings.InvokeRequest) (*bindings.InvokeResponse, error) {
 	if req.Operation == "" {
-		return nil, errors.New("operation field is missing from request")
+		return nil, errors.New("请求数据丢失了操作类型 字段")
 	}
-
+	// 输出绑定的名称
 	if binding, ok := a.outputBindings[name]; ok {
-		ops := binding.Operations()
+		ops := binding.Operations() // 支持的操作类型
 		for _, o := range ops {
 			if o == req.Operation {
 				return binding.Invoke(req)
@@ -832,9 +833,9 @@ func (a *DaprRuntime) sendToOutputBinding(name string, req *bindings.InvokeReque
 		for _, o := range ops {
 			supported = append(supported, string(o))
 		}
-		return nil, errors.Errorf("binding %s does not support operation %s. supported operations:%s", name, req.Operation, strings.Join(supported, " "))
+		return nil, errors.Errorf("绑定 %s 不支持 %s操作. 支持的操作:%s", name, req.Operation, strings.Join(supported, " "))
 	}
-	return nil, errors.Errorf("couldn't find output binding %s", name)
+	return nil, errors.Errorf("不能找到输出绑定 %s", name)
 }
 
 func (a *DaprRuntime) onAppResponse(response *bindings.AppResponse) error {
@@ -1097,9 +1098,9 @@ func (a *DaprRuntime) isAppSubscribedToBinding(binding string) bool {
 }
 
 func (a *DaprRuntime) initInputBinding(c components_v1alpha1.Component) error {
-	binding, err := a.bindingsRegistry.CreateInputBinding(c.Spec.Type, c.Spec.Version)
+	binding, err := a.bindingsRegistry.CreateInputBinding(c.Spec.Type, c.Spec.Version) // 绑定结构体
 	if err != nil {
-		log.Warnf("failed to create input binding %s (%s/%s): %s", c.ObjectMeta.Name, c.Spec.Type, c.Spec.Version, err)
+		log.Warnf("创建输入绑定失败 %s (%s/%s): %s", c.ObjectMeta.Name, c.Spec.Type, c.Spec.Version, err)
 		diag.DefaultMonitoring.ComponentInitFailed(c.Spec.Type, "creation")
 		return err
 	}
@@ -1108,7 +1109,7 @@ func (a *DaprRuntime) initInputBinding(c components_v1alpha1.Component) error {
 		Name:       c.ObjectMeta.Name,
 	})
 	if err != nil {
-		log.Errorf("failed to init input binding %s (%s/%s): %s", c.ObjectMeta.Name, c.Spec.Type, c.Spec.Version, err)
+		log.Errorf("初始化输入绑定失败 %s (%s/%s): %s", c.ObjectMeta.Name, c.Spec.Type, c.Spec.Version, err)
 		diag.DefaultMonitoring.ComponentInitFailed(c.Spec.Type, "init")
 		return err
 	}
@@ -1126,9 +1127,9 @@ func (a *DaprRuntime) initInputBinding(c components_v1alpha1.Component) error {
 }
 
 func (a *DaprRuntime) initOutputBinding(c components_v1alpha1.Component) error {
-	binding, err := a.bindingsRegistry.CreateOutputBinding(c.Spec.Type, c.Spec.Version)
+	binding, err := a.bindingsRegistry.CreateOutputBinding(c.Spec.Type, c.Spec.Version) // 返回绑定的结构体
 	if err != nil {
-		log.Warnf("failed to create output binding %s (%s/%s): %s", c.ObjectMeta.Name, c.Spec.Type, c.Spec.Version, err)
+		log.Warnf("创建输出绑定失败%s (%s/%s): %s", c.ObjectMeta.Name, c.Spec.Type, c.Spec.Version, err)
 		diag.DefaultMonitoring.ComponentInitFailed(c.Spec.Type, "creation")
 		return err
 	}
@@ -1139,11 +1140,11 @@ func (a *DaprRuntime) initOutputBinding(c components_v1alpha1.Component) error {
 			Name:       c.ObjectMeta.Name,
 		})
 		if err != nil {
-			log.Errorf("failed to init output binding %s (%s/%s): %s", c.ObjectMeta.Name, c.Spec.Type, c.Spec.Version, err)
+			log.Errorf("初始化输出绑定失败 %s (%s/%s): %s", c.ObjectMeta.Name, c.Spec.Type, c.Spec.Version, err)
 			diag.DefaultMonitoring.ComponentInitFailed(c.Spec.Type, "init")
 			return err
 		}
-		log.Infof("successful init for output binding %s (%s/%s)", c.ObjectMeta.Name, c.Spec.Type, c.Spec.Version)
+		log.Infof("初始化输出绑定成功 %s (%s/%s)", c.ObjectMeta.Name, c.Spec.Type, c.Spec.Version)
 		a.outputBindings[c.ObjectMeta.Name] = binding
 		diag.DefaultMonitoring.ComponentInitialized(c.Spec.Type)
 	}
@@ -1859,6 +1860,7 @@ func (a *DaprRuntime) processComponentAndDependents(comp components_v1alpha1.Com
 	ch := make(chan error, 1)
 	// 解析时间字符串,返回Duration类型
 	timeout, err := time.ParseDuration(comp.Spec.InitTimeout)
+	//timeout, err := time.ParseDuration("1h")
 	if err != nil {
 		timeout = defaultComponentInitTimeout // 默认5秒
 	}
@@ -1901,11 +1903,11 @@ func (a *DaprRuntime) doProcessOneComponent(category ComponentCategory, comp com
 	case bindingsComponent:
 		return a.initBinding(comp)
 	case pubsubComponent:
-		return a.initPubSub(comp)
+		return a.initPubSub(comp) // ok
 	case secretStoreComponent:
-		return a.initSecretStore(comp)
+		return a.initSecretStore(comp) // ok
 	case stateComponent:
-		return a.initState(comp)
+		return a.initState(comp) // ok
 	case configurationComponent:
 		return a.initConfiguration(comp)
 	}

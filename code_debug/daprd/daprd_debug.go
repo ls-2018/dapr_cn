@@ -49,7 +49,7 @@ func PRE(
 	// kubectl port-forward svc/dapr-sentry -n dapr-system 10080:80 &
 	*config = "appconfig" // 注入的时候，就确定了
 	*appMaxConcurrency = -1
-	//*mode = "kubernetes"
+	*mode = "kubernetes"
 	*daprHTTPPort = "3500"
 	*daprAPIGRPCPort = "50003"
 	*daprInternalGRPCPort = "50001"
@@ -133,7 +133,7 @@ zfCt2fhdjXEK2GGEMAIhAKi0GsyI5b2hkrUkIEZm1kTLbeuw0GIguSvW89yUkXbT
 	*auth.GetKubeTknPath() = "/tmp/token"
 	KillProcess(45454)
 	go SubCommand([]string{"zsh", "-c", "kubectl port-forward svc/dapr-redis-svc -n " + nameSpace + " 45454:45454"})
-	time.Sleep(time.Second * 4)
+	time.Sleep(time.Second * 14)
 }
 
 // GetK8s 此处改用加载本地配置文件 ~/.kube/config

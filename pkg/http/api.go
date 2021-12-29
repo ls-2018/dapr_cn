@@ -20,15 +20,12 @@ import (
 	"github.com/dapr/dapr/pkg/channel"
 	"github.com/dapr/dapr/pkg/channel/http"
 	"github.com/dapr/dapr/pkg/config"
-	diag "github.com/dapr/dapr/pkg/diagnostics"
-	diag_utils "github.com/dapr/dapr/pkg/diagnostics/utils"
 	"github.com/dapr/dapr/pkg/messages"
 	"github.com/dapr/dapr/pkg/messaging"
 	invokev1 "github.com/dapr/dapr/pkg/messaging/v1"
 	runtime_pubsub "github.com/dapr/dapr/pkg/runtime/pubsub"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/valyala/fasthttp"
-	"go.opencensus.io/trace"
 	"google.golang.org/grpc/codes"
 )
 
@@ -179,18 +176,6 @@ func (a *api) MarkStatusAsOutboundReady() {
 
 // ----------------------------------------
 
-// 构建binging端点
-func (a *api) constructBindingsEndpoints() []Endpoint {
-	return []Endpoint{
-		{
-			Methods: []string{fasthttp.MethodPost, fasthttp.MethodPut},
-			Route:   "bindings/{name}",
-			Version: apiVersionV1,
-			Handler: a.onOutputBindingMessage,
-		},
-	}
-}
-
 // actor
 // 一个actor的并发量为1
 //POST/GET/PUT/DELETE http://localhost:3500/v1.0/actors/<actorType>/<actorId>/<method/state/timers/reminders>
@@ -277,79 +262,7 @@ func (a *api) constructShutdownEndpoints() []Endpoint {
 	}
 }
 
-// 健康检查
-func (a *api) constructHealthzEndpoints() []Endpoint {
-	return []Endpoint{
-		{
-			Methods: []string{fasthttp.MethodGet},
-			Route:   "healthz", //      curl http://localhost:3500/v1.0/healthz
-			Version: apiVersionV1,
-			Handler: a.onGetHealthz,
-		},
-		{
-			Methods: []string{fasthttp.MethodGet},
-			Route:   "healthz/outbound", // curl http://localhost:3500/v1.0/healthz/outbound
-			Version: apiVersionV1,
-			Handler: a.onGetOutboundHealthz,
-		},
-	}
-}
-
 // ----------------------------------------
-
-func (a *api) onOutputBindingMessage(reqCtx *fasthttp.RequestCtx) {
-	name := reqCtx.UserValue(nameParam).(string)
-	body := reqCtx.PostBody()
-
-	var req OutputBindingRequest
-	err := a.json.Unmarshal(body, &req)
-	if err != nil {
-		msg := NewErrorResponse("ERR_MALFORMED_REQUEST", fmt.Sprintf(messages.ErrMalformedRequest, err))
-		respond(reqCtx, withError(fasthttp.StatusBadRequest, msg))
-		log.Debug(msg)
-		return
-	}
-
-	b, err := a.json.Marshal(req.Data)
-	if err != nil {
-		msg := NewErrorResponse("ERR_MALFORMED_REQUEST_DATA", fmt.Sprintf(messages.ErrMalformedRequestData, err))
-		respond(reqCtx, withError(fasthttp.StatusInternalServerError, msg))
-		log.Debug(msg)
-		return
-	}
-
-	// pass the trace context to output binding in metadata
-	if span := diag_utils.SpanFromContext(reqCtx); span != nil {
-		sc := span.SpanContext()
-		if req.Metadata == nil {
-			req.Metadata = map[string]string{}
-		}
-		// if sc is not empty context, set traceparent Header.
-		if sc != (trace.SpanContext{}) {
-			req.Metadata[traceparentHeader] = diag.SpanContextToW3CString(sc)
-		}
-		if sc.Tracestate != nil {
-			req.Metadata[tracestateHeader] = diag.TraceStateToW3CString(sc)
-		}
-	}
-
-	resp, err := a.sendToOutputBindingFn(name, &bindings.InvokeRequest{
-		Metadata:  req.Metadata,
-		Data:      b,
-		Operation: bindings.OperationKind(req.Operation),
-	})
-	if err != nil {
-		msg := NewErrorResponse("ERR_INVOKE_OUTPUT_BINDING", fmt.Sprintf(messages.ErrInvokeOutputBinding, name, err))
-		respond(reqCtx, withError(fasthttp.StatusInternalServerError, msg))
-		log.Debug(msg)
-		return
-	}
-	if resp == nil {
-		respond(reqCtx, withEmpty())
-	} else {
-		respond(reqCtx, withMetadata(resp.Metadata), withJSON(fasthttp.StatusOK, resp.Data))
-	}
-}
 
 // stateErrorResponse 接收一个状态存储错误，并返回相应的状态代码、错误信息和修改后的用户错误。
 func (a *api) stateErrorResponse(err error, errorCode string) (int, string, ErrorResponse) {
@@ -768,26 +681,6 @@ func GetStatusCodeFromMetadata(metadata map[string]string) int {
 	return fasthttp.StatusOK
 }
 
-func (a *api) onGetHealthz(reqCtx *fasthttp.RequestCtx) {
-	if !a.readyStatus {
-		msg := NewErrorResponse("ERR_HEALTH_NOT_READY", messages.ErrHealthNotReady)
-		respond(reqCtx, withError(fasthttp.StatusInternalServerError, msg))
-		log.Debug(msg)
-	} else {
-		respond(reqCtx, withEmpty())
-	}
-}
-
-func (a *api) onGetOutboundHealthz(reqCtx *fasthttp.RequestCtx) {
-	if !a.outboundReadyStatus {
-		msg := NewErrorResponse("ERR_HEALTH_NOT_READY", messages.ErrHealthNotReady)
-		respond(reqCtx, withError(fasthttp.StatusInternalServerError, msg))
-		log.Debug(msg)
-	} else {
-		respond(reqCtx, withEmpty())
-	}
-}
-
 func (a *api) isSecretAllowed(storeName, key string) bool {
 	if config, ok := a.secretsConfiguration[storeName]; ok {
 		return config.IsSecretAllowed(key)
@@ -798,10 +691,6 @@ func (a *api) isSecretAllowed(storeName, key string) bool {
 
 func (a *api) SetAppChannel(appChannel channel.AppChannel) {
 	a.appChannel = appChannel
-}
-
-func (a *api) SetDirectMessaging(directMessaging messaging.DirectMessaging) {
-	a.directMessaging = directMessaging
 }
 
 func (a *api) SetActorRuntime(actor actors.Actors) {

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-import time
+import random
 
 from fastapi import FastAPI
-from fastapi.routing import Request
+from fastapi.routing import Request, Response
 from starlette_exporter import PrometheusMiddleware
 from starlette_exporter import handle_metrics
 
@@ -49,11 +49,19 @@ async def sub(req: Request):
 @app.post('/dsstatus')
 async def sub(req: Request):
     print(await req.json())
-    time.sleep(12220)
 
     return {
         'status': 'SUCCESS',
     }
+
+
+@app.post('/myevent')
+async def myevent(req: Request):
+    print(await req.json())
+    if random.random() > 0.5:
+        return Response("200", status_code=200)
+    else:
+        return Response("500", status_code=500)
 
 
 # 必须返回三者之一 | 不写 status

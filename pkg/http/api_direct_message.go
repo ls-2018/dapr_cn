@@ -3,6 +3,7 @@ package http
 import (
 	"fmt"
 	"github.com/dapr/dapr/pkg/messages"
+	"github.com/dapr/dapr/pkg/messaging"
 	invokev1 "github.com/dapr/dapr/pkg/messaging/v1"
 	"github.com/fasthttp/router"
 	"github.com/valyala/fasthttp"
@@ -22,6 +23,9 @@ func (a *api) constructDirectMessagingEndpoints() []Endpoint {
 			Handler: a.onDirectMessage,
 		},
 	}
+}
+func (a *api) SetDirectMessaging(directMessaging messaging.DirectMessaging) {
+	a.directMessaging = directMessaging
 }
 
 // 直接消息传递

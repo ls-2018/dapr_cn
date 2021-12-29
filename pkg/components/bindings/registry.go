@@ -139,7 +139,7 @@ func (b *bindingsRegistry) CreateOutputBinding(name, version string) (bindings.O
 	if method, ok := b.getOutputBinding(name, version); ok {
 		return method(), nil
 	}
-	return nil, errors.Errorf("couldn't find output binding %s/%s", name, version)
+	return nil, errors.Errorf("不能找到输出绑定 %s/%s", name, version)
 }
 
 // HasInputBinding 检查输入绑定存不存在，基于 name, version
