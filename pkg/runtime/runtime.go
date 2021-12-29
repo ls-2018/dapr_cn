@@ -598,21 +598,6 @@ func (a *DaprRuntime) getGRPCAPI() grpc.API {
 	)
 }
 
-
-func extractCloudEventProperty(cloudEvent map[string]interface{}, property string) string {
-	if cloudEvent == nil {
-		return ""
-	}
-	iValue, ok := cloudEvent[property]
-	if ok {
-		if value, ok := iValue.(string); ok {
-			return value
-		}
-	}
-
-	return ""
-}
-
 func (a *DaprRuntime) initActors() error {
 	// 没什么实际功能
 	err := actors.ValidateHostEnvironment(a.runtimeConfig.mtlsEnabled, a.runtimeConfig.Mode, a.namespace) //true   kubernetes mesoid

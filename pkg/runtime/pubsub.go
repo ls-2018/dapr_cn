@@ -491,3 +491,17 @@ func (a *DaprRuntime) isPubSubOperationAllowed(pubsubName string, topic string, 
 	}
 	return allowedScope
 }
+
+func extractCloudEventProperty(cloudEvent map[string]interface{}, property string) string {
+	if cloudEvent == nil {
+		return ""
+	}
+	iValue, ok := cloudEvent[property]
+	if ok {
+		if value, ok := iValue.(string); ok {
+			return value
+		}
+	}
+
+	return ""
+}
