@@ -67,3 +67,29 @@ spec:
     - protocol: TCP
       port: 45454
       targetPort: 6379
+---
+#apiVersion: dapr.io/v1alpha1
+#kind: Component
+#metadata:
+#  name: myevent
+#  namespace: default
+#spec:
+#  type: bindings.kafka
+#  version: v1
+#  metadata:
+#    - name: brokers
+#      value: localhost:9092
+#    - name: topics
+#      value: "topic-a"
+#    - name: publishTopic
+#      value: topic1
+#    - name: consumerGroup
+#      value: app01
+#    - name: publishTopic
+#      value: topic-a
+#    - name: initialOffset
+#      value: "oldest"
+#    - name: authRequired
+#      value: "false"
+#    - name: maxMessageBytes
+#      value: 10240000
