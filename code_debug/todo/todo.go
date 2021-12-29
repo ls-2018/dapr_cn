@@ -3,14 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 )
 
 func main() {
 	//x()
-	pat, _ := filepath.Abs("~/.dapr/config.yaml")
-	fmt.Println(os.Stat(pat))
+	fmt.Println(int(^uint(0) >> 1))
+	fmt.Println(int64(^uint64(0) >> 1))
 }
 
 func x() {

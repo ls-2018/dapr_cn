@@ -43,6 +43,11 @@ operator = controlPlaneAddress = dapr-api.dapr-system.svc.cluster.local:80
         SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 ```
 
+```
+daprd 在与远程服务进行通信时，会为每个服务保持一个链接
+pkg/grpc/grpc.go:79
+sidecar 之间是通过grpc链接的
+```
 
 ### todo
 - 1、operator 自定义crd ; 使用kubebuilder
