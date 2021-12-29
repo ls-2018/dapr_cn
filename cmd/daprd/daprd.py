@@ -55,13 +55,21 @@ async def sub(req: Request):
     }
 
 
-@app.post('/myevent')
+@app.get('/myevent')
 async def myevent(req: Request):
-    print(await req.json())
     if random.random() > 0.5:
         return Response("200", status_code=200)
     else:
         return Response("500", status_code=500)
+
+
+# @app.post('/myevent')
+# async def myevent(req: Request):
+#     print(await req.json())
+#     if random.random() > 0.5:
+#         return Response("200", status_code=200)
+#     else:
+#         return Response("500", status_code=500)
 
 
 # 必须返回三者之一 | 不写 status

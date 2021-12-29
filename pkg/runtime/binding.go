@@ -17,6 +17,24 @@ import (
 	"time"
 )
 
+func (a *DaprRuntime) initBinding(c components_v1alpha1.Component) error {
+	// 判断本地注册中有没有该输出绑定的实现类
+	if a.bindingsRegistry.HasOutputBinding(c.Spec.Type, c.Spec.Version) {
+		if err := a.initOutputBinding(c); err != nil { // Init
+			log.Errorf("初始化输出绑定失败: %s", err)
+			return err
+		}
+	}
+	// 判断本地注册中有没有该输入绑定的实现类
+	if a.bindingsRegistry.HasInputBinding(c.Spec.Type, c.Spec.Version) {
+		if err := a.initInputBinding(c); err != nil {
+			log.Errorf("初始化输入绑定失败: %s", err)
+			return err
+		}
+	}
+	return nil
+}
+
 func (a *DaprRuntime) initInputBinding(c components_v1alpha1.Component) error {
 	binding, err := a.bindingsRegistry.CreateInputBinding(c.Spec.Type, c.Spec.Version) // 绑定结构体
 	if err != nil {
@@ -34,7 +52,7 @@ func (a *DaprRuntime) initInputBinding(c components_v1alpha1.Component) error {
 		return err
 	}
 
-	log.Infof("successful init for input binding %s (%s/%s)", c.ObjectMeta.Name, c.Spec.Type, c.Spec.Version)
+	log.Infof("初始化输入绑定成功 %s (%s/%s)", c.ObjectMeta.Name, c.Spec.Type, c.Spec.Version)
 	a.inputBindingRoutes[c.Name] = c.Name
 	for _, item := range c.Spec.Metadata {
 		if item.Name == "route" {
@@ -83,7 +101,7 @@ func (a *DaprRuntime) getSubscribedBindingsGRPC() []string {
 }
 
 func (a *DaprRuntime) isAppSubscribedToBinding(binding string) bool {
-	// if gRPC, looks for the binding in the list of bindings returned from the app
+	// 如果是gRPC，则在从应用程序返回的绑定列表中寻找该绑定。
 	if a.runtimeConfig.ApplicationProtocol == GRPCProtocol {
 		if a.subscribeBindingList == nil {
 			a.subscribeBindingList = a.getSubscribedBindingsGRPC()
@@ -94,7 +112,7 @@ func (a *DaprRuntime) isAppSubscribedToBinding(binding string) bool {
 			}
 		}
 	} else if a.runtimeConfig.ApplicationProtocol == HTTPProtocol {
-		// if HTTP, check if there's an endpoint listening for that binding
+		//  如果是http，则在从应用程序返回的绑定列表中寻找该绑定。
 		path := a.inputBindingRoutes[binding]
 		req := invokev1.NewInvokeMethodRequest(path)
 		req.WithHTTPExtension(nethttp.MethodOptions, "")
@@ -104,31 +122,15 @@ func (a *DaprRuntime) isAppSubscribedToBinding(binding string) bool {
 		ctx := context.Background()
 		resp, err := a.appChannel.InvokeMethod(ctx, req)
 		if err != nil {
-			log.Fatalf("could not invoke OPTIONS method on input binding subscription endpoint %q: %w", path, err)
+			log.Fatalf("无法调用输入绑定订阅端点的OPTIONS方法 %q: %w", path, err)
 		}
 		code := resp.Status().Code
-
+		// 是200 获取方法不允许
 		return code/100 == 2 || code == nethttp.StatusMethodNotAllowed
 	}
 	return false
 }
-func (a *DaprRuntime) initBinding(c components_v1alpha1.Component) error {
-	// 判断本地注册中有没有该输出绑定的实现类
-	if a.bindingsRegistry.HasOutputBinding(c.Spec.Type, c.Spec.Version) {
-		if err := a.initOutputBinding(c); err != nil { // Init
-			log.Errorf("初始化输出绑定失败: %s", err)
-			return err
-		}
-	}
-	// 判断本地注册中有没有该输入绑定的实现类
-	if a.bindingsRegistry.HasInputBinding(c.Spec.Type, c.Spec.Version) {
-		if err := a.initInputBinding(c); err != nil {
-			log.Errorf("初始化输入绑定失败: %s", err)
-			return err
-		}
-	}
-	return nil
-}
+
 func (a *DaprRuntime) sendToOutputBinding(name string, req *bindings.InvokeRequest) (*bindings.InvokeResponse, error) {
 	if req.Operation == "" {
 		return nil, errors.New("请求数据丢失了操作类型 字段")
@@ -149,6 +151,7 @@ func (a *DaprRuntime) sendToOutputBinding(name string, req *bindings.InvokeReque
 	}
 	return nil, errors.Errorf("不能找到输出绑定 %s", name)
 }
+
 func (a *DaprRuntime) sendBatchOutputBindingsParallel(to []string, data []byte) {
 	for _, dst := range to {
 		go func(name string) {
@@ -248,7 +251,7 @@ func (a *DaprRuntime) sendBindingEventToApp(bindingName string, data []byte, met
 
 		resp, err := a.appChannel.InvokeMethod(ctx, req)
 		if err != nil {
-			return nil, errors.Wrap(err, "error invoking app")
+			return nil, errors.Wrap(err, "调用用户程序出错")
 		}
 
 		if span != nil {
@@ -262,7 +265,7 @@ func (a *DaprRuntime) sendBindingEventToApp(bindingName string, data []byte, met
 		// ::TODO report metrics for http, such as grpc
 		if resp.Status().Code != nethttp.StatusOK {
 			_, body := resp.RawData()
-			return nil, errors.Errorf("fails to send binding event to http app channel, status code: %d body: %s", resp.Status().Code, string(body))
+			return nil, errors.Errorf("未能向http应用通道发送绑定事件，状态代码为: %d body: %s", resp.Status().Code, string(body))
 		}
 
 		if resp.Message().Data != nil && len(resp.Message().Data.Value) > 0 {
@@ -272,7 +275,7 @@ func (a *DaprRuntime) sendBindingEventToApp(bindingName string, data []byte, met
 
 	if len(response.State) > 0 || len(response.To) > 0 {
 		if err := a.onAppResponse(&response); err != nil {
-			log.Errorf("error executing app response: %s", err)
+			log.Errorf("执行应用程序响应时出错: %s", err)
 		}
 	}
 
@@ -284,7 +287,7 @@ func (a *DaprRuntime) readFromBinding(name string, binding bindings.InputBinding
 		if resp != nil {
 			b, err := a.sendBindingEventToApp(name, resp.Data, resp.Metadata)
 			if err != nil {
-				log.Debugf("error from app consumer for binding [%s]: %s", name, err)
+				log.Debugf("来自应用程序消费者的绑定错误 [%s]: %s", name, err)
 				return nil, err
 			}
 			return b, err
@@ -293,20 +296,22 @@ func (a *DaprRuntime) readFromBinding(name string, binding bindings.InputBinding
 	})
 	return err
 }
+
 func (a *DaprRuntime) startReadingFromBindings() error {
 	if a.appChannel == nil {
-		return errors.New("app channel not initialized")
+		return errors.New("App通道未初始化")
 	}
-	for name, binding := range a.inputBindings {
+	for name, binding := range a.inputBindings { // 本地初始化的链接
 		go func(name string, binding bindings.InputBinding) {
-			if !a.isAppSubscribedToBinding(name) {
-				log.Infof("app has not subscribed to binding %s.", name)
+			// 对每一个输入绑定启动一个go routinue
+			if !a.isAppSubscribedToBinding(name) { // 判断应用是有没有实现对应的路由函数  todo 如果应用程序只实现了option而没有实现post
+				log.Infof("App没有订阅绑定 %s.", name)
 				return
 			}
 
 			err := a.readFromBinding(name, binding)
 			if err != nil {
-				log.Errorf("error reading from input binding %s: %s", name, err)
+				log.Errorf("从输入绑定读取错误%s: %s", name, err)
 			}
 		}(name, binding)
 	}

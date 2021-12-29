@@ -11,6 +11,7 @@ import (
 	"github.com/dapr/components-contrib/pubsub"
 	"github.com/dapr/components-contrib/secretstores"
 	"github.com/dapr/components-contrib/state"
+	daprd_debug "github.com/dapr/dapr/code_debug/daprd"
 	"github.com/dapr/dapr/pkg/actors"
 	components_v1alpha1 "github.com/dapr/dapr/pkg/apis/components/v1alpha1"
 	"github.com/dapr/dapr/pkg/components"
@@ -22,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"io"
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"path"
 	"reflect"
 	"strings"
 	"time"
@@ -110,6 +112,12 @@ func (a *DaprRuntime) loadComponents(opts *runtimeOpts) error {
 	case modes.KubernetesMode:
 		loader = components.NewKubernetesComponents(a.runtimeConfig.Kubernetes, a.namespace, a.operatorClient)
 	case modes.StandaloneMode:
+		userHome, err := daprd_debug.Home()
+		if err != nil {
+			log.Fatal(err)
+		}
+		a.runtimeConfig.Standalone.ComponentsPath = path.Join(userHome, ".dapr/components")
+		a.namespace=""
 		loader = components.NewStandaloneComponents(a.runtimeConfig.Standalone)
 	default:
 		return errors.Errorf("components loader for mode %s not found", a.runtimeConfig.Mode)

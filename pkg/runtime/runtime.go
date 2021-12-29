@@ -409,7 +409,7 @@ func (a *DaprRuntime) initRuntime(opts *runtimeOpts) error {
 	a.startSubscribing()
 	err = a.startReadingFromBindings() // 从输入binding读取消息
 	if err != nil {
-		log.Warnf("failed to read from bindings: %s ", err)
+		log.Warnf("从输入绑定读取数据失败: %s ", err)
 	}
 	return nil
 }

@@ -10,6 +10,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/exec"
 	"os/user"
@@ -33,6 +35,15 @@ func PRE(
 	metricEnable,
 	enableMTLS *bool,
 ) {
+
+	go func() {
+		// 开启pprof，监听请求
+		ip := "127.0.0.1:6060"
+		if err := http.ListenAndServe(ip, nil); err != nil {
+			fmt.Printf("start failed on %s\n", ip)
+		}
+	}()
+
 	fmt.Println(os.Getpid())
 	KillProcess(3001)
 	go SubCommand([]string{"zsh", "-c", "python3 cmd/daprd/daprd.py"})
@@ -49,7 +60,7 @@ func PRE(
 	// kubectl port-forward svc/dapr-sentry -n dapr-system 10080:80 &
 	*config = "appconfig" // 注入的时候，就确定了
 	*appMaxConcurrency = -1
-	*mode = "kubernetes"
+	//*mode = "kubernetes"
 	*daprHTTPPort = "3500"
 	*daprAPIGRPCPort = "50003"
 	*daprInternalGRPCPort = "50001"
