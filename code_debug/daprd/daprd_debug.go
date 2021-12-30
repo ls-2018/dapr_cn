@@ -60,7 +60,7 @@ func PRE(
 	// kubectl port-forward svc/dapr-sentry -n dapr-system 10080:80 &
 	*config = "appconfig" // 注入的时候，就确定了
 	*appMaxConcurrency = -1
-	//*mode = "kubernetes"
+	*mode = "kubernetes"
 	*daprHTTPPort = "3500"
 	*daprAPIGRPCPort = "50003"
 	*daprInternalGRPCPort = "50001"
@@ -76,35 +76,35 @@ func PRE(
 	go SubCommand([]string{"zsh", "-c", "kubectl port-forward svc/dapr-placement-server -n dapr-system 50005:50005 "})
 	// 以下证书，是从daprd的环境变量中截取的
 	crt := `-----BEGIN CERTIFICATE-----
-MIIBxTCCAWqgAwIBAgIQc55uyj2aQwZ44JcP0YBp7DAKBggqhkjOPQQDAjAxMRcw
+MIIBxDCCAWqgAwIBAgIQOg2CZq/XGrVCrIREuGi2NjAKBggqhkjOPQQDAjAxMRcw
 FQYDVQQKEw5kYXByLmlvL3NlbnRyeTEWMBQGA1UEAxMNY2x1c3Rlci5sb2NhbDAe
-Fw0yMTA4MjAwOTUyMjJaFw0yMjA4MjAxMDA3MjJaMBgxFjAUBgNVBAMTDWNsdXN0
-ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAR75g0xjAr4VcZed62s
-xzZ2kUH3Bxatbdq2/5+4hJyMyX7iFNfG1RgJSgfJpTiHXbRbd13Q6Mk+XbY8pZgA
-V40Eo30wezAOBgNVHQ8BAf8EBAMCAQYwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4E
-FgQUN+JjAulZKw/mBAaPgYhvbukY6KkwHwYDVR0jBBgwFoAUT4gnr9tzfi5hRW9A
-9aQF0b5p680wGAYDVR0RBBEwD4INY2x1c3Rlci5sb2NhbDAKBggqhkjOPQQDAgNJ
-ADBGAiEA1TtSlfgQXmaQ3rEqt+raaG3QUXWKc6bVuvc8oxQGeQQCIQDCGMgoedRX
-w+ZOMIjU2uBQ3QZ/ayy273tQHM/beTgDPQ==
+Fw0yMTEyMjkwOTQ0MDZaFw0yMjEyMjkwOTU5MDZaMBgxFjAUBgNVBAMTDWNsdXN0
+ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATkerE+pfS3N+MT4Hse
+C+U71B6vKA+RNXmRyRATVbxgNFOWf/VKQmZZNTtCtn4rAmiwd3B6F0TG116GsnOS
+4JPpo30wezAOBgNVHQ8BAf8EBAMCAQYwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4E
+FgQUGLzPsmagl21OzMXfXj4EUjLa1FcwHwYDVR0jBBgwFoAUJcLgJCdNouDEOo6c
+AOmxvd8MmLEwGAYDVR0RBBEwD4INY2x1c3Rlci5sb2NhbDAKBggqhkjOPQQDAgNI
+ADBFAiEAniyvVAqfXuh6W3Sy7hxVfg/NzH1iHG2hjkNMFrBNS8gCIGT1xgSt+DcB
+YLohhWUF0vaO89FRpioLgwp9zzhmHqGy
 -----END CERTIFICATE-----`
 
 	key := `-----BEGIN EC PRIVATE KEY-----
-MHcCAQEEILld+Jm1MDXgVq75SKcgh+wVBYQ/UiYd0TLRoH1wV3P1oAoGCCqGSM49
-AwEHoUQDQgAEe+YNMYwK+FXGXnetrMc2dpFB9wcWrW3atv+fuIScjMl+4hTXxtUY
-CUoHyaU4h120W3dd0OjJPl22PKWYAFeNBA==
+MHcCAQEEIPtyAeDjnHSIlYbrqsRYBURj2e8IaFhUPQ/HCUu2PWUKoAoGCCqGSM49
+AwEHoUQDQgAE5HqxPqX0tzfjE+B7HgvlO9QerygPkTV5kckQE1W8YDRTln/1SkJm
+WTU7QrZ+KwJosHdwehdExtdehrJzkuCT6Q==
 -----END EC PRIVATE KEY-----`
 
 	ca := `-----BEGIN CERTIFICATE-----
-MIIB3DCCAYKgAwIBAgIRAJrB3Ct76di0AV9xiwz4RYgwCgYIKoZIzj0EAwIwMTEX
+MIIB3DCCAYKgAwIBAgIRALX4t6dDqbVYqccazdgAr8MwCgYIKoZIzj0EAwIwMTEX
 MBUGA1UEChMOZGFwci5pby9zZW50cnkxFjAUBgNVBAMTDWNsdXN0ZXIubG9jYWww
-HhcNMjEwODIwMDk1MjIyWhcNMjIwODIwMTAwNzIyWjAxMRcwFQYDVQQKEw5kYXBy
+HhcNMjExMjI5MDk0NDA2WhcNMjIxMjI5MDk1OTA2WjAxMRcwFQYDVQQKEw5kYXBy
 LmlvL3NlbnRyeTEWMBQGA1UEAxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEG
-CCqGSM49AwEHA0IABEaGZHa2M60u0BvgAoOn4zqUYr3nRGzKKNhT5f9f4SqlI31V
-ftvfJBnOQt6dM3YHGifIUPo782N6MzghkKxeapOjezB5MA4GA1UdDwEB/wQEAwIC
+CCqGSM49AwEHA0IABPvKrwupGlpIcDKIRcQzl1qbU7FiJgPqcM2W0qxPNaqUEj4D
+dkk2cq+r+KVRAORLTd3J0WaiUjJMN8zT/GhsWt+jezB5MA4GA1UdDwEB/wQEAwIC
 BDAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB
-/zAdBgNVHQ4EFgQUT4gnr9tzfi5hRW9A9aQF0b5p680wGAYDVR0RBBEwD4INY2x1
-c3Rlci5sb2NhbDAKBggqhkjOPQQDAgNIADBFAiBscw216OcA8jt9tI1LmTywzNVV
-zfCt2fhdjXEK2GGEMAIhAKi0GsyI5b2hkrUkIEZm1kTLbeuw0GIguSvW89yUkXbT
+/zAdBgNVHQ4EFgQUJcLgJCdNouDEOo6cAOmxvd8MmLEwGAYDVR0RBBEwD4INY2x1
+c3Rlci5sb2NhbDAKBggqhkjOPQQDAgNIADBFAiEAqFwRU4bN7oaWi5OLkxOrp+s5
+R8Xw6g3KOatUgEct6KYCICK1pAuUa1AA5GPeOkfKkV+Pd2k8wh3AXXzm6LiB/vFo
 -----END CERTIFICATE-----`
 	nameSpace := "mesoid"
 	// kubectl -n mesoid exec -it pod/etcd-0 -- cat /var/run/secrets/kubernetes.io/serviceaccount/token
@@ -162,35 +162,6 @@ func GetK8s() *raw_k8s.Clientset {
 	return kubeClient
 }
 
-func RunCommand(name string, arg ...string) error {
-	cmd := exec.Command(name, arg...)
-	// 命令的错误输出和标准输出都连接到同一个管道
-	stdout, err := cmd.StdoutPipe()
-	cmd.Stderr = cmd.Stdout
-
-	if err != nil {
-		return err
-	}
-
-	if err = cmd.Start(); err != nil {
-		return err
-	}
-	// 从管道中实时获取输出并打印到终端
-	for {
-		tmp := make([]byte, 1024)
-		_, err := stdout.Read(tmp)
-		fmt.Print(string(tmp))
-		if err != nil {
-			break
-		}
-	}
-
-	if err = cmd.Wait(); err != nil {
-		return err
-	}
-	return nil
-}
-
 func UpdateHosts(domain string) {
 	file, err := ioutil.ReadFile("/etc/hosts_bak")
 	if err != nil {
@@ -214,6 +185,7 @@ func KillProcess(port int) {
 
 func SubCommand(opt []string) {
 	cmd := exec.Command(opt[0], opt[1:]...)
+	// 命令的错误输出和标准输出都连接到同一个管道
 	stdout, err := cmd.StdoutPipe()
 	cmd.Stderr = cmd.Stdout
 	if err != nil {
@@ -231,6 +203,10 @@ func SubCommand(opt []string) {
 			break
 		}
 	}
+
+	//if err = cmd.Wait(); err != nil {
+	//	log.Fatal(err)
+	//}
 }
 
 func Home() (string, error) {

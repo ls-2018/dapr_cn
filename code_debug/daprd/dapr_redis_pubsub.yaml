@@ -2,6 +2,7 @@
 # Copyright (c) Microsoft Corporation and Dapr Contributors.
 # Licensed under the MIT License.
 # ------------------------------------------------------------
+# dapr级别的订阅设置
 apiVersion: dapr.io/v1alpha1
 kind: Subscription
 metadata:
@@ -49,12 +50,12 @@ spec:
 #    https://docs.dapr.io/zh-hans/developing-applications/building-blocks/pubsub/pubsub-scopes/
 #    只有这里合规，Subscription才会生效
     - name: subscriptionScopes
-      value: "dp-61c2cb20562850d49d47d1c7-executorapp=e,f,g,h;"
+      value: "dp-61c2cb20562850d49d47d1c7-executorapp=e,f,g,h,topic-a,topic-b;;"
     - name: publishingScopes
-      value: "dp-61c2cb20562850d49d47d1c7-executorapp=a,b,c,d,topic-a;"
+      value: "dp-61c2cb20562850d49d47d1c7-executorapp=a,b,c,d,topic-a,topic-b;"
 #       相当于二次限制
     - name: allowedTopics
-      value: "a,b,c,d,f,e,g,h,topic-a"
+      value: "a,b,c,d,f,e,g,h,topic-a,topic-b"
 ---
 apiVersion: dapr.io/v1alpha1
 kind: Component
