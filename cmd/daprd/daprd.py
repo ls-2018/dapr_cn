@@ -18,6 +18,22 @@ async def get(req: Request):
     }
 
 
+@app.post("/products")
+async def widgets(req: Request):
+    print('products')
+    return {
+        "state": "ok",
+    }
+
+
+@app.post("/widgets")
+async def widgets(req: Request):
+    print('widgets')
+    return {
+        "state": "ok",
+    }
+
+
 @app.get("/dapr/config")
 async def get(req: Request):
     # 没有数据传过来
@@ -74,6 +90,7 @@ async def sub(req: Request):
     return {
         'status': 'SUCCESS',
     }
+
 
 # dapr 会对每一个binding进行处理，判断app有没有实现对应的binding的路由，如果有,就自动进行消息处理了
 

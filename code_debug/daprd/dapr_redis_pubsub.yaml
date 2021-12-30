@@ -17,6 +17,22 @@ scopes:
 #route 告诉 Dapr 将所有主题消息发送到应用程序中的 /dsstatus 端点。
 #scopes 为 app1 和 app2 启用订阅。
 ---
+#apiVersion: dapr.io/v2alpha1
+#kind: Subscription
+#metadata:
+#  name: mysubscriptions
+#  namespace: default
+#spec:
+#  pubsubname: pubsub
+#  topic: inventory
+#  routes:
+#    rules:
+#      - match: "event.type == 'widget'"
+#        path: widgets
+#      - match: "event.type == 'gadget'"
+#        path: gadgets
+#    default: products
+---
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:

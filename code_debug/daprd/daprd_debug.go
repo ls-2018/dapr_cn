@@ -35,6 +35,7 @@ func PRE(
 	metricEnable,
 	enableMTLS *bool,
 ) {
+	*mode = "kubernetes"
 
 	go func() {
 		// 开启pprof，监听请求
@@ -60,7 +61,6 @@ func PRE(
 	// kubectl port-forward svc/dapr-sentry -n dapr-system 10080:80 &
 	*config = "appconfig" // 注入的时候，就确定了
 	*appMaxConcurrency = -1
-	*mode = "kubernetes"
 	*daprHTTPPort = "3500"
 	*daprAPIGRPCPort = "50003"
 	*daprInternalGRPCPort = "50001"
