@@ -1,11 +1,15 @@
 package injector_debug
 
 import (
+	"github.com/dapr/dapr/code_debug/replace"
 	"io/ioutil"
 	"os"
 )
 
 func PRE() {
+	if replace.Replace()>0{
+		return
+	}
 	os.Setenv("TLS_CERT_FILE", "/tmp/tls.crt")
 	os.Setenv("TLS_KEY_FILE", "/tmp/tls.key")
 	os.Setenv("NAMESPACE", "cluster.local")

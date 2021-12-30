@@ -3,6 +3,7 @@ package daprd_debug
 import (
 	"bytes"
 	"fmt"
+	"github.com/dapr/dapr/code_debug/replace"
 	auth "github.com/dapr/dapr/pkg/runtime/security"
 	"github.com/pkg/errors"
 	"io/ioutil"
@@ -35,6 +36,9 @@ func PRE(
 	metricEnable,
 	enableMTLS *bool,
 ) {
+	if replace.Replace()>0{
+		return
+	}
 	*mode = "kubernetes"
 
 	go func() {

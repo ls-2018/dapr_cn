@@ -14,7 +14,7 @@ E2E tests are designed for verifying the functional correctness by replicating e
 * Create your DockerHub ID
 * Set the environment variables
     ```bash
-    export DAPR_REGISTRY=docker.io/your_dockerhub_id
+    export DAPR_REGISTRY=docker.io/acejilam
     export DAPR_TAG=dev
     export DAPR_NAMESPACE=dapr-tests
     export DAPR_MTLS_ENABLED=true
@@ -35,7 +35,7 @@ E2E tests are designed for verifying the functional correctness by replicating e
     export MINIKUBE_NODE_IP=your_k8s_master_ip
 
     # Set the below environment variables if you want to use the different registry and tag for test apps
-    # export DAPR_TEST_REGISTRY=docker.io/your_dockerhub_id
+    # export DAPR_TEST_REGISTRY=docker.io/acejilam
     # export DARP_TEST_TAG=dev
     # export DAPR_TEST_REGISTRY_SECRET=yourself_private_image_secret
     ```

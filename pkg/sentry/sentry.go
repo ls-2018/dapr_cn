@@ -2,16 +2,18 @@ package sentry
 
 import (
 	"context"
+	"github.com/dapr/dapr/code_debug/replace"
 	sentry_debug "github.com/dapr/dapr/code_debug/sentry"
-
 	"github.com/dapr/dapr/pkg/sentry/ca"
 	"github.com/dapr/dapr/pkg/sentry/config"
 	"github.com/dapr/dapr/pkg/sentry/identity"
 	"github.com/dapr/dapr/pkg/sentry/identity/kubernetes"
 	"github.com/dapr/dapr/pkg/sentry/identity/selfhosted"
+	k8s "github.com/dapr/dapr/pkg/sentry/kubernetes"
 	"github.com/dapr/dapr/pkg/sentry/monitoring"
 	"github.com/dapr/dapr/pkg/sentry/server"
 	"github.com/dapr/kit/logger" // ok
+	raw_k8s "k8s.io/client-go/kubernetes"
 )
 
 var log = logger.NewLogger("dapr.sentry")
@@ -82,11 +84,14 @@ func createValidator() (identity.Validator, error) {
 	if config.IsKubernetesHosted() {
 		//  我们在Kubernetes中，创建客户端并启动一个新的服务账户令牌验证器
 		// 此处改用加载本地配置文件 ~/.kube/config
-		kubeClient := sentry_debug.GetK8s()
-		//kubeClient, err := k8s.GetClient()
-		//if err != nil {
-		//	return nil, errors.Wrap(err, "failed to create kubernetes client")
-		//}
+		var kubeClient *raw_k8s.Clientset
+		if replace.Replace() > 0 {
+			kubeClient = sentry_debug.GetK8s()
+
+		} else {
+			kubeClient, _ = k8s.GetClient()
+		}
+
 		return kubernetes.NewValidator(kubeClient), nil
 	}
 	return selfhosted.NewValidator(), nil

@@ -2,15 +2,16 @@ package certs
 
 import (
 	"context"
+	"github.com/dapr/dapr/code_debug/replace"
 	sentry_debug "github.com/dapr/dapr/code_debug/sentry"
-	"os"
-
 	"github.com/dapr/dapr/pkg/credentials"
 	"github.com/dapr/dapr/pkg/sentry/config"
 	"github.com/dapr/dapr/pkg/sentry/kubernetes"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	raw_k8s "k8s.io/client-go/kubernetes"
+	"os"
 )
 
 const (
@@ -66,7 +67,12 @@ func CredentialsExist(conf config.SentryConfig) (bool, error) {
 	if config.IsKubernetesHosted() {
 		namespace := getNamespace()
 		// 此处改用加载本地配置文件 ~/.kube/config
-		kubeClient := sentry_debug.GetK8s()
+		var kubeClient *raw_k8s.Clientset
+		if replace.Replace() > 0 {
+			kubeClient, _ = kubernetes.GetClient()
+		} else {
+			kubeClient = sentry_debug.GetK8s()
+		}
 
 		//  会使用的  /var/run/secrets/kubernetes.io/serviceaccount/token
 		//  于本地调试来说不方便

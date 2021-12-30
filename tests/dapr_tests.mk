@@ -227,14 +227,14 @@ test-perf-all: check-e2e-env test-deps
 	DAPR_CONTAINER_LOG_PATH=$(DAPR_CONTAINER_LOG_PATH) GOOS=$(TARGET_OS_LOCAL) DAPR_TEST_NAMESPACE=$(DAPR_TEST_NAMESPACE) DAPR_TEST_TAG=$(DAPR_TEST_TAG) DAPR_TEST_REGISTRY=$(DAPR_TEST_REGISTRY) DAPR_TEST_MINIKUBE_IP=$(MINIKUBE_NODE_IP) gotestsum --jsonfile $(TEST_OUTPUT_FILE_PREFIX)_perf.json --junitfile $(TEST_OUTPUT_FILE_PREFIX)_perf.xml --format standard-quiet -- -p 1 -count=1 -v -tags=perf ./tests/perf/...
 	jq -r .Output $(TEST_OUTPUT_FILE_PREFIX)_perf.json | strings
 
-# add required helm repo
+# 添加仓库
 setup-helm-init:
 	$(HELM) repo add bitnami https://charts.bitnami.com/bitnami
 	$(HELM) repo add stable https://charts.helm.sh/stable
 	$(HELM) repo add incubator https://charts.helm.sh/incubator
 	$(HELM) repo update
 
-# install redis to the cluster without password
+# 在集群中安转不需要密码的Redis
 setup-test-env-redis:
 	$(HELM) install dapr-redis stable/redis --wait --timeout 5m0s --namespace $(DAPR_TEST_NAMESPACE) -f ./tests/config/redis_override.yaml
 

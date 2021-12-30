@@ -89,18 +89,18 @@ func (x *Actor) GetActorId() string {
 	return ""
 }
 
-// InternalInvokeRequest is the message to transfer caller's data to callee
-// for service invocation. This includes callee's app id and caller's request data.
+// InternalInvokeRequest
+// 是将调用者的数据传输给被调用者以进行服务调用的信息。这包括被呼叫者的应用程序ID和呼叫者的请求数据。
 type InternalInvokeRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Required. The version of Dapr runtime API.
+	// Required. dapr 运行时版本
 	Ver APIVersion `protobuf:"varint,1,opt,name=ver,proto3,enum=dapr.proto.internals.v1.APIVersion" json:"ver,omitempty"`
-	// Required. metadata holds caller's HTTP headers or gRPC metadata.
+	// Required. 调用这的元信息[http的头信息、grpc的元信息]
 	Metadata map[string]*ListStringValue `protobuf:"bytes,2,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	// Required. message including caller's invocation request.
+	// Required. 调用者的请求体
 	Message *v1.InvokeRequest `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
 	// Actor type and id. This field is used only for
 	// actor service invocation.

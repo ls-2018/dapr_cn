@@ -34,6 +34,7 @@ const _ = proto.ProtoPackageIsVersion4
 // Type of HTTP 1.1 Methods
 // RFC 7231: https://tools.ietf.org/html/rfc7231#page-24
 // RFC 5789: https://datatracker.ietf.org/doc/html/rfc5789
+// 请求方式与序号的转化
 type HTTPExtension_Verb int32
 
 const (
@@ -276,10 +277,10 @@ type InvokeRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Required. method is a method name which will be invoked by caller.
+	// Required. 方法是一个方法名，将被调用者调用。
 	Method string `protobuf:"bytes,1,opt,name=method,proto3" json:"method,omitempty"`
-	// Required. Bytes value or Protobuf message which caller sent.
-	// Dapr treats Any.value as bytes type if Any.type_url is unset.
+	//  字节值或调用者发送的Protobuf信息。
+	//  如果Any.type_url没有设置，Dapr将Any.value视为字节类型。
 	Data *anypb.Any `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
 	// The type of data content.
 	//

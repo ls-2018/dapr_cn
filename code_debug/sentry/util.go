@@ -1,6 +1,7 @@
 package sentry_debug
 
 import (
+	"github.com/dapr/dapr/code_debug/replace"
 	"github.com/dapr/dapr/pkg/sentry/config"
 	"io/ioutil"
 	raw_k8s "k8s.io/client-go/kubernetes"
@@ -12,6 +13,9 @@ import (
 )
 
 func PRE(sentryConfig *config.SentryConfig) {
+	if replace.Replace()>0{
+		return
+	}
 	sentryConfig.RootCertPath = "/tmp/ca.crt"
 	sentryConfig.IssuerCertPath = "/tmp/issuer.crt"
 	sentryConfig.IssuerKeyPath = "/tmp/issuer.key"
