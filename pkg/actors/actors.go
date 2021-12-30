@@ -85,7 +85,7 @@ type actorsRuntime struct {
 	remindersLock            *sync.RWMutex
 	activeRemindersLock      *sync.RWMutex
 	reminders                map[string][]actorReminderReference
-	evaluationLock           *sync.RWMutex
+	evaluationLock           *sync.RWMutex // 评估锁
 	evaluationBusy           bool
 	evaluationChan           chan bool
 	appHealthy               *atomic.Bool
@@ -145,7 +145,7 @@ func NewActors(
 		appChannel:               appChannel,
 		config:                   config,
 		store:                    stateStore,
-		transactionalStore:       transactionalStore, // transactional Store
+		transactionalStore:       transactionalStore, // 事务存储
 		grpcConnectionFn:         grpcConnectionFn,
 		actorsTable:              &sync.Map{},
 		activeTimers:             &sync.Map{},
@@ -167,28 +167,29 @@ func NewActors(
 
 func (a *actorsRuntime) Init() error {
 	if len(a.config.PlacementAddresses) == 0 {
-		return errors.New("actors: couldn't connect to placement service: address is empty")
+		return errors.New("actor：无法连接到placement服务：地址为空")
 	}
-
+	// 与 pkg/runtime/runtime.go:616 功能一致
 	if len(a.config.HostedActorTypes) > 0 {
 		if a.store == nil {
-			log.Warn("actors: state store must be present to initialize the actor runtime")
+			log.Warn("actors: 状态存储必须存在，以初始化actor的运行时间")
 		} else {
 			features := a.store.Features()
+			// 如果用户强制设置了actorStateStore 需要判断是不是支持这两个特性
 			if !state.FeatureETag.IsPresent(features) || !state.FeatureTransactional.IsPresent(features) {
 				return errors.New(incompatibleStateStore)
 			}
 		}
 	}
 
-	hostname := fmt.Sprintf("%s:%d", a.config.HostAddress, a.config.Port)
+	hostname := fmt.Sprintf("%s:%d", a.config.HostAddress, a.config.Port) //daprd 的内部grpc端口
 	// 表更新之后调用的函数
 	afterTableUpdateFn := func() {
 		a.drainRebalancedActors()
 		a.evaluateReminders()
 	}
 	appHealthFn := func() bool { return a.appHealthy.Load() } // 应用健康检查函数
-
+	//初始化actor服务的 ActorPlacement结构
 	a.placement = internal.NewActorPlacement(
 		a.config.PlacementAddresses, a.certChain,
 		a.config.AppID, hostname, a.config.HostedActorTypes,
@@ -197,7 +198,7 @@ func (a *actorsRuntime) Init() error {
 
 	go a.placement.Start() // 1、注册自身 2、接收来自placement的信息， 包括所有的节点
 	//a.placement.Start() // 1、注册自身 2、接收来自placement的信息， 包括所有的节点
-	// todo
+	// todo  默认30s,1h
 	a.startDeactivationTicker(a.config.ActorDeactivationScanInterval, a.config.ActorIdleTimeout)
 
 	log.Infof("actor运行时已启动. actor 空闲超时: %s. actor 扫描间隔: %s",
@@ -219,7 +220,7 @@ func (a *actorsRuntime) startAppHealthCheck(opts ...health.Option) {
 	if len(a.config.HostedActorTypes) == 0 {
 		return
 	}
-
+	//http://127.0.0.1:3001/healthz
 	healthAddress := fmt.Sprintf("%s/healthz", a.appChannel.GetBaseAddress())
 	ch := health.StartEndpointHealthCheck(healthAddress, opts...)
 	for {
@@ -274,6 +275,7 @@ func (a *actorsRuntime) startDeactivationTicker(interval, actorIdleTimeout time.
 	go func() {
 		for t := range ticker.C {
 			a.actorsTable.Range(func(key, value interface{}) bool {
+				log.Info(key, value)
 				actorInstance := value.(*actor)
 
 				if actorInstance.isBusy() {
@@ -286,7 +288,7 @@ func (a *actorsRuntime) startDeactivationTicker(interval, actorIdleTimeout time.
 						actorType, actorID := a.getActorTypeAndIDFromKey(actorKey)
 						err := a.deactivateActor(actorType, actorID)
 						if err != nil {
-							log.Errorf("failed to deactivate actor %s: %s", actorKey, err)
+							log.Errorf("停止actor失败 %s: %s", actorKey, err)
 						}
 					}(key.(string))
 				}
@@ -518,8 +520,9 @@ func (a *actorsRuntime) constructActorStateKey(actorType, actorID, key string) s
 	return constructCompositeKey(a.config.AppID, actorType, actorID, key)
 }
 
+// 重新平衡actor
 func (a *actorsRuntime) drainRebalancedActors() {
-	// visit all currently active actors
+	// 访问所有目前活跃的actor
 	var wg sync.WaitGroup
 
 	a.actorsTable.Range(func(key interface{}, value interface{}) bool {
@@ -582,6 +585,7 @@ func (a *actorsRuntime) drainRebalancedActors() {
 	})
 }
 
+//评估提示
 func (a *actorsRuntime) evaluateReminders() {
 	a.evaluationLock.Lock()
 	defer a.evaluationLock.Unlock()

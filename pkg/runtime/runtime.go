@@ -639,7 +639,7 @@ func (a *DaprRuntime) cleanSocket() {
 }
 
 func (a *DaprRuntime) Shutdown(duration time.Duration) {
-	// Ensure the Unix socket file is removed if a panic occurs.
+	// 如果发生panic，确保Unix套接字文件被删除。
 	defer a.cleanSocket()
 
 	a.stopActor()
@@ -650,7 +650,7 @@ func (a *DaprRuntime) Shutdown(duration time.Duration) {
 			log.Warnf("error closing API: %v", err)
 		}
 	}
-	log.Infof("Waiting %s to finish outstanding operations", duration)
+	log.Infof("等待%s来完成未完成的操作", duration)
 	<-time.After(duration)
 	a.shutdownComponents()
 	a.shutdownC <- nil

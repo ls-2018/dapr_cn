@@ -58,7 +58,7 @@ func (a *DaprRuntime) initState(s components_v1alpha1.Component) error {
 		}
 
 		// 如果 "actorStateStore "在yaml中为真，则设置指定的角色存储。
-		actorStoreSpecified := props[actorStateStore]
+		actorStoreSpecified := props[actorStateStore] // actor状态存储，只取第一个标记了actorStateStore的
 		if actorStoreSpecified == "true" {
 			if a.actorStateStoreCount++; a.actorStateStoreCount == 1 {
 				a.actorStateStoreName = s.ObjectMeta.Name
@@ -66,7 +66,7 @@ func (a *DaprRuntime) initState(s components_v1alpha1.Component) error {
 		}
 		diag.DefaultMonitoring.ComponentInitialized(s.Spec.Type)
 	}
-
+	// 配置了actor类型，且设置了actorStateStore
 	if a.hostingActors() && (a.actorStateStoreName == "" || a.actorStateStoreCount != 1) {
 		log.Warnf("在配置中没有指定行为体状态存储或多个行为体状态存储，则指定的行为体存储为: %d", a.actorStateStoreCount)
 	}

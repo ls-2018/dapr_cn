@@ -9,13 +9,12 @@ metadata = {
 }
 query = '&'.join(["metadata.%s=%s" % (k, v) for k, v in metadata.items()])
 # PUB
-for i in range(1220):
-    print(i)
-    print(requests.post('http://localhost:3500/v1.0/publish/redis-pubsub/topic-a?' + query, json.dumps(
+for i in range(2):
+    print(requests.post('http://localhost:3500/v1.0/publish/redis-pubsub/topic-b?' + query, json.dumps(
         {
             "demo": "test"
         }
-    )))
+    )).text)
 
 # 在Redis内部使用是
 # XADD

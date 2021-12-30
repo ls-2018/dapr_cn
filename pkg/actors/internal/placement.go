@@ -156,7 +156,7 @@ func (p *ActorPlacement) Start() {
 		p.streamConnectedCond.L.Lock()
 		defer p.streamConnectedCond.L.Unlock()
 
-		p.streamConnAlive = true //  标记存货
+		p.streamConnAlive = true //  标记存活
 		p.streamConnectedCond.Broadcast()
 	}()
 

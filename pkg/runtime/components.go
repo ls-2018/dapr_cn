@@ -388,7 +388,7 @@ func (a *DaprRuntime) processComponentSecrets(component components_v1alpha1.Comp
 	return component, ""
 }
 
-// shutdownComponents allows for a graceful shutdown of all runtime internal operations or components.
+// shutdownComponents 允许优雅地关闭所有运行时的内部操作或组件。
 func (a *DaprRuntime) shutdownComponents() error {
 	log.Info("Shutting down all components")
 	var merr error
@@ -447,6 +447,7 @@ func (a *DaprRuntime) shutdownComponents() error {
 
 	return merr
 }
+
 func (a *DaprRuntime) getComponent(componentType string, name string) (components_v1alpha1.Component, bool) {
 	a.componentsLock.RLock()
 	defer a.componentsLock.RUnlock()

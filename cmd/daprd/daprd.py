@@ -22,7 +22,9 @@ async def get(req: Request):
 async def get(req: Request):
     # 没有数据传过来
     return {
-        "entities": [],
+        "entities": [
+            'a', 'b', 'c'  # 将决定本actor可以运行什么类型的任务
+        ],
         "actorIdleTimeout": "",  # 60m
         "actorScanInterval": "",  # 30s
         "drainOngoingCallTimeout": "",  # 60s
@@ -38,12 +40,31 @@ async def get(req: Request):
 @app.get('/dapr/subscribe')
 async def sub(req: Request):
     # print(await req.json())
+    # 应用程序内的自动订阅
     return [
         {
             "pubsubname": "redis-pubsub",
-            "topic": "topic-a"
+            "topic": "topic-a",
+            "route": "topic-a"
+        },
+        {
+            "pubsubname": "redis-pubsub",
+            "topic": "topic-b",
+            "route": "topic-b"
         }
     ]
+
+
+@app.post('/topic-a')
+async def a(req: Request):
+    print(await req.json())
+    return ''
+
+
+@app.post('/topic-b')
+async def b(req: Request):
+    print(await req.json())
+    return ''
 
 
 @app.post('/dsstatus')
