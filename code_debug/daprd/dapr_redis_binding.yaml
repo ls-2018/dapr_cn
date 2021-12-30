@@ -13,6 +13,9 @@ spec:
       value: "dapr-redis-svc:45454"
     - name: redisPassword
       value: "1234"
+scopes：
+# 限定，此组件只能这些应用使用
+  - app01
 ---
 apiVersion: v1
 kind: ConfigMap
