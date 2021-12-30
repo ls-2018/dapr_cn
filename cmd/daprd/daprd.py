@@ -23,7 +23,7 @@ async def get(req: Request):
     # 没有数据传过来
     return {
         "entities": [
-            'a', 'b', 'c'  # 将决定本actor可以运行什么类型的任务
+            # 'a', 'b', 'c'  # 将决定本actor可以运行什么类型的任务
         ],
         "actorIdleTimeout": "",  # 60m
         "actorScanInterval": "",  # 30s
@@ -75,6 +75,8 @@ async def sub(req: Request):
         'status': 'SUCCESS',
     }
 
+# dapr 会对每一个binding进行处理，判断app有没有实现对应的binding的路由，如果有,就自动进行消息处理了
+
 
 @app.get('/myevent')
 async def myevent(req: Request):
@@ -84,6 +86,7 @@ async def myevent(req: Request):
         return Response("500", status_code=500)
 
 
+#  input_binding
 @app.post('/myevent')
 async def myevent(req: Request):
     print(await req.body())
