@@ -208,8 +208,8 @@ func (a *actorsRuntime) Init() error {
 	//如果app healthz返回不健康状态，Dapr将断开放置，将节点从一致的哈希环中移除。
 	//例如，如果应用程序是忙碌的状态，健康状态将是不稳定的，这导致频繁的演员再平衡。这将影响整个服务。
 	go a.startAppHealthCheck(
-		health.WithFailureThreshold(4),           // 失败次数
-		health.WithInterval(5*time.Second),       // 检查周期
+		health.WithFailureThreshold(4),     // 失败次数
+		health.WithInterval(5*time.Second), // 检查周期
 		health.WithRequestTimeout(2*time.Second)) // 请求超时
 
 	return nil
@@ -1105,6 +1105,9 @@ func (a *actorsRuntime) CreateTimer(ctx context.Context, req *CreateTimerRequest
 		if dueTime, err = parseTime(req.DueTime, nil); err != nil {
 			return errors.Wrap(err, "解析过期时间出错")
 		}
+		if time.Now().After(dueTime){
+			return errors.Errorf("定时器 %s 已经过期: 过期时间: %s 存活时间: %s", timerKey, req.DueTime, req.TTL)
+		}
 	} else {
 		dueTime = time.Now()
 	}
@@ -1151,7 +1154,7 @@ func (a *actorsRuntime) CreateTimer(ctx context.Context, req *CreateTimerRequest
 			ttlTimerC = ttlTimer.C
 		}
 		nextTime := dueTime
-		nextTimer = time.NewTimer(time.Until(nextTime))// 定时器 , 只执行一次，如果时间是以前，那么现在执行一次
+		nextTimer = time.NewTimer(time.Until(nextTime)) // 定时器 , 只执行一次，如果时间是以前，那么现在执行一次
 		defer func() {
 			if nextTimer.Stop() {
 				<-nextTimer.C
@@ -1209,6 +1212,7 @@ func (a *actorsRuntime) CreateTimer(ctx context.Context, req *CreateTimerRequest
 	return nil
 }
 
+// ok
 func (a *actorsRuntime) executeTimer(actorType, actorID, name, dueTime, period, callback string, data interface{}) error {
 	t := TimerResponse{
 		Callback: callback,

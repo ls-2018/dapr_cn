@@ -17,17 +17,18 @@ func main() {
 		return a[i] > 3
 	})
 	fmt.Println(x)
-	b, _ := actors.GetParseTime("0s", nil)
-	fmt.Println(actors.GetParseTime("-0h30m0s", &b))
-
+	//b, _ := actors.GetParseTime("0s", nil)
+	d, _ := actors.GetParseTime("-0h30m0s", nil)
+	fmt.Println(d.Before(time.Now()))
 	fmt.Println(time.Now())
 	fmt.Println("----")
 	//c := time.Now().Add(time.Second)
-	c:=time.NewTimer(-time.Second*10)
-	for i := range c.C{
-		fmt.Println(i )
-	}
 
+	//fmt.Println(time.Now().After(time.Now()))
+	c := time.NewTimer(-time.Second * 10)
+	for i := range c.C {
+		fmt.Println(i)
+	}
 
 }
 
