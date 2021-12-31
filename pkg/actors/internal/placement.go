@@ -445,14 +445,15 @@ func (p *ActorPlacement) updatePlacements(in *v1pb.PlacementTables) {
 	log.Infof("placement tables updated, version: %s", in.GetVersion())
 }
 
-// WaitUntilPlacementTableIsReady waits until placement table is until table lock is unlocked.
+// WaitUntilPlacementTableIsReady 等待，直到placement表被解锁。
 func (p *ActorPlacement) WaitUntilPlacementTableIsReady() {
+	// 如果锁定了，等待解锁信号
 	if p.tableIsBlocked.Load() {
 		<-p.unblockSignal
 	}
 }
 
-// LookupActor resolves to actor service instance address using consistent hashing table.
+// LookupActor 使用一致的哈希表解析到actor服务实例地址。
 func (p *ActorPlacement) LookupActor(actorType, actorID string) (string, string) {
 	p.placementTableLock.RLock()
 	defer p.placementTableLock.RUnlock()
@@ -465,9 +466,12 @@ func (p *ActorPlacement) LookupActor(actorType, actorID string) (string, string)
 	if t == nil {
 		return "", ""
 	}
+	//同一个actorType有不同的实例，每个实例都有自己的actorID,   ---> 获取到对应的实例【拿到主机名，应用ID】
 	host, err := t.GetHost(actorID)
 	if err != nil || host == nil {
 		return "", ""
 	}
 	return host.Name, host.AppID
 }
+
+

@@ -21,5 +21,5 @@ type ApplicationConfig struct {
 
 type ReentrancyConfig struct {
 	Enabled       bool `json:"enabled"`
-	MaxStackDepth *int `json:"maxStackDepth,omitempty"`
+	MaxStackDepth *int `json:"maxStackDepth,omitempty"` // 最大栈深度
 }

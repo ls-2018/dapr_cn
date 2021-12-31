@@ -598,32 +598,6 @@ func (a *DaprRuntime) getGRPCAPI() grpc.API {
 	)
 }
 
-func (a *DaprRuntime) initActors() error {
-	// 没什么实际功能
-	err := actors.ValidateHostEnvironment(a.runtimeConfig.mtlsEnabled, a.runtimeConfig.Mode, a.namespace) //true   kubernetes mesoid
-	if err != nil {
-		return err
-	}
-	actorConfig := actors.NewConfig(a.hostAddress, a.runtimeConfig.ID, a.runtimeConfig.PlacementAddresses, a.appConfig.Entities,
-		a.runtimeConfig.InternalGRPCPort, a.appConfig.ActorScanInterval, a.appConfig.ActorIdleTimeout, a.appConfig.DrainOngoingCallTimeout,
-		a.appConfig.DrainRebalancedActors, a.namespace, a.appConfig.Reentrancy, a.appConfig.RemindersStoragePartitions)
-	act := actors.NewActors(a.stateStores[a.actorStateStoreName], a.appChannel, a.grpc.GetGRPCConnection, actorConfig, a.runtimeConfig.CertChain, a.globalConfig.Spec.TracingSpec, a.globalConfig.Spec.Features)
-	err = act.Init()
-	a.actor = act
-	return err
-}
-
-func (a *DaprRuntime) hostingActors() bool {
-	return len(a.appConfig.Entities) > 0
-}
-
-func (a *DaprRuntime) stopActor() {
-	if a.actor != nil {
-		log.Info("Shutting down actor")
-		a.actor.Stop()
-	}
-}
-
 // ShutdownWithWait 将优雅地停止runtime，等待未完成的操作。
 func (a *DaprRuntime) ShutdownWithWait() {
 	a.Shutdown(defaultGracefulShutdownDuration) // 5 秒
@@ -641,7 +615,6 @@ func (a *DaprRuntime) cleanSocket() {
 func (a *DaprRuntime) Shutdown(duration time.Duration) {
 	// 如果发生panic，确保Unix套接字文件被删除。
 	defer a.cleanSocket()
-
 	a.stopActor()
 	log.Infof("dapr shutting down.")
 	log.Info("Stopping Dapr APIs")

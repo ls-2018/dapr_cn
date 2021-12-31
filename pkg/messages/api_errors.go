@@ -38,7 +38,7 @@ const (
 	ErrChannelInvoke         = "error invoking app channel: %s"
 
 	// Actor.
-	ErrActorRuntimeNotFound      = "actor runtime is没有配置"
+	ErrActorRuntimeNotFound      = "actor runtime 没有配置"
 	ErrActorInstanceMissing      = "actor instance is missing"
 	ErrActorInvoke               = "error invoke actor method: %s"
 	ErrActorReminderCreate       = "error creating actor reminder: %s"

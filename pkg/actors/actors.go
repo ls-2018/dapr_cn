@@ -208,8 +208,8 @@ func (a *actorsRuntime) Init() error {
 	//如果app healthz返回不健康状态，Dapr将断开放置，将节点从一致的哈希环中移除。
 	//例如，如果应用程序是忙碌的状态，健康状态将是不稳定的，这导致频繁的演员再平衡。这将影响整个服务。
 	go a.startAppHealthCheck(
-		health.WithFailureThreshold(4),           // 失败次数
-		health.WithInterval(5*time.Second),       // 检查周期
+		health.WithFailureThreshold(4),     // 失败次数
+		health.WithInterval(5*time.Second), // 检查周期
 		health.WithRequestTimeout(2*time.Second)) // 请求超时
 
 	return nil
@@ -229,10 +229,11 @@ func (a *actorsRuntime) startAppHealthCheck(opts ...health.Option) {
 	}
 }
 
+// 拼接key
 func constructCompositeKey(keys ...string) string {
 	return strings.Join(keys, daprSeparator)
 }
-
+// 拆分key
 func decomposeCompositeKey(compositeKey string) []string {
 	return strings.Split(compositeKey, daprSeparator)
 }
@@ -299,22 +300,26 @@ func (a *actorsRuntime) startDeactivationTicker(interval, actorIdleTimeout time.
 	}()
 }
 
+// Call ok
 func (a *actorsRuntime) Call(ctx context.Context, req *invokev1.InvokeMethodRequest) (*invokev1.InvokeMethodResponse, error) {
 	a.placement.WaitUntilPlacementTableIsReady()
 
 	actor := req.Actor()
 	targetActorAddress, appID := a.placement.LookupActor(actor.GetActorType(), actor.GetActorId())
 	if targetActorAddress == "" {
-		return nil, errors.Errorf("error finding address for actor type %s with id %s", actor.GetActorType(), actor.GetActorId())
+		return nil, errors.Errorf("查找actor type %s; id %s 的地址出错", actor.GetActorType(), actor.GetActorId())
 	}
 
 	var resp *invokev1.InvokeMethodResponse
 	var err error
 
 	if a.isActorLocal(targetActorAddress, a.config.HostAddress, a.config.Port) {
-		resp, err = a.callLocalActor(ctx, req)
+		resp, err = a.callLocalActor(ctx, req) // 直接调用本身actor
 	} else {
-		resp, err = a.callRemoteActorWithRetry(ctx, retry.DefaultLinearRetryCount, retry.DefaultLinearBackoffInterval, a.callRemoteActor, targetActorAddress, appID, req)
+		// 重试次数、重试间隔、func、目标主机地址、目标主机应用ID、请求
+		resp, err = a.callRemoteActorWithRetry(ctx, retry.DefaultLinearRetryCount,
+			retry.DefaultLinearBackoffInterval, a.callRemoteActor, targetActorAddress, appID, req,
+		)
 	}
 
 	if err != nil {
@@ -323,7 +328,8 @@ func (a *actorsRuntime) Call(ctx context.Context, req *invokev1.InvokeMethodRequ
 	return resp, nil
 }
 
-// callRemoteActorWithRetry will call a remote actor for the specified number of retries and will only retry in the case of transient failures.
+// callRemoteActorWithRetry
+//将在指定的重试次数内调用一个远程行为体，并且只在瞬时失败的情况下重试。
 func (a *actorsRuntime) callRemoteActorWithRetry(
 	ctx context.Context,
 	numRetries int,
@@ -350,12 +356,13 @@ func (a *actorsRuntime) callRemoteActorWithRetry(
 	return nil, errors.Errorf("failed to invoke target %s after %v retries", targetAddress, numRetries)
 }
 
+// 获取或者创建一个actor
 func (a *actorsRuntime) getOrCreateActor(actorType, actorID string) *actor {
+	//构造组合键    actorType||actorID
 	key := constructCompositeKey(actorType, actorID)
 
-	// This avoids allocating multiple actor allocations by calling newActor
-	// whenever actor is invoked. When storing actor key first, there is a chance to
-	// call newActor, but this is trivial.
+	// 这就避免了在每次调用actor时都调用newActor来分配多个actor。
+	// 当首先存储actor key时，有机会调用newActor，但这是微不足道的。
 	val, ok := a.actorsTable.Load(key)
 	if !ok {
 		val, _ = a.actorsTable.LoadOrStore(key, newActor(actorType, actorID, a.config.Reentrancy.MaxStackDepth))
@@ -364,12 +371,13 @@ func (a *actorsRuntime) getOrCreateActor(actorType, actorID string) *actor {
 	return val.(*actor)
 }
 
+// 直接调用本身actor
 func (a *actorsRuntime) callLocalActor(ctx context.Context, req *invokev1.InvokeMethodRequest) (*invokev1.InvokeMethodResponse, error) {
 	actorTypeID := req.Actor()
 
 	act := a.getOrCreateActor(actorTypeID.GetActorType(), actorTypeID.GetActorId())
 
-	// Reentrancy to determine how we lock.
+	// 重入性来决定我们如何锁定。  可重入,则一定是线程安全的;类似于 递归,需要保存栈
 	var reentrancyID *string
 	if a.reentrancyEnabled {
 		if headerValue, ok := req.Metadata()["Dapr-Reentrancy-Id"]; ok {
@@ -389,9 +397,10 @@ func (a *actorsRuntime) callLocalActor(ctx context.Context, req *invokev1.Invoke
 	}
 	defer act.unlock()
 
-	// Replace method to actors method
-	req.Message().Method = fmt.Sprintf("actors/%s/%s/method/%s", actorTypeID.GetActorType(), actorTypeID.GetActorId(), req.Message().Method)
-	// Original code overrides method with PUT. Why?
+	// 替换方法为actor方法
+	req.Message().Method = fmt.Sprintf("actors/%s/%s/method/%s",
+		actorTypeID.GetActorType(), actorTypeID.GetActorId(), req.Message().Method)
+	// 原代码用PUT覆盖了方法。为什么？
 	if req.Message().GetHttpExtension() == nil {
 		req.WithHTTPExtension(nethttp.MethodPut, "")
 	} else {
@@ -411,11 +420,13 @@ func (a *actorsRuntime) callLocalActor(ctx context.Context, req *invokev1.Invoke
 	return resp, nil
 }
 
+// OK
 func (a *actorsRuntime) callRemoteActor(
 	ctx context.Context,
 	targetAddress, targetID string,
 	req *invokev1.InvokeMethodRequest) (*invokev1.InvokeMethodResponse, error) {
-	conn, err := a.grpcConnectionFn(context.TODO(), targetAddress, targetID, a.config.Namespace, false, false, false)
+	conn, err := a.grpcConnectionFn(context.TODO(), targetAddress, targetID,
+		a.config.Namespace, false, false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -423,7 +434,7 @@ func (a *actorsRuntime) callRemoteActor(
 	span := diag_utils.SpanFromContext(ctx)
 	ctx = diag.SpanContextToGRPCMetadata(ctx, span.SpanContext())
 	client := internalv1pb.NewServiceInvocationClient(conn)
-	resp, err := client.CallActor(ctx, req.Proto())
+	resp, err := client.CallActor(ctx, req.Proto()) // 远程sidecar的CallActor
 	if err != nil {
 		return nil, err
 	}
@@ -431,8 +442,10 @@ func (a *actorsRuntime) callRemoteActor(
 	return invokev1.InternalInvokeResponse(resp)
 }
 
+// 判断目标actor地址是不是在本机,以及是不是actor本身
 func (a *actorsRuntime) isActorLocal(targetActorAddress, hostAddress string, grpcPort int) bool {
-	return strings.Contains(targetActorAddress, "localhost") || strings.Contains(targetActorAddress, "127.0.0.1") ||
+	return strings.Contains(targetActorAddress, "localhost") ||
+		strings.Contains(targetActorAddress, "127.0.0.1") ||
 		targetActorAddress == fmt.Sprintf("%s:%v", hostAddress, grpcPort)
 }
 

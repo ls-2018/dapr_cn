@@ -19,7 +19,7 @@ func (a *api) constructActorEndpoints() []Endpoint {
 			Methods: []string{fasthttp.MethodPost, fasthttp.MethodPut},
 			Route:   "actors/{actorType}/{actorId}/state",
 			Version: apiVersionV1,
-			Handler: a.onActorStateTransaction,
+			Handler: a.onActorStateTransaction, // actor状态事务
 		},
 		{
 			Methods: []string{fasthttp.MethodGet, fasthttp.MethodPost, fasthttp.MethodDelete, fasthttp.MethodPut},
@@ -66,6 +66,7 @@ func (a *api) constructActorEndpoints() []Endpoint {
 	}
 }
 
+// OK
 func (a *api) onDirectActorMessage(reqCtx *fasthttp.RequestCtx) {
 	if a.actor == nil {
 		msg := NewErrorResponse("ERR_ACTOR_RUNTIME_NOT_FOUND", messages.ErrActorRuntimeNotFound)

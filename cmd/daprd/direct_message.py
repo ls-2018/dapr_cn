@@ -22,6 +22,8 @@ dapr_url = "http://localhost:3500/v1.0/invoke/dp-61c2cb20562850d49d47d1c7-execut
 # INFO[0000] POST----/v1.0/state/{storeName}
 # INFO[0000] POST----/v1.0/state/{storeName}/bulk
 # INFO[0000] POST----/v1.0/state/{storeName}/transaction
+# INFO[0000] POST----/v1.0-alpha1/state/{storeName}/query
+# INFO[0000] PUT----/v1.0-alpha1/state/{storeName}/query
 
 
 # INFO[0000] GET----/v1.0/secrets/{secretStoreName}/bulk
@@ -43,21 +45,21 @@ dapr_url = "http://localhost:3500/v1.0/invoke/dp-61c2cb20562850d49d47d1c7-execut
 # INFO[0000] GET----/v1.0/actors/{actorType}/{actorId}/method/{method}
 # INFO[0000] GET----/v1.0/actors/{actorType}/{actorId}/state/{key}
 # INFO[0000] GET----/v1.0/actors/{actorType}/{actorId}/reminders/{name}
-# INFO[0000] GET----/v1.0/metadata
-# INFO[0000] POST----/v1.0-alpha1/state/{storeName}/query
 # INFO[0000] POST----/v1.0/actors/{actorType}/{actorId}/state
 # INFO[0000] POST----/v1.0/actors/{actorType}/{actorId}/method/{method}
 # INFO[0000] POST----/v1.0/actors/{actorType}/{actorId}/reminders/{name}
 # INFO[0000] POST----/v1.0/actors/{actorType}/{actorId}/timers/{name}
-# INFO[0000] POST----/v1.0/shutdown
-# INFO[0000] PUT----/v1.0-alpha1/state/{storeName}/query
 # INFO[0000] PUT----/v1.0/actors/{actorType}/{actorId}/state
 # INFO[0000] PUT----/v1.0/actors/{actorType}/{actorId}/method/{method}
 # INFO[0000] PUT----/v1.0/actors/{actorType}/{actorId}/reminders/{name}
 # INFO[0000] PUT----/v1.0/actors/{actorType}/{actorId}/timers/{name}
-# INFO[0000] PUT----/v1.0/metadata/{key}
 # INFO[0000] DELETE----/v1.0/actors/{actorType}/{actorId}/method/{method}
 # INFO[0000] DELETE----/v1.0/actors/{actorType}/{actorId}/reminders/{name}
 # INFO[0000] DELETE----/v1.0/actors/{actorType}/{actorId}/timers/{name}
 
 # INFO[0000] *----/{method:*}
+
+# INFO[0000] GET----/v1.0/metadata
+# INFO[0000] PUT----/v1.0/metadata/{key}
+
+# INFO[0000] POST----/v1.0/shutdown

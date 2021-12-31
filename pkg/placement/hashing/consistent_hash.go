@@ -51,8 +51,8 @@ type Host struct {
 
 // Consistent 一致性哈希
 type Consistent struct {
-	hosts     map[uint64]string // todo ,为什么同一个主机名会存在 replicationFactor 这个多份
-	sortedSet []uint64          // 主机名散列值[会重复replicationFactor]
+	hosts     map[uint64]string
+	sortedSet []uint64          // actorID散列值[会重复replicationFactor]
 	loadMap   map[string]*Host  // 主机名与主机实例的绑定
 	totalLoad int64
 
@@ -126,11 +126,11 @@ func (c *Consistent) Add(host, id string, port int64) bool {
 	return false
 }
 
-// Get returns the host that owns `key`.
+// Get 返回拥有“key”的主机。
 //
 // As described in https://en.wikipedia.org/wiki/Consistent_hashing
 //
-// It returns ErrNoHosts if the ring has no hosts in it.
+// 如果MAP中没有主机，则返回ErrNoHosts。
 func (c *Consistent) Get(key string) (string, error) {
 	c.RLock()
 	defer c.RUnlock()
@@ -144,13 +144,12 @@ func (c *Consistent) Get(key string) (string, error) {
 	return c.hosts[c.sortedSet[idx]], nil
 }
 
-// GetHost gets a host.
+// GetHost 获取主机
 func (c *Consistent) GetHost(key string) (*Host, error) {
 	h, err := c.Get(key)
 	if err != nil {
 		return nil, err
 	}
-
 	return c.loadMap[h], nil
 }
 
@@ -185,7 +184,7 @@ func (c *Consistent) GetLeast(key string) (string, error) {
 		}
 	}
 }
-
+// 在排序好的列表中寻找第一个>=key的值的下标
 func (c *Consistent) search(key uint64) int {
 	idx := sort.Search(len(c.sortedSet), func(i int) bool {
 		return c.sortedSet[i] >= key
@@ -235,7 +234,7 @@ func (c *Consistent) Done(host string) {
 	atomic.AddInt64(&c.totalLoad, -1)
 }
 
-// Remove deletes host from the ring.
+// Remove 移除主机
 func (c *Consistent) Remove(host string) bool {
 	c.Lock()
 	defer c.Unlock()
@@ -249,7 +248,7 @@ func (c *Consistent) Remove(host string) bool {
 	return true
 }
 
-// Hosts return the list of hosts in the ring.
+// Hosts 返回主机列表
 func (c *Consistent) Hosts() (hosts []string) {
 	c.RLock()
 	defer c.RUnlock()
@@ -313,7 +312,9 @@ func (c *Consistent) loadOK(host string) bool {
 	return false
 }
 
+// 从sortedSet删除指定值
 func (c *Consistent) delSlice(val uint64) {
+	// 为啥不使用sort.search
 	idx := -1
 	l := 0
 	r := len(c.sortedSet) - 1

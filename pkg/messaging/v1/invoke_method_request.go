@@ -145,7 +145,7 @@ func (imr *InvokeMethodRequest) Proto() *internalv1pb.InternalInvokeRequest {
 	return imr.r
 }
 
-// Actor returns actor type and id.
+// Actor 返回actor类型和id。
 func (imr *InvokeMethodRequest) Actor() *internalv1pb.Actor {
 	return imr.r.GetActor()
 }
