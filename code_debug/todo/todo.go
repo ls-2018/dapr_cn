@@ -3,18 +3,31 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/dapr/dapr/pkg/actors"
 	"sort"
+	"time"
 )
 
 func main() {
 	//x()
 	fmt.Println(int(^uint(0) >> 1))
 	fmt.Println(int64(^uint64(0) >> 1))
-	a:=[]int{1,2,3,4,5,6,7}
-	x:=sort.Search(len(a), func(i int) bool {
-		return a[i]>3
+	a := []int{1, 2, 3, 4, 5, 6, 7}
+	x := sort.Search(len(a), func(i int) bool {
+		return a[i] > 3
 	})
 	fmt.Println(x)
+	b, _ := actors.GetParseTime("0s", nil)
+	fmt.Println(actors.GetParseTime("-0h30m0s", &b))
+
+	fmt.Println(time.Now())
+	fmt.Println("----")
+	//c := time.Now().Add(time.Second)
+	c:=time.NewTimer(-time.Second*10)
+	for i := range c.C{
+		fmt.Println(i )
+	}
+
 
 }
 

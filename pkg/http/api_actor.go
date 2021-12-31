@@ -113,6 +113,7 @@ func (a *api) onDirectActorMessage(reqCtx *fasthttp.RequestCtx) {
 	respond(reqCtx, with(statusCode, body))
 }
 
+// OK
 func (a *api) onGetActorState(reqCtx *fasthttp.RequestCtx) {
 	if a.actor == nil {
 		msg := NewErrorResponse("ERR_ACTOR_RUNTIME_NOT_FOUND", messages.ErrActorRuntimeNotFound)
@@ -254,6 +255,7 @@ func (a *api) onDeleteActorReminder(reqCtx *fasthttp.RequestCtx) {
 	}
 }
 
+// ok
 func (a *api) onActorStateTransaction(reqCtx *fasthttp.RequestCtx) {
 	if a.actor == nil {
 		msg := NewErrorResponse("ERR_ACTOR_RUNTIME_NOT_FOUND", messages.ErrActorRuntimeNotFound)
@@ -278,7 +280,7 @@ func (a *api) onActorStateTransaction(reqCtx *fasthttp.RequestCtx) {
 	hosted := a.actor.IsActorHosted(reqCtx, &actors.ActorHostedRequest{
 		ActorType: actorType,
 		ActorID:   actorID,
-	})
+	}) // 判断 actorType||actorID  的actor存不存在
 
 	if !hosted {
 		msg := NewErrorResponse("ERR_ACTOR_INSTANCE_MISSING", messages.ErrActorInstanceMissing)

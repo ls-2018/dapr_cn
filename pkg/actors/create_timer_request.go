@@ -5,14 +5,14 @@
 
 package actors
 
-// CreateTimerRequest is the request object to create a new timer.
+// CreateTimerRequest 是创建新定时器的请求对象。
 type CreateTimerRequest struct {
 	Name      string
 	ActorType string
 	ActorID   string
-	DueTime   string      `json:"dueTime"`
-	Period    string      `json:"period"`
-	TTL       string      `json:"ttl"`
-	Callback  string      `json:"callback"`
-	Data      interface{} `json:"data"`
+	DueTime   string      `json:"dueTime"`  // 到期时间
+	Period    string      `json:"period"`   // 周期
+	TTL       string      `json:"ttl"`      // 生存时间
+	Callback  string      `json:"callback"` // 回调
+	Data      interface{} `json:"data"`     // 具体数据
 }

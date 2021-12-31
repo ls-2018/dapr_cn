@@ -208,8 +208,8 @@ func (a *actorsRuntime) Init() error {
 	//如果app healthz返回不健康状态，Dapr将断开放置，将节点从一致的哈希环中移除。
 	//例如，如果应用程序是忙碌的状态，健康状态将是不稳定的，这导致频繁的演员再平衡。这将影响整个服务。
 	go a.startAppHealthCheck(
-		health.WithFailureThreshold(4),     // 失败次数
-		health.WithInterval(5*time.Second), // 检查周期
+		health.WithFailureThreshold(4),           // 失败次数
+		health.WithInterval(5*time.Second),       // 检查周期
 		health.WithRequestTimeout(2*time.Second)) // 请求超时
 
 	return nil
@@ -233,6 +233,7 @@ func (a *actorsRuntime) startAppHealthCheck(opts ...health.Option) {
 func constructCompositeKey(keys ...string) string {
 	return strings.Join(keys, daprSeparator)
 }
+
 // 拆分key
 func decomposeCompositeKey(compositeKey string) []string {
 	return strings.Split(compositeKey, daprSeparator)
@@ -449,9 +450,10 @@ func (a *actorsRuntime) isActorLocal(targetActorAddress, hostAddress string, grp
 		targetActorAddress == fmt.Sprintf("%s:%v", hostAddress, grpcPort)
 }
 
+// GetState OK
 func (a *actorsRuntime) GetState(ctx context.Context, req *GetStateRequest) (*StateResponse, error) {
 	if a.store == nil {
-		return nil, errors.New("actors: state store does not exist or incorrectly configured")
+		return nil, errors.New("actors: 状态存储不存在或配置不正确")
 	}
 
 	partitionKey := constructCompositeKey(a.config.AppID, req.ActorType, req.ActorID)
@@ -471,15 +473,17 @@ func (a *actorsRuntime) GetState(ctx context.Context, req *GetStateRequest) (*St
 	}, nil
 }
 
+// TransactionalStateOperation 状态事务操作
 func (a *actorsRuntime) TransactionalStateOperation(ctx context.Context, req *TransactionalRequest) error {
 	if a.store == nil || a.transactionalStore == nil {
-		return errors.New("actors: state store does not exist or incorrectly configured")
+		return errors.New("actors：状态存储不存在或配置不正确")
 	}
-	operations := []state.TransactionalStateOperation{}
+	var operations []state.TransactionalStateOperation
 	partitionKey := constructCompositeKey(a.config.AppID, req.ActorType, req.ActorID)
-	metadata := map[string]string{metadataPartitionKey: partitionKey}
+	metadata := map[string]string{metadataPartitionKey: partitionKey} // 元数据分区key
 
 	for _, o := range req.Operations {
+		// 防止用户输入的Operation不是我们提供的
 		switch o.Operation {
 		case Upsert:
 			var upsert TransactionalUpsert
@@ -512,7 +516,7 @@ func (a *actorsRuntime) TransactionalStateOperation(ctx context.Context, req *Tr
 				Operation: state.Delete,
 			})
 		default:
-			return errors.Errorf("operation type %s not supported", o.Operation)
+			return errors.Errorf("操作类型不支持 %s ", o.Operation)
 		}
 	}
 
@@ -525,10 +529,12 @@ func (a *actorsRuntime) TransactionalStateOperation(ctx context.Context, req *Tr
 
 func (a *actorsRuntime) IsActorHosted(ctx context.Context, req *ActorHostedRequest) bool {
 	key := constructCompositeKey(req.ActorType, req.ActorID)
+	// 需要actorsTable中同步其余数据
 	_, exists := a.actorsTable.Load(key)
 	return exists
 }
 
+// 构建actor状态存储的key
 func (a *actorsRuntime) constructActorStateKey(actorType, actorID, key string) string {
 	return constructCompositeKey(a.config.AppID, actorType, actorID, key)
 }
@@ -652,7 +658,7 @@ func (a *actorsRuntime) evaluateReminders() {
 
 func (a *actorsRuntime) getReminderTrack(actorKey, name string) (*ReminderTrack, error) {
 	if a.store == nil {
-		return nil, errors.New("actors: state store does not exist or incorrectly configured")
+		return nil, errors.New("actors: 状态存储不存在或配置不正确")
 	}
 
 	resp, err := a.store.Get(&state.GetRequest{
@@ -671,7 +677,7 @@ func (a *actorsRuntime) getReminderTrack(actorKey, name string) (*ReminderTrack,
 
 func (a *actorsRuntime) updateReminderTrack(actorKey, name string, repetition int, lastInvokeTime time.Time) error {
 	if a.store == nil {
-		return errors.New("actors: state store does not exist or incorrectly configured")
+		return errors.New("actors: 状态存储不存在或配置不正确")
 	}
 
 	track := ReminderTrack{
@@ -950,7 +956,7 @@ func (m *ActorMetadata) calculateDatabasePartitionKey(stateKey string) string {
 
 func (a *actorsRuntime) CreateReminder(ctx context.Context, req *CreateReminderRequest) error {
 	if a.store == nil {
-		return errors.New("actors: state store does not exist or incorrectly configured")
+		return errors.New("actors: 状态存储不存在或配置不正确")
 	}
 
 	a.activeRemindersLock.Lock()
@@ -1070,6 +1076,7 @@ func (a *actorsRuntime) CreateReminder(ctx context.Context, req *CreateReminderR
 	return a.startReminder(&reminder, stop)
 }
 
+// CreateTimer ok
 func (a *actorsRuntime) CreateTimer(ctx context.Context, req *CreateTimerRequest) error {
 	var (
 		err          error
@@ -1082,19 +1089,21 @@ func (a *actorsRuntime) CreateTimer(ctx context.Context, req *CreateTimerRequest
 	actorKey := constructCompositeKey(req.ActorType, req.ActorID)
 	timerKey := constructCompositeKey(actorKey, req.Name)
 
-	_, exists := a.actorsTable.Load(actorKey)
+	_, exists := a.actorsTable.Load(actorKey) // 判断actor存不存在
 	if !exists {
-		return errors.Errorf("can't create timer for actor %s: actor not activated", actorKey)
+		return errors.Errorf("不能创建actor: %s定时器: actor未激活", actorKey)
 	}
 
-	stopChan, exists := a.activeTimers.Load(timerKey)
+	stopChan, exists := a.activeTimers.Load(timerKey) // 判断有没有创建过
 	if exists {
+		// 如果存在,关闭 stopChan
 		close(stopChan.(chan bool))
 	}
 
 	if len(req.DueTime) != 0 {
+		// 0h30m0s、R5/PT30M、P1MT2H10M3S、time.Now().Truncate(time.Minute).Add(time.Minute).Format(time.RFC3339)
 		if dueTime, err = parseTime(req.DueTime, nil); err != nil {
-			return errors.Wrap(err, "error parsing timer due time")
+			return errors.Wrap(err, "解析过期时间出错")
 		}
 	} else {
 		dueTime = time.Now()
@@ -1102,25 +1111,31 @@ func (a *actorsRuntime) CreateTimer(ctx context.Context, req *CreateTimerRequest
 
 	repeats = -1 // set to default
 	if len(req.Period) != 0 {
+		// 解析时间、获的有多少秒数    0h30m0s  ---> 18好几个0 , -1 ,nil
+		// R5/PT30M --->  18好几个0 , 5 ,nil
 		if period, repeats, err = parseDuration(req.Period); err != nil {
-			return errors.Wrap(err, "error parsing timer period")
+			return errors.Wrap(err, "解析触发时长出错")
 		}
-		// error on timers with zero repetitions
 		if repeats == 0 {
-			return errors.Errorf("timer %s has zero repetitions", timerKey)
+			return errors.Errorf("timer %s 0次触发", timerKey)
 		}
 	}
 
 	if len(req.TTL) > 0 {
+		//在过期时间上加上生存时间
 		if ttl, err = parseTime(req.TTL, &dueTime); err != nil {
-			return errors.Wrap(err, "error parsing timer TTL")
+			return errors.Wrap(err, "解析定时器TTL出错")
 		}
+		//  为啥不判断  dueTime 相对于当前时间
+
+		//  ------------------------------------------->
+		//       👆🏻dueTime   👆🏻ttl            👆🏻now
 		if time.Now().After(ttl) || dueTime.After(ttl) {
-			return errors.Errorf("timer %s has already expired: dueTime: %s TTL: %s", timerKey, req.DueTime, req.TTL)
+			return errors.Errorf("定时器 %s 已经过期: 过期时间: %s 存活时间: %s", timerKey, req.DueTime, req.TTL)
 		}
 	}
 
-	log.Debugf("create timer %q dueTime:%s period:%s repeats:%d ttl:%s",
+	log.Debugf("创建定时器 %q 到期时间:%s 周期:%s 重复:%d次 存活时间:%s",
 		req.Name, dueTime.String(), period.String(), repeats, ttl.String())
 	stop := make(chan bool, 1)
 	a.activeTimers.Store(timerKey, stop)
@@ -1136,7 +1151,7 @@ func (a *actorsRuntime) CreateTimer(ctx context.Context, req *CreateTimerRequest
 			ttlTimerC = ttlTimer.C
 		}
 		nextTime := dueTime
-		nextTimer = time.NewTimer(time.Until(nextTime))
+		nextTimer = time.NewTimer(time.Until(nextTime))// 定时器 , 只执行一次，如果时间是以前，那么现在执行一次
 		defer func() {
 			if nextTimer.Stop() {
 				<-nextTimer.C
@@ -1151,28 +1166,29 @@ func (a *actorsRuntime) CreateTimer(ctx context.Context, req *CreateTimerRequest
 			case <-nextTimer.C:
 				// noop
 			case <-ttlTimerC:
-				// timer has expired; proceed with deletion
-				log.Infof("timer %s with parameters: dueTime: %s, period: %s, TTL: %s, data: %v has expired.", timerKey, req.DueTime, req.Period, req.TTL, req.Data)
+				// 计时器已经过期，继续删除
+				log.Infof("参数为 dueTime: %s, period: %s, TTL: %s, data: %v 的定时器 %s 已经过期。", timerKey, req.DueTime, req.Period, req.TTL, req.Data)
 				break L
 			case <-stop:
-				// timer has been already deleted
-				log.Infof("timer %s with parameters: dueTime: %s, period: %s, TTL: %s, data: %v has been deleted.", timerKey, req.DueTime, req.Period, req.TTL, req.Data)
+				// 计时器已被删除
+				log.Infof("参数为 dueTime: %s, period: %s, TTL: %s, data: %v 的定时器 %s 已被删除。", timerKey, req.DueTime, req.Period, req.TTL, req.Data)
 				return
 			}
 
 			if _, exists := a.actorsTable.Load(actorKey); exists {
+				// 判断对应类型的actor存不存在
 				if err = a.executeTimer(req.ActorType, req.ActorID, req.Name, req.DueTime, req.Period, req.Callback, req.Data); err != nil {
-					log.Errorf("error invoking timer on actor %s: %s", actorKey, err)
+					log.Errorf("在actor:%s上调用定时器出错：%s", actorKey, err)
 				}
 				if repeats > 0 {
 					repeats--
 				}
 			} else {
-				log.Errorf("could not find active timer %s", timerKey)
+				log.Errorf("不能找到活跃的定时器 %s", timerKey)
 				return
 			}
 			if repeats == 0 || period == 0 {
-				log.Infof("timer %s has been completed", timerKey)
+				log.Infof("定时器 %s 已完成", timerKey)
 				break L
 			}
 			nextTime = nextTime.Add(period)
@@ -1187,7 +1203,7 @@ func (a *actorsRuntime) CreateTimer(ctx context.Context, req *CreateTimerRequest
 			ActorType: req.ActorType,
 		})
 		if err != nil {
-			log.Errorf("error deleting timer %s: %v", timerKey, err)
+			log.Errorf("删除定时器出错 %s: %v", timerKey, err)
 		}
 	}(stop, req)
 	return nil
@@ -1205,13 +1221,13 @@ func (a *actorsRuntime) executeTimer(actorType, actorID, name, dueTime, period, 
 		return err
 	}
 
-	log.Debugf("executing timer %s for actor type %s with id %s", name, actorType, actorID)
+	log.Debugf("执行计时器:%s actor类型:%s ID:%s  ", name, actorType, actorID)
 	req := invokev1.NewInvokeMethodRequest(fmt.Sprintf("timer/%s", name))
 	req.WithActor(actorType, actorID)
 	req.WithRawData(b, invokev1.JSONContentType)
-	_, err = a.callLocalActor(context.Background(), req)
+	_, err = a.Call(context.Background(), req)
 	if err != nil {
-		log.Errorf("error execution of timer %s for actor type %s with id %s: %s", name, actorType, actorID, err)
+		log.Errorf("执行计时器:%s actor类型:%s ID:%s 出错", name, actorType, actorID, err)
 	}
 	return err
 }
@@ -1231,7 +1247,7 @@ func (a *actorsRuntime) saveActorTypeMetadata(actorType string, actorMetadata *A
 
 func (a *actorsRuntime) getActorTypeMetadata(actorType string, migrate bool) (*ActorMetadata, error) {
 	if a.store == nil {
-		return nil, errors.New("actors: state store does not exist or incorrectly configured")
+		return nil, errors.New("actors: 状态存储不存在或配置不正确")
 	}
 
 	if !a.actorTypeMetadataEnabled {
@@ -1375,7 +1391,7 @@ func (a *actorsRuntime) migrateRemindersForActorType(actorType string, actorMeta
 
 func (a *actorsRuntime) getRemindersForActorType(actorType string, migrate bool) ([]actorReminderReference, *ActorMetadata, error) {
 	if a.store == nil {
-		return nil, nil, errors.New("actors: state store does not exist or incorrectly configured")
+		return nil, nil, errors.New("actors: 状态存储不存在或配置不正确")
 	}
 
 	actorMetadata, merr := a.getActorTypeMetadata(actorType, migrate)
@@ -1502,7 +1518,7 @@ func (a *actorsRuntime) saveRemindersInPartition(ctx context.Context, stateKey s
 
 func (a *actorsRuntime) DeleteReminder(ctx context.Context, req *DeleteReminderRequest) error {
 	if a.store == nil {
-		return errors.New("actors: state store does not exist or incorrectly configured")
+		return errors.New("actors: 状态存储不存在或配置不正确")
 	}
 
 	if a.evaluationBusy {
@@ -1722,4 +1738,8 @@ func parseTime(from string, offset *time.Time) (time.Time, error) {
 		return t, nil
 	}
 	return time.Time{}, errors.Errorf("unsupported time/duration format %q", from)
+}
+
+func GetParseTime(from string, offset *time.Time) (time.Time, error) {
+	return parseTime(from, offset)
 }
