@@ -5,7 +5,7 @@
 
 package actors
 
-// DeleteReminderRequest is the request object for deleting a reminder.
+// DeleteReminderRequest 是删除一个reminder的请求对象。
 type DeleteReminderRequest struct {
 	Name      string
 	ActorType string

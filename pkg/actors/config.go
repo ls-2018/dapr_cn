@@ -41,10 +41,10 @@ func NewConfig(hostAddress, appID string, placementAddresses []string, hostedAct
 	actorScanInterval, actorIdleTimeout, ongoingCallTimeout string, drainRebalancedActors bool, namespace string,
 	reentrancy app_config.ReentrancyConfig, remindersStoragePartitions int) Config {
 	c := Config{
-		HostAddress:                   hostAddress,
+		HostAddress:                   hostAddress, // 10.10.16.143
 		AppID:                         appID,
-		PlacementAddresses:            placementAddresses,
-		HostedActorTypes:              hostedActors,
+		PlacementAddresses:            placementAddresses, // [dapr-placement-server.dapr-system.svc.cluster.local:50005]
+		HostedActorTypes:              hostedActors,// actorType-a,actorType-b,actorType-c
 		Port:                          port,
 		HeartbeatInterval:             defaultHeartbeatInterval,
 		ActorDeactivationScanInterval: defaultActorScanInterval, // 失活扫描触发器

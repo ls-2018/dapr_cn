@@ -5,7 +5,7 @@
 
 package actors
 
-// DeleteStateRequest is the request object for deleting an actor state.
+// DeleteStateRequest 是删除一个actor state的请求对象
 type DeleteStateRequest struct {
 	ActorID   string `json:"actorId"`
 	ActorType string `json:"actorType"`

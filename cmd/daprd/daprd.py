@@ -39,6 +39,7 @@ async def get(req: Request):
     # 没有数据传过来
     return {
         "entities": [
+            "a||b",
             'actorType-a',
             'actorType-b',
             'actorType-c'  # 将决定本actor可以运行什么类型的任务
@@ -58,6 +59,14 @@ async def get(req: Request):
 #  定时触发
 @app.put('/actors/actorType-a/actorId-a/method/remind/demo')
 async def remind(req: Request):
+    print(await req.json())
+    # 应用程序内的自动订阅
+    return "ok"
+
+
+#  定时触发
+@app.put('/actors/a||b/c||d/method/remind/demo')
+async def remindxx(req: Request):
     print(await req.json())
     # 应用程序内的自动订阅
     return "ok"

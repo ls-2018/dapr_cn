@@ -23,7 +23,7 @@ func (a *api) constructActorEndpoints() []Endpoint {
 			Methods: []string{fasthttp.MethodGet, fasthttp.MethodPost, fasthttp.MethodDelete, fasthttp.MethodPut},
 			Route:   "actors/{actorType}/{actorId}/method/{method}",
 			Version: apiVersionV1,
-			Handler: a.onDirectActorMessage,
+			Handler: a.onDirectActorMessage, // ok
 		},
 		{
 			Methods: []string{fasthttp.MethodPost, fasthttp.MethodPut},
@@ -35,37 +35,37 @@ func (a *api) constructActorEndpoints() []Endpoint {
 			Methods: []string{fasthttp.MethodGet},
 			Route:   "actors/{actorType}/{actorId}/state/{key}",
 			Version: apiVersionV1,
-			Handler: a.onGetActorState,
+			Handler: a.onGetActorState, // ok
 		},
 		{
 			Methods: []string{fasthttp.MethodDelete},
 			Route:   "actors/{actorType}/{actorId}/timers/{name}",
 			Version: apiVersionV1,
-			Handler: a.onDeleteActorTimer,
+			Handler: a.onDeleteActorTimer, // ok
 		},
 		{
 			Methods: []string{fasthttp.MethodPost, fasthttp.MethodPut},
 			Route:   "actors/{actorType}/{actorId}/timers/{name}",
 			Version: apiVersionV1,
-			Handler: a.onCreateActorTimer,
+			Handler: a.onCreateActorTimer, // ok
 		},
 		{
 			Methods: []string{fasthttp.MethodGet},
 			Route:   "actors/{actorType}/{actorId}/reminders/{name}",
 			Version: apiVersionV1,
-			Handler: a.onGetActorReminder,
+			Handler: a.onGetActorReminder, // ok
 		},
 		{
 			Methods: []string{fasthttp.MethodPost, fasthttp.MethodPut},
 			Route:   "actors/{actorType}/{actorId}/reminders/{name}",
 			Version: apiVersionV1,
-			Handler: a.onCreateActorReminder,
+			Handler: a.onCreateActorReminder, // ok
 		},
 		{
 			Methods: []string{fasthttp.MethodDelete},
 			Route:   "actors/{actorType}/{actorId}/reminders/{name}",
 			Version: apiVersionV1,
-			Handler: a.onDeleteActorReminder,
+			Handler: a.onDeleteActorReminder, // ok
 		},
 	}
 }
@@ -162,6 +162,7 @@ func (a *api) onGetActorState(reqCtx *fasthttp.RequestCtx) {
 	}
 }
 
+// ok
 func (a *api) onCreateActorReminder(reqCtx *fasthttp.RequestCtx) {
 	if a.actor == nil {
 		msg := NewErrorResponse("ERR_ACTOR_RUNTIME_NOT_FOUND", messages.ErrActorRuntimeNotFound)
@@ -208,6 +209,13 @@ func (a *api) onCreateActorTimer(reqCtx *fasthttp.RequestCtx) {
 	actorType := reqCtx.UserValue(actorTypeParam).(string)
 	actorID := reqCtx.UserValue(actorIDParam).(string)
 	name := reqCtx.UserValue(nameParam).(string)
+	//if strings.Contains(actorType, actors.DaprSeparator) || strings.Contains(actorID, actors.DaprSeparator) {
+	//	msg := NewErrorResponse("ERR_MALFORMED_REQUEST",
+	//		fmt.Sprintf(messages.ErrMalformedRequest, fmt.Sprintf("actorType or actorID can't contains %s", actors.DaprSeparator)))
+	//	respond(reqCtx, withError(fasthttp.StatusBadRequest, msg))
+	//	log.Debug(msg)
+	//	return
+	//}
 
 	var req actors.CreateTimerRequest
 	err := a.json.Unmarshal(reqCtx.PostBody(), &req)
@@ -232,6 +240,7 @@ func (a *api) onCreateActorTimer(reqCtx *fasthttp.RequestCtx) {
 	}
 }
 
+// ok
 func (a *api) onDeleteActorReminder(reqCtx *fasthttp.RequestCtx) {
 	if a.actor == nil {
 		msg := NewErrorResponse("ERR_ACTOR_RUNTIME_NOT_FOUND", messages.ErrActorRuntimeNotFound)
@@ -310,6 +319,7 @@ func (a *api) onActorStateTransaction(reqCtx *fasthttp.RequestCtx) {
 	}
 }
 
+// ok
 func (a *api) onGetActorReminder(reqCtx *fasthttp.RequestCtx) {
 	if a.actor == nil {
 		msg := NewErrorResponse("ERR_ACTOR_RUNTIME_NOT_FOUND", messages.ErrActorRuntimeNotFound)

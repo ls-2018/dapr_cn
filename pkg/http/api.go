@@ -253,21 +253,20 @@ func (a *api) findTargetID(reqCtx *fasthttp.RequestCtx) string {
 
 func (a *api) onGetMetadata(reqCtx *fasthttp.RequestCtx) {
 	temp := make(map[interface{}]interface{})
-
-	// Copy synchronously so it can be serialized to JSON.
+	// 一些元信息
+	// 同步复制，这样它就可以被序列化为JSON。
 	a.extendedMetadata.Range(func(key, value interface{}) bool {
 		temp[key] = value
-
 		return true
 	})
 
-	activeActorsCount := []actors.ActiveActorsCount{}
+	var activeActorsCount []actors.ActiveActorsCount // 活跃的 actor 数量
 	if a.actor != nil {
 		activeActorsCount = a.actor.GetActiveActorsCount(reqCtx)
 	}
 
 	components := a.getComponentsFn()
-	registeredComponents := make([]registeredComponent, 0, len(components))
+	registeredComponents := make([]registeredComponent, 0, len(components)) // 注册的组件
 
 	for _, comp := range components {
 		registeredComp := registeredComponent{

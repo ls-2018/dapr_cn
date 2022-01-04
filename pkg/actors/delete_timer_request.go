@@ -5,7 +5,7 @@
 
 package actors
 
-// DeleteTimerRequest is a request object for deleting a timer.
+// DeleteTimerRequest 是删除一个timer的请求对象
 type DeleteTimerRequest struct {
 	Name      string
 	ActorType string

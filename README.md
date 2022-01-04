@@ -52,3 +52,4 @@ sidecar 之间是通过grpc链接的
 ### todo
 - 1、operator 自定义crd ; 使用kubebuilder
 - 2、placement  raft
+- 3、backoff.Retry   

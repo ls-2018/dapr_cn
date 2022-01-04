@@ -9,18 +9,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"hash/fnv"
 	nethttp "net/http"
-	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
 	"github.com/google/uuid"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"github.com/valyala/fasthttp"
@@ -34,7 +29,6 @@ import (
 
 	"github.com/dapr/dapr/pkg/actors/internal"
 	"github.com/dapr/dapr/pkg/channel"
-	"github.com/dapr/dapr/pkg/concurrency"
 	configuration "github.com/dapr/dapr/pkg/config"
 	dapr_credentials "github.com/dapr/dapr/pkg/credentials"
 	diag "github.com/dapr/dapr/pkg/diagnostics"
@@ -48,7 +42,7 @@ import (
 )
 
 const (
-	daprSeparator        = "||"
+	DaprSeparator        = "||"
 	metadataPartitionKey = "partitionKey"
 )
 
@@ -96,20 +90,20 @@ type actorsRuntime struct {
 	actorTypeMetadataEnabled bool // actor 是否支持元数据
 }
 
-// ActiveActorsCount contain actorType and count of actors each type has.
+// ActiveActorsCount 包含actorType和每种类型所拥有的演员数量。
 type ActiveActorsCount struct {
 	Type  string `json:"type"`
 	Count int    `json:"count"`
 }
 
-// ActorMetadata represents information about the actor type.
+// ActorMetadata 代表关于actorType的信息。
 type ActorMetadata struct {
 	ID                string                 `json:"id"`
 	RemindersMetadata ActorRemindersMetadata `json:"actorRemindersMetadata"`
 	Etag              *string                `json:"-"`
 }
 
-// ActorRemindersMetadata represents information about actor's reminders.
+// ActorRemindersMetadata reminder 的消息
 type ActorRemindersMetadata struct {
 	PartitionCount int                `json:"partitionCount"`
 	partitionsEtag map[uint32]*string `json:"-"`
@@ -122,7 +116,7 @@ type actorReminderReference struct {
 }
 
 const (
-	incompatibleStateStore = "state store does not support transactions which actors require to save state - please see https://docs.dapr.io/operations/components/setup-state-store/supported-state-stores/"
+	incompatibleStateStore = " 状态存储不支持事务，因为actor需要保存状态。 - please see https://docs.dapr.io/operations/components/setup-state-store/supported-state-stores/"
 )
 
 // NewActors 使用提供的actor配置创建actor实例
@@ -232,13 +226,14 @@ func (a *actorsRuntime) startAppHealthCheck(opts ...health.Option) {
 
 // 拼接key
 func constructCompositeKey(keys ...string) string {
-	return strings.Join(keys, daprSeparator)
+	return strings.Join(keys, DaprSeparator)
 }
 
 // 拆分key
 func decomposeCompositeKey(compositeKey string) []string {
-	return strings.Split(compositeKey, daprSeparator)
+	return strings.Split(compositeKey, DaprSeparator)
 }
+
 
 func (a *actorsRuntime) deactivateActor(actorType, actorID string) error {
 	req := invokev1.NewInvokeMethodRequest(fmt.Sprintf("actors/%s/%s", actorType, actorID))
@@ -267,6 +262,7 @@ func (a *actorsRuntime) deactivateActor(actorType, actorID string) error {
 	return nil
 }
 
+// 根据key 获取actor信息
 func (a *actorsRuntime) getActorTypeAndIDFromKey(key string) (string, string) {
 	arr := decomposeCompositeKey(key)
 	return arr[0], arr[1]
@@ -605,357 +601,8 @@ func (a *actorsRuntime) drainRebalancedActors() {
 	})
 }
 
-//评估提示
-func (a *actorsRuntime) evaluateReminders() {
-	a.evaluationLock.Lock()
-	defer a.evaluationLock.Unlock()
-
-	a.evaluationBusy = true
-	a.evaluationChan = make(chan bool)
-
-	var wg sync.WaitGroup
-	for _, t := range a.config.HostedActorTypes {
-		vals, _, err := a.getRemindersForActorType(t, true)
-		if err != nil {
-			log.Errorf("error getting reminders for actor type %s: %s", t, err)
-		} else {
-			a.remindersLock.Lock()
-			a.reminders[t] = vals
-			a.remindersLock.Unlock()
-
-			wg.Add(1)
-			go func(wg *sync.WaitGroup, reminders []actorReminderReference) {
-				defer wg.Done()
-
-				for i := range reminders {
-					r := reminders[i] // Make a copy since we will refer to this as a reference in this loop.
-					targetActorAddress, _ := a.placement.LookupActor(r.reminder.ActorType, r.reminder.ActorID)
-					if targetActorAddress == "" {
-						continue
-					}
-
-					if a.isActorLocal(targetActorAddress, a.config.HostAddress, a.config.Port) {
-						actorKey := constructCompositeKey(r.reminder.ActorType, r.reminder.ActorID)
-						reminderKey := constructCompositeKey(actorKey, r.reminder.Name)
-						_, exists := a.activeReminders.Load(reminderKey)
-
-						if !exists {
-							stop := make(chan bool)
-							a.activeReminders.Store(reminderKey, stop)
-							err := a.startReminder(r.reminder, stop)
-							if err != nil {
-								log.Errorf("error starting reminder: %s", err)
-							}
-						}
-					}
-				}
-			}(&wg, vals)
-		}
-	}
-	wg.Wait()
-	close(a.evaluationChan)
-	a.evaluationBusy = false
-}
-
-func (a *actorsRuntime) getReminderTrack(actorKey, name string) (*ReminderTrack, error) {
-	if a.store == nil {
-		return nil, errors.New("actors: 状态存储不存在或配置不正确")
-	}
-
-	resp, err := a.store.Get(&state.GetRequest{
-		Key: constructCompositeKey(actorKey, name),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	track := ReminderTrack{
-		RepetitionLeft: -1,
-	}
-	json.Unmarshal(resp.Data, &track)
-	return &track, nil
-}
-
-func (a *actorsRuntime) updateReminderTrack(actorKey, name string, repetition int, lastInvokeTime time.Time) error {
-	if a.store == nil {
-		return errors.New("actors: 状态存储不存在或配置不正确")
-	}
-
-	track := ReminderTrack{
-		LastFiredTime:  lastInvokeTime.Format(time.RFC3339),
-		RepetitionLeft: repetition,
-	}
-
-	err := a.store.Set(&state.SetRequest{
-		Key:   constructCompositeKey(actorKey, name),
-		Value: track,
-	})
-	return err
-}
-
-func (a *actorsRuntime) startReminder(reminder *Reminder, stopChannel chan bool) error { // 启动reminder
-	actorKey := constructCompositeKey(reminder.ActorType, reminder.ActorID)
-	reminderKey := constructCompositeKey(actorKey, reminder.Name)
-
-	var (
-		nextTime, ttl            time.Time
-		period                   time.Duration
-		repeats, repetitionsLeft int
-	)
-	// 获取注册时间
-	registeredTime, err := time.Parse(time.RFC3339, reminder.RegisteredTime)
-	if err != nil {
-		return errors.Wrap(err, "解析reminder注册时间失败")
-	}
-	if len(reminder.ExpirationTime) != 0 {
-		if ttl, err = time.Parse(time.RFC3339, reminder.ExpirationTime); err != nil {
-			return errors.Wrap(err, "解析reminder过期时间失败")
-		}
-	}
-
-	repeats = -1 // set to default
-	if len(reminder.Period) != 0 {
-		if period, repeats, err = parseDuration(reminder.Period); err != nil {
-			return errors.Wrap(err, "解析reminder周期失败")
-		}
-	}
-	//是一个持久化的对象，它记录了最后一次提醒的时间。
-	track, err := a.getReminderTrack(actorKey, reminder.Name)
-	if err != nil {
-		return errors.Wrap(err, "获取reminder执行信息失败")
-	}
-
-	if track != nil && len(track.LastFiredTime) != 0 {
-		lastFiredTime, err := time.Parse(time.RFC3339, track.LastFiredTime)
-		if err != nil {
-			return errors.Wrap(err, "获取reminder上一次执行时间失败")
-		}
-		repetitionsLeft = track.RepetitionLeft
-		nextTime = lastFiredTime.Add(period)
-	} else {
-		repetitionsLeft = repeats
-		nextTime = registeredTime
-	}
-
-	go func(reminder *Reminder, period time.Duration, nextTime, ttl time.Time, repetitionsLeft int, stop chan bool) {
-		var (
-			ttlTimer, nextTimer *time.Timer
-			ttlTimerC           <-chan time.Time
-			err                 error
-		)
-		// 不是零值
-		if !ttl.IsZero() {
-			ttlTimer = time.NewTimer(time.Until(ttl))
-			ttlTimerC = ttlTimer.C
-		}
-		nextTimer = time.NewTimer(time.Until(nextTime))
-		defer func() {
-			if nextTimer.Stop() {
-				<-nextTimer.C
-			}
-			if ttlTimer != nil && ttlTimer.Stop() {
-				<-ttlTimerC
-			}
-		}()
-	L:
-		for {
-			select {
-			case v := <-nextTimer.C:
-				log.Debug(v)
-				// noop
-			case <-ttlTimerC:
-				// 继续删除提醒信息
-				log.Infof("reminder %s 过期了", reminder.Name)
-				break L
-			case <-stop:
-				// reminder 被删除
-				log.Infof("reminder %s with parameters: dueTime: %s, period: %s, data: %v 被删除了", reminder.Name, reminder.RegisteredTime, reminder.Period, reminder.Data)
-				return
-			}
-
-			_, exists := a.activeReminders.Load(reminderKey)
-			if !exists {
-				log.Errorf("不能查找到活跃的 reminder  by key: %s", reminderKey)
-				return
-			}
-			// 如果所有的重复都已完成，则继续进行提醒删除。
-			if repetitionsLeft == 0 {
-				log.Infof("reminder %q 完成了 %d ", reminder.Name, repeats)
-				break L
-			}
-			if err = a.executeReminder(reminder); err != nil {
-				log.Errorf("error 执行reminder %q ;actor type %s; id %s; err: %v",
-					reminder.Name, reminder.ActorType, reminder.ActorID, err)
-			}
-			if repetitionsLeft > 0 {
-				repetitionsLeft--
-			}
-			if err = a.updateReminderTrack(actorKey, reminder.Name, repetitionsLeft, nextTime); err != nil {
-				log.Errorf("更新reminder执行信息失败 %v", err)
-			}
-			// 如果reminder不是重复的，则继续删除reminder
-			if period == 0 {
-				break L
-			}
-			nextTime = nextTime.Add(period)
-			if nextTimer.Stop() {
-				<-nextTimer.C
-			}
-			nextTimer.Reset(time.Until(nextTime))
-		}
-		err = a.DeleteReminder(context.TODO(), &DeleteReminderRequest{
-			Name:      reminder.Name,
-			ActorID:   reminder.ActorID,
-			ActorType: reminder.ActorType,
-		})
-		if err != nil {
-			log.Errorf("error deleting reminder: %s", err)
-		}
-	}(reminder, period, nextTime, ttl, repetitionsLeft, stopChannel)
-
-	return nil
-}
-
-//type Reminder struct {
-//	ActorID        actorId-a
-//	ActorType      actorType-a
-//	Name           demo
-//	RegisteredTime 2022-01-04T14:35:37+08:00
-//}
-// 执行某个reminder
-func (a *actorsRuntime) executeReminder(reminder *Reminder) error {
-	r := ReminderResponse{
-		DueTime: reminder.DueTime,
-		Period:  reminder.Period,
-		Data:    reminder.Data,
-	}
-	b, err := json.Marshal(&r)
-	if err != nil {
-		return err
-	}
-
-	log.Debugf("执行 reminder %s ;actor type %s ; id %s", reminder.Name, reminder.ActorType, reminder.ActorID)
-	req := invokev1.NewInvokeMethodRequest(fmt.Sprintf("remind/%s", reminder.Name))
-	req.WithActor(reminder.ActorType, reminder.ActorID)
-	req.WithRawData(b, invokev1.JSONContentType)
-
-	_, err = a.callLocalActor(context.Background(), req)
-	return err
-}
-
-// ok
-func (a *actorsRuntime) reminderRequiresUpdate(req *CreateReminderRequest, reminder *Reminder) bool {
-	if reminder.ActorID == req.ActorID && reminder.ActorType == req.ActorType && reminder.Name == req.Name &&
-		(!reflect.DeepEqual(reminder.Data, req.Data) || reminder.DueTime != req.DueTime || reminder.Period != req.Period ||
-			len(req.TTL) != 0 || (len(reminder.ExpirationTime) != 0 && len(req.TTL) == 0)) {
-		return true
-	}
-
-	return false
-}
-
-// ok
-func (a *actorsRuntime) getReminder(req *CreateReminderRequest) (*Reminder, bool) {
-	a.remindersLock.RLock()
-	reminders := a.reminders[req.ActorType] // 用户随便写
-	a.remindersLock.RUnlock()
-	//判断有没有已经存在的 reminder
-	for _, r := range reminders {
-		if r.reminder.ActorID == req.ActorID && r.reminder.ActorType == req.ActorType && r.reminder.Name == req.Name {
-			return r.reminder, true
-		}
-	}
-
-	return nil, false
-}
-
-func (m *ActorMetadata) calculateReminderPartition(actorID, reminderName string) uint32 {
-	if m.RemindersMetadata.PartitionCount <= 0 {
-		return 0
-	}
-
-	// do not change this hash function because it would be a breaking change.
-	h := fnv.New32a()
-	h.Write([]byte(actorID))
-	h.Write([]byte(reminderName))
-	return (h.Sum32() % uint32(m.RemindersMetadata.PartitionCount)) + 1
-}
-
-func (m *ActorMetadata) createReminderReference(reminder *Reminder) actorReminderReference {
-	if m.RemindersMetadata.PartitionCount > 0 {
-		return actorReminderReference{
-			actorMetadataID:           m.ID,
-			actorRemindersPartitionID: m.calculateReminderPartition(reminder.ActorID, reminder.Name),
-			reminder:                  reminder,
-		}
-	}
-
-	return actorReminderReference{
-		actorMetadataID:           "",
-		actorRemindersPartitionID: 0,
-		reminder:                  reminder,
-	}
-}
-
-func (m *ActorMetadata) calculateRemindersStateKey(actorType string, remindersPartitionID uint32) string {
-	if remindersPartitionID == 0 {
-		return constructCompositeKey("actors", actorType)
-	}
-
-	return constructCompositeKey(
-		"actors",
-		actorType,
-		m.ID,
-		"reminders",
-		strconv.Itoa(int(remindersPartitionID)))
-}
-
 func (m *ActorMetadata) calculateEtag(partitionID uint32) *string {
 	return m.RemindersMetadata.partitionsEtag[partitionID]
-}
-
-func (m *ActorMetadata) removeReminderFromPartition(reminderRefs []actorReminderReference, actorType, actorID, reminderName string) ([]Reminder, string, *string) {
-	// First, we find the partition
-	var partitionID uint32 = 0
-	if m.RemindersMetadata.PartitionCount > 0 {
-		for _, reminderRef := range reminderRefs {
-			if reminderRef.reminder.ActorType == actorType && reminderRef.reminder.ActorID == actorID && reminderRef.reminder.Name == reminderName {
-				partitionID = reminderRef.actorRemindersPartitionID
-			}
-		}
-	}
-
-	var remindersInPartitionAfterRemoval []Reminder
-	for _, reminderRef := range reminderRefs {
-		if reminderRef.reminder.ActorType == actorType && reminderRef.reminder.ActorID == actorID && reminderRef.reminder.Name == reminderName {
-			continue
-		}
-
-		// Only the items in the partition to be updated.
-		if reminderRef.actorRemindersPartitionID == partitionID {
-			remindersInPartitionAfterRemoval = append(remindersInPartitionAfterRemoval, *reminderRef.reminder)
-		}
-	}
-
-	stateKey := m.calculateRemindersStateKey(actorType, partitionID)
-	return remindersInPartitionAfterRemoval, stateKey, m.calculateEtag(partitionID)
-}
-
-func (m *ActorMetadata) insertReminderInPartition(reminderRefs []actorReminderReference, reminder *Reminder) ([]Reminder, actorReminderReference, string, *string) {
-	newReminderRef := m.createReminderReference(reminder)
-
-	var remindersInPartitionAfterInsertion []Reminder
-	for _, reminderRef := range reminderRefs {
-		// Only the items in the partition to be updated.
-		if reminderRef.actorRemindersPartitionID == newReminderRef.actorRemindersPartitionID {
-			remindersInPartitionAfterInsertion = append(remindersInPartitionAfterInsertion, *reminderRef.reminder)
-		}
-	}
-
-	remindersInPartitionAfterInsertion = append(remindersInPartitionAfterInsertion, *reminder)
-
-	stateKey := m.calculateRemindersStateKey(newReminderRef.reminder.ActorType, newReminderRef.actorRemindersPartitionID)
-	return remindersInPartitionAfterInsertion, newReminderRef, stateKey, m.calculateEtag(newReminderRef.actorRemindersPartitionID)
 }
 
 func (m *ActorMetadata) calculateDatabasePartitionKey(stateKey string) string {
@@ -964,289 +611,6 @@ func (m *ActorMetadata) calculateDatabasePartitionKey(stateKey string) string {
 	}
 
 	return stateKey
-}
-
-// ok
-func (a *actorsRuntime) CreateReminder(ctx context.Context, req *CreateReminderRequest) error {
-	if a.store == nil {
-		return errors.New("actors: 状态存储不存在或配置不正确")
-	}
-
-	a.activeRemindersLock.Lock()
-	defer a.activeRemindersLock.Unlock()
-	// 如果存在符合条件的reminder
-	if r, exists := a.getReminder(req); exists {
-		if a.reminderRequiresUpdate(req, r) {
-			err := a.DeleteReminder(ctx, &DeleteReminderRequest{
-				ActorID:   req.ActorID,
-				ActorType: req.ActorType,
-				Name:      req.Name,
-			})
-			if err != nil {
-				return err
-			}
-		} else {
-			return nil
-		}
-	}
-
-	// 在活动提醒列表中存储提醒信息
-	actorKey := constructCompositeKey(req.ActorType, req.ActorID)
-	reminderKey := constructCompositeKey(actorKey, req.Name)
-
-	if a.evaluationBusy {
-		select {
-		case <-time.After(time.Second * 5):
-			return errors.New("创建提醒时出错：5秒后超时了")
-		case <-a.evaluationChan:
-			break
-		}
-	}
-
-	now := time.Now()
-	reminder := Reminder{
-		ActorID:   req.ActorID,
-		ActorType: req.ActorType,
-		Name:      req.Name,
-		Data:      req.Data,
-		Period:    req.Period,
-		DueTime:   req.DueTime,
-	}
-
-	// 检查输入是否正确
-	var (
-		dueTime, ttl time.Time
-		repeats      int
-		err          error
-	)
-	if len(req.DueTime) != 0 {
-		if dueTime, err = parseTime(req.DueTime, nil); err != nil {
-			return errors.Wrap(err, "错误解析提醒到期时间")
-		}
-	} else {
-		dueTime = now
-	}
-	reminder.RegisteredTime = dueTime.Format(time.RFC3339)
-
-	if len(req.Period) != 0 {
-		_, repeats, err = parseDuration(req.Period)
-		if err != nil {
-			return errors.Wrap(err, "错误解析提醒周期")
-		}
-		// 对重复次数为零的计时器有错误
-		if repeats == 0 {
-			return errors.Errorf("提醒%s的重复次数为零", reminder.Name)
-		}
-	}
-	if len(req.TTL) > 0 {
-		if ttl, err = parseTime(req.TTL, &dueTime); err != nil {
-			return errors.Wrap(err, "error parsing reminder TTL")
-		}
-		if now.After(ttl) || dueTime.After(ttl) {
-			return errors.Errorf("reminder %s 已经过期: registeredTime: %s TTL:%s",
-				reminderKey, reminder.RegisteredTime, req.TTL)
-		}
-		reminder.ExpirationTime = ttl.UTC().Format(time.RFC3339)
-	}
-
-	stop := make(chan bool)
-	a.activeReminders.Store(reminderKey, stop)
-
-	err = backoff.Retry(func() error {
-		// 将数据存储到actorStateStore中
-		reminders, actorMetadata, err2 := a.getRemindersForActorType(req.ActorType, true)
-		if err2 != nil {
-			return err2
-		}
-
-		// 首先，我们把它添加到分区列表中。
-		remindersInPartition, reminderRef, stateKey, etag := actorMetadata.insertReminderInPartition(reminders, &reminder)
-
-		// 获取数据库分区密钥（CosmosDB需要）。
-		databasePartitionKey := actorMetadata.calculateDatabasePartitionKey(stateKey)
-
-		// 现在我们可以把它添加到 "全局 "列表中。
-		reminders = append(reminders, reminderRef)
-
-		// 然后，将该分区保存到数据库。
-		err2 = a.saveRemindersInPartition(ctx, stateKey, remindersInPartition, etag, databasePartitionKey)
-		if err2 != nil {
-			return err2
-		}
-
-		// Finally, we must save metadata to get a new eTag.
-		// This avoids a race condition between an update and a repartitioning.
-		a.saveActorTypeMetadata(req.ActorType, actorMetadata)
-
-		a.remindersLock.Lock()
-		a.reminders[req.ActorType] = reminders
-		a.remindersLock.Unlock()
-		return nil
-	}, backoff.NewExponentialBackOff())
-	if err != nil {
-		return err
-	}
-	return a.startReminder(&reminder, stop)
-}
-
-// CreateTimer ok
-func (a *actorsRuntime) CreateTimer(ctx context.Context, req *CreateTimerRequest) error {
-	var (
-		err          error
-		repeats      int
-		dueTime, ttl time.Time
-		period       time.Duration
-	)
-	a.activeTimersLock.Lock()
-	defer a.activeTimersLock.Unlock()
-	actorKey := constructCompositeKey(req.ActorType, req.ActorID)
-	timerKey := constructCompositeKey(actorKey, req.Name)
-
-	_, exists := a.actorsTable.Load(actorKey) // 判断actor存不存在
-	if !exists {
-		return errors.Errorf("不能创建actor: %s定时器: actor未激活", actorKey)
-	}
-
-	stopChan, exists := a.activeTimers.Load(timerKey) // 判断有没有创建过
-	if exists {
-		// 如果存在,关闭 stopChan
-		close(stopChan.(chan bool))
-	}
-
-	if len(req.DueTime) != 0 {
-		// 0h30m0s、R5/PT30M、P1MT2H10M3S、time.Now().Truncate(time.Minute).Add(time.Minute).Format(time.RFC3339)
-		if dueTime, err = parseTime(req.DueTime, nil); err != nil {
-			return errors.Wrap(err, "解析过期时间出错")
-		}
-		if time.Now().After(dueTime) {
-			return errors.Errorf("定时器 %s 已经过期: 过期时间: %s 存活时间: %s", timerKey, req.DueTime, req.TTL)
-		}
-	} else {
-		dueTime = time.Now()
-	}
-
-	repeats = -1 // set to default
-	if len(req.Period) != 0 {
-		// 解析时间、获的有多少秒数    0h30m0s  ---> 18好几个0 , -1 ,nil
-		// R5/PT30M --->  18好几个0 , 5 ,nil
-		if period, repeats, err = parseDuration(req.Period); err != nil {
-			return errors.Wrap(err, "解析触发时长出错")
-		}
-		if repeats == 0 {
-			return errors.Errorf("timer %s 0次触发", timerKey)
-		}
-	}
-
-	if len(req.TTL) > 0 {
-		//在过期时间上加上生存时间
-		if ttl, err = parseTime(req.TTL, &dueTime); err != nil {
-			return errors.Wrap(err, "解析定时器TTL出错")
-		}
-		//  为啥不判断  dueTime 相对于当前时间
-
-		//  ------------------------------------------->
-		//       👆🏻dueTime   👆🏻ttl            👆🏻now
-		if time.Now().After(ttl) || dueTime.After(ttl) {
-			return errors.Errorf("定时器 %s 已经过期: 过期时间: %s 存活时间: %s", timerKey, req.DueTime, req.TTL)
-		}
-	}
-
-	log.Debugf("创建定时器 %q 到期时间:%s 周期:%s 重复:%d次 存活时间:%s",
-		req.Name, dueTime.String(), period.String(), repeats, ttl.String())
-	stop := make(chan bool, 1)
-	a.activeTimers.Store(timerKey, stop)
-
-	go func(stop chan bool, req *CreateTimerRequest) {
-		var (
-			ttlTimer, nextTimer *time.Timer
-			ttlTimerC           <-chan time.Time
-			err                 error
-		)
-		if !ttl.IsZero() {
-			ttlTimer = time.NewTimer(time.Until(ttl))
-			ttlTimerC = ttlTimer.C
-		}
-		nextTime := dueTime
-		nextTimer = time.NewTimer(time.Until(nextTime)) // 定时器 , 只执行一次，如果时间是以前，那么现在执行一次
-		defer func() {
-			if nextTimer.Stop() {
-				<-nextTimer.C
-			}
-			if ttlTimer != nil && ttlTimer.Stop() {
-				<-ttlTimerC
-			}
-		}()
-	L:
-		for {
-			select {
-			case <-nextTimer.C:
-				// noop
-			case <-ttlTimerC:
-				// 计时器已经过期，继续删除
-				log.Infof("参数为 dueTime: %s, period: %s, TTL: %s, data: %v 的定时器 %s 已经过期。", timerKey, req.DueTime, req.Period, req.TTL, req.Data)
-				break L
-			case <-stop:
-				// 计时器已被删除
-				log.Infof("参数为 dueTime: %s, period: %s, TTL: %s, data: %v 的定时器 %s 已被删除。", timerKey, req.DueTime, req.Period, req.TTL, req.Data)
-				return
-			}
-
-			if _, exists := a.actorsTable.Load(actorKey); exists {
-				// 判断对应类型的actor存不存在
-				if err = a.executeTimer(req.ActorType, req.ActorID, req.Name, req.DueTime, req.Period, req.Callback, req.Data); err != nil {
-					log.Errorf("在actor:%s上调用定时器出错：%s", actorKey, err)
-				}
-				if repeats > 0 {
-					repeats--
-				}
-			} else {
-				log.Errorf("不能找到活跃的定时器 %s", timerKey)
-				return
-			}
-			if repeats == 0 || period == 0 {
-				log.Infof("定时器 %s 已完成", timerKey)
-				break L
-			}
-			nextTime = nextTime.Add(period)
-			if nextTimer.Stop() {
-				<-nextTimer.C
-			}
-			nextTimer.Reset(time.Until(nextTime))
-		}
-		err = a.DeleteTimer(ctx, &DeleteTimerRequest{
-			Name:      req.Name,
-			ActorID:   req.ActorID,
-			ActorType: req.ActorType,
-		})
-		if err != nil {
-			log.Errorf("删除定时器出错 %s: %v", timerKey, err)
-		}
-	}(stop, req)
-	return nil
-}
-
-// ok
-func (a *actorsRuntime) executeTimer(actorType, actorID, name, dueTime, period, callback string, data interface{}) error {
-	t := TimerResponse{
-		Callback: callback,
-		Data:     data,
-		DueTime:  dueTime,
-		Period:   period,
-	}
-	b, err := json.Marshal(&t)
-	if err != nil {
-		return err
-	}
-
-	log.Debugf("执行计时器:%s actor类型:%s ID:%s  ", name, actorType, actorID)
-	req := invokev1.NewInvokeMethodRequest(fmt.Sprintf("timer/%s", name))
-	req.WithActor(actorType, actorID)
-	req.WithRawData(b, invokev1.JSONContentType)
-	_, err = a.Call(context.Background(), req)
-	if err != nil {
-		log.Errorf("执行计时器:%s actor类型:%s ID:%s 出错", name, actorType, actorID, err)
-	}
-	return err
 }
 
 // 保存actor type 的元数据
@@ -1332,314 +696,7 @@ func (a *actorsRuntime) getActorTypeMetadata(actorType string, migrate bool) (*A
 	return a.migrateRemindersForActorType(actorType, &actorMetadata)
 }
 
-// 将元信息 合并到actor type中
-func (a *actorsRuntime) migrateRemindersForActorType(actorType string, actorMetadata *ActorMetadata) (*ActorMetadata, error) {
-	if !a.actorTypeMetadataEnabled {
-		return actorMetadata, nil
-	}
-
-	// 如果元信息的分区数、与全局配置的分区数一致
-	if actorMetadata.RemindersMetadata.PartitionCount == a.config.RemindersStoragePartitions {
-		return actorMetadata, nil
-	}
-
-	if actorMetadata.RemindersMetadata.PartitionCount > a.config.RemindersStoragePartitions {
-		log.Warnf("不能减少reminder分区数量%s", actorType)
-		return actorMetadata, nil
-	}
-
-	log.Warnf("迁移reminder元数据记录 %s", actorType)
-
-	// 取出所有reminder
-	reminderRefs, refreshedActorMetadata, err := a.getRemindersForActorType(actorType, false)
-	if err != nil {
-		return nil, err
-	}
-	if refreshedActorMetadata.ID != actorMetadata.ID {
-		return nil, errors.Errorf("could not migrate reminders for actor type %s due to race condition in actor metadata", actorType)
-	}
-
-	// Recreate as a new metadata identifier.
-	actorMetadata.ID = uuid.NewString()
-	actorMetadata.RemindersMetadata.PartitionCount = a.config.RemindersStoragePartitions
-	actorRemindersPartitions := make([][]*Reminder, actorMetadata.RemindersMetadata.PartitionCount)
-	for i := 0; i < actorMetadata.RemindersMetadata.PartitionCount; i++ {
-		actorRemindersPartitions[i] = make([]*Reminder, 0)
-	}
-
-	// Recalculate partition for each reminder.
-	for _, reminderRef := range reminderRefs {
-		partitionID := actorMetadata.calculateReminderPartition(reminderRef.reminder.ActorID, reminderRef.reminder.Name)
-		actorRemindersPartitions[partitionID-1] = append(actorRemindersPartitions[partitionID-1], reminderRef.reminder)
-	}
-
-	// Save to database.
-	metadata := map[string]string{metadataPartitionKey: actorMetadata.ID}
-	transaction := state.TransactionalStateRequest{
-		Metadata: metadata,
-	}
-	for i := 0; i < actorMetadata.RemindersMetadata.PartitionCount; i++ {
-		partitionID := i + 1
-		stateKey := actorMetadata.calculateRemindersStateKey(actorType, uint32(partitionID))
-		stateValue := actorRemindersPartitions[i]
-		transaction.Operations = append(transaction.Operations, state.TransactionalStateOperation{
-			Operation: state.Upsert,
-			Request: state.SetRequest{
-				Key:      stateKey,
-				Value:    stateValue,
-				Metadata: metadata,
-			},
-		})
-	}
-	err = a.transactionalStore.Multi(&transaction)
-	if err != nil {
-		return nil, err
-	}
-
-	// Save new metadata so the new "metadataID" becomes the new de factor referenced list for reminders.
-	err = a.saveActorTypeMetadata(actorType, actorMetadata)
-	if err != nil {
-		return nil, err
-	}
-	log.Warnf(
-		"completed actor metadata record migration for actor type %s, new metadata ID = %s",
-		actorType, actorMetadata.ID)
-	return actorMetadata, nil
-}
-
-// 根据actor type 获取reminders
-func (a *actorsRuntime) getRemindersForActorType(actorType string, migrate bool) ([]actorReminderReference, *ActorMetadata, error) {
-	if a.store == nil {
-		return nil, nil, errors.New("actors: 状态存储不存在或配置不正确")
-	}
-
-	actorMetadata, merr := a.getActorTypeMetadata(actorType, migrate)
-	if merr != nil {
-		return nil, nil, fmt.Errorf("不能读取actor type元数据: %w", merr)
-	}
-
-	if actorMetadata.RemindersMetadata.PartitionCount >= 1 {
-		metadata := map[string]string{metadataPartitionKey: actorMetadata.ID}
-		actorMetadata.RemindersMetadata.partitionsEtag = map[uint32]*string{}
-		var reminders []actorReminderReference
-
-		keyPartitionMap := map[string]uint32{}
-		var getRequests []state.GetRequest
-		for i := 1; i <= actorMetadata.RemindersMetadata.PartitionCount; i++ {
-			partition := uint32(i)
-			key := actorMetadata.calculateRemindersStateKey(actorType, partition)
-			keyPartitionMap[key] = partition
-			getRequests = append(getRequests, state.GetRequest{
-				Key:      key,
-				Metadata: metadata,
-			})
-		}
-
-		bulkGet, bulkResponse, err := a.store.BulkGet(getRequests)
-		if bulkGet {
-			if err != nil {
-				return nil, nil, err
-			}
-		} else {
-			// TODO(artursouza): refactor this fallback into default implementation in contrib.
-			// if store doesn't support bulk get, fallback to call get() method one by one
-			limiter := concurrency.NewLimiter(actorMetadata.RemindersMetadata.PartitionCount)
-			bulkResponse = make([]state.BulkGetResponse, len(getRequests))
-			for i := range getRequests {
-				getRequest := getRequests[i]
-				bulkResponse[i].Key = getRequest.Key
-
-				fn := func(param interface{}) {
-					r := param.(*state.BulkGetResponse)
-					resp, ferr := a.store.Get(&getRequest)
-					if ferr != nil {
-						r.Error = ferr.Error()
-					} else if resp != nil {
-						r.Data = jsoniter.RawMessage(resp.Data)
-						r.ETag = resp.ETag
-						r.Metadata = resp.Metadata
-					}
-				}
-
-				limiter.Execute(fn, &bulkResponse[i])
-			}
-			limiter.Wait()
-		}
-
-		for _, resp := range bulkResponse {
-			partition := keyPartitionMap[resp.Key]
-			actorMetadata.RemindersMetadata.partitionsEtag[partition] = resp.ETag
-			if resp.Error != "" {
-				return nil, nil, fmt.Errorf("could not get reminders partition %v: %v", resp.Key, resp.Error)
-			}
-
-			var batch []Reminder
-			if len(resp.Data) > 0 {
-				err = json.Unmarshal(resp.Data, &batch)
-				if err != nil {
-					return nil, nil, fmt.Errorf("could not parse actor reminders partition %v: %w", resp.Key, err)
-				}
-			}
-
-			for j := range batch {
-				reminders = append(reminders, actorReminderReference{
-					actorMetadataID:           actorMetadata.ID,
-					actorRemindersPartitionID: partition,
-					reminder:                  &batch[j],
-				})
-			}
-		}
-
-		return reminders, actorMetadata, nil
-	}
-
-	key := constructCompositeKey("actors", actorType)
-	resp, err := a.store.Get(&state.GetRequest{
-		Key: key,
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var reminders []Reminder
-	if len(resp.Data) > 0 {
-		err = json.Unmarshal(resp.Data, &reminders)
-		if err != nil {
-			return nil, nil, fmt.Errorf("could not parse actor reminders: %v", err)
-		}
-	}
-
-	reminderRefs := make([]actorReminderReference, len(reminders))
-	for j := range reminders {
-		reminderRefs[j] = actorReminderReference{
-			actorMetadataID:           "",
-			actorRemindersPartitionID: 0,
-			reminder:                  &reminders[j],
-		}
-	}
-
-	actorMetadata.RemindersMetadata.partitionsEtag = map[uint32]*string{
-		0: resp.ETag,
-	}
-	return reminderRefs, actorMetadata, nil
-}
-
-func (a *actorsRuntime) saveRemindersInPartition(ctx context.Context, stateKey string, reminders []Reminder, etag *string, databasePartitionKey string) error {
-	// Even when data is not partitioned, the save operation is the same.
-	// The only difference is stateKey.
-	return a.store.Set(&state.SetRequest{
-		Key:      stateKey,
-		Value:    reminders,
-		ETag:     etag,
-		Metadata: map[string]string{metadataPartitionKey: databasePartitionKey},
-	})
-}
-
-// DeleteReminder OK
-func (a *actorsRuntime) DeleteReminder(ctx context.Context, req *DeleteReminderRequest) error {
-	if a.store == nil {
-		return errors.New("actors: 状态存储不存在或配置不正确")
-	}
-
-	if a.evaluationBusy {
-		select {
-		case <-time.After(time.Second * 5):
-			return errors.New("删除reminder 失败:5秒超时")
-		case <-a.evaluationChan:
-			break
-		}
-	}
-
-	actorKey := constructCompositeKey(req.ActorType, req.ActorID)
-	reminderKey := constructCompositeKey(actorKey, req.Name)
-
-	stop, exists := a.activeReminders.Load(reminderKey)
-	if exists {
-		log.Infof("发现reminder: %v. 删除reminder", reminderKey)
-		close(stop.(chan bool))
-		a.activeReminders.Delete(reminderKey)
-	}
-
-	err := backoff.Retry(func() error {
-		reminders, actorMetadata, err := a.getRemindersForActorType(req.ActorType, true)
-		if err != nil {
-			return err
-		}
-
-		// remove from partition first.
-		remindersInPartition, stateKey, etag := actorMetadata.removeReminderFromPartition(reminders, req.ActorType, req.ActorID, req.Name)
-
-		// now, we can remove from the "global" list.
-		for i := len(reminders) - 1; i >= 0; i-- {
-			if reminders[i].reminder.ActorType == req.ActorType && reminders[i].reminder.ActorID == req.ActorID && reminders[i].reminder.Name == req.Name {
-				reminders = append(reminders[:i], reminders[i+1:]...)
-			}
-		}
-
-		// Get the database partiton key (needed for CosmosDB)
-		databasePartitionKey := actorMetadata.calculateDatabasePartitionKey(stateKey)
-
-		// Then, save the partition to the database.
-		err = a.saveRemindersInPartition(ctx, stateKey, remindersInPartition, etag, databasePartitionKey)
-		if err != nil {
-			return err
-		}
-
-		// Finally, we must save metadata to get a new eTag.
-		// This avoids a race condition between an update and a repartitioning.
-		a.saveActorTypeMetadata(req.ActorType, actorMetadata)
-
-		a.remindersLock.Lock()
-		a.reminders[req.ActorType] = reminders
-		a.remindersLock.Unlock()
-		return nil
-	}, backoff.NewExponentialBackOff())
-	if err != nil {
-		return err
-	}
-
-	err = a.store.Delete(&state.DeleteRequest{
-		Key: reminderKey,
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (a *actorsRuntime) GetReminder(ctx context.Context, req *GetReminderRequest) (*Reminder, error) {
-	reminders, _, err := a.getRemindersForActorType(req.ActorType, true)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, r := range reminders {
-		if r.reminder.ActorID == req.ActorID && r.reminder.Name == req.Name {
-			return &Reminder{
-				Data:    r.reminder.Data,
-				DueTime: r.reminder.DueTime,
-				Period:  r.reminder.Period,
-			}, nil
-		}
-	}
-	return nil, nil
-}
-
-// DeleteTimer ok
-func (a *actorsRuntime) DeleteTimer(ctx context.Context, req *DeleteTimerRequest) error {
-	actorKey := constructCompositeKey(req.ActorType, req.ActorID)
-	timerKey := constructCompositeKey(actorKey, req.Name)
-
-	stopChan, exists := a.activeTimers.Load(timerKey)
-	if exists {
-		close(stopChan.(chan bool))
-		a.activeTimers.Delete(timerKey)
-	}
-
-	return nil
-}
-
+// GetActiveActorsCount 获取活跃的actor数量
 func (a *actorsRuntime) GetActiveActorsCount(ctx context.Context) []ActiveActorsCount {
 	actorCountMap := map[string]int{}
 	for _, actorType := range a.config.HostedActorTypes {
@@ -1659,7 +716,7 @@ func (a *actorsRuntime) GetActiveActorsCount(ctx context.Context) []ActiveActors
 	return activeActorsCount
 }
 
-// Stop closes all network connections and resources used in actor runtime.
+// Stop 关闭所有网络连接和actor runtime使用的资源。
 func (a *actorsRuntime) Stop() {
 	if a.placement != nil {
 		a.placement.Stop()
@@ -1675,92 +732,4 @@ func ValidateHostEnvironment(mTLSEnabled bool, mode modes.DaprMode, namespace st
 		}
 	}
 	return nil
-}
-
-func parseISO8601Duration(from string) (time.Duration, int, error) {
-	match := pattern.FindStringSubmatch(from)
-	if match == nil {
-		return 0, 0, errors.Errorf("unsupported ISO8601 duration format %q", from)
-	}
-	duration := time.Duration(0)
-	// -1 signifies infinite repetition
-	repetition := -1
-	for i, name := range pattern.SubexpNames() {
-		part := match[i]
-		if i == 0 || name == "" || part == "" {
-			continue
-		}
-		val, err := strconv.Atoi(part)
-		if err != nil {
-			return 0, 0, err
-		}
-		switch name {
-		case "year":
-			duration += time.Hour * 24 * 365 * time.Duration(val)
-		case "month":
-			duration += time.Hour * 24 * 30 * time.Duration(val)
-		case "week":
-			duration += time.Hour * 24 * 7 * time.Duration(val)
-		case "day":
-			duration += time.Hour * 24 * time.Duration(val)
-		case "hour":
-			duration += time.Hour * time.Duration(val)
-		case "minute":
-			duration += time.Minute * time.Duration(val)
-		case "second":
-			duration += time.Second * time.Duration(val)
-		case "repetition":
-			repetition = val
-		default:
-			return 0, 0, fmt.Errorf("unsupported ISO8601 duration field %s", name)
-		}
-	}
-	return duration, repetition, nil
-}
-
-// parseDuration creates time.Duration from either:
-// - ISO8601 duration format,
-// - time.Duration string format.
-func parseDuration(from string) (time.Duration, int, error) {
-	d, r, err := parseISO8601Duration(from)
-	if err == nil {
-		return d, r, nil
-	}
-	d, err = time.ParseDuration(from)
-	if err == nil {
-		return d, -1, nil
-	}
-	return 0, 0, errors.Errorf("unsupported duration format %q", from)
-}
-
-// parseTime creates time.Duration from either:
-// - ISO8601 duration format,
-// - time.Duration string format,
-// - RFC3339 datetime format.
-// For duration formats, an offset is added.
-func parseTime(from string, offset *time.Time) (time.Time, error) {
-	var start time.Time
-	if offset != nil {
-		start = *offset
-	} else {
-		start = time.Now()
-	}
-	d, r, err := parseISO8601Duration(from)
-	if err == nil {
-		if r != -1 {
-			return time.Time{}, errors.Errorf("repetitions are not allowed")
-		}
-		return start.Add(d), nil
-	}
-	if d, err = time.ParseDuration(from); err == nil {
-		return start.Add(d), nil
-	}
-	if t, err := time.Parse(time.RFC3339, from); err == nil {
-		return t, nil
-	}
-	return time.Time{}, errors.Errorf("unsupported time/duration format %q", from)
-}
-
-func GetParseTime(from string, offset *time.Time) (time.Time, error) {
-	return parseTime(from, offset)
 }
