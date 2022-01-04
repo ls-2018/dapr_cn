@@ -345,7 +345,7 @@ func (p *ActorPlacement) establishStreamConn() (v1pb.Placement_ReportDaprStatusC
 		conn, err := grpc.Dial(serverAddr, opts...)
 	NEXT_SERVER: // 主要是为了一定要与一个placement 建立连接
 		if err != nil {
-			log.Debugf("error connecting to placement service: %v", err)
+			log.Debugf("链接 to placement service出错: %v", err)
 			if conn != nil {
 				conn.Close()
 			}

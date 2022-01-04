@@ -56,7 +56,7 @@ func PRE(
 	KillProcess(3001)
 	go SubCommand([]string{"zsh", "-c", "python3 cmd/daprd/daprd.py"})
 	*metricEnable = true
-	*metricPort = "9090"
+	*metricPort = "19090"
 	*outputLevel = "info"
 	//*controlPlaneAddress = "dapr-api.dapr-system.svc.cluster.local:80"
 	*controlPlaneAddress = "dapr-api.dapr-system.svc.cluster.local:6500" // daprd 注入时指定的值
@@ -79,8 +79,10 @@ func PRE(
 	go SubCommand([]string{"zsh", "-c", "kubectl port-forward svc/dapr-api -n dapr-system 6500:80"})
 	KillProcess(10080)
 	go SubCommand([]string{"zsh", "-c", "kubectl port-forward svc/dapr-sentry -n dapr-system 10080:80"})
-	KillProcess(50005)
-	go SubCommand([]string{"zsh", "-c", "kubectl port-forward svc/dapr-placement-server -n dapr-system 50005:50005 "})
+	if *mode == "kubernetes" {
+		KillProcess(50005)
+		go SubCommand([]string{"zsh", "-c", "kubectl port-forward svc/dapr-placement-server -n dapr-system 50005:50005 "})
+	}
 	// 以下证书，是从daprd的环境变量中截取的
 	crt := `-----BEGIN CERTIFICATE-----
 MIIBxDCCAWqgAwIBAgIQOg2CZq/XGrVCrIREuGi2NjAKBggqhkjOPQQDAjAxMRcw
