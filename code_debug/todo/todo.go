@@ -25,9 +25,14 @@ func main() {
 	//c := time.Now().Add(time.Second)
 
 	//fmt.Println(time.Now().After(time.Now()))
-	c := time.NewTimer(-time.Second * 10)
-	for i := range c.C {
-		fmt.Println(i)
+	//c := time.NewTimer(-time.Second * 10)
+	//for i := range c.C {
+	//	fmt.Println(i)
+	//}
+
+	var de map[string][]string
+	for item := range de["a"]{
+		fmt.Println(item)
 	}
 
 }

@@ -5,7 +5,7 @@
 
 package actors
 
-// CreateReminderRequest is the request object to create a new reminder.
+// CreateReminderRequest 是创建一个新的提醒的请求对象。
 type CreateReminderRequest struct {
 	Name      string
 	ActorType string

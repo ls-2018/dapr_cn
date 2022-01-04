@@ -39,7 +39,7 @@ func PRE(
 	if replace.Replace()>0{
 		return
 	}
-	*mode = "kubernetes"
+	//*mode = "kubernetes"
 
 	go func() {
 		// 开启pprof，监听请求
@@ -63,7 +63,7 @@ func PRE(
 
 	*appProtocol = "http"
 	// kubectl port-forward svc/dapr-sentry -n dapr-system 10080:80 &
-	*config = "appconfig" // 注入的时候，就确定了
+	*config = "dapr-config" // 注入的时候，就确定了
 	*appMaxConcurrency = -1
 	*daprHTTPPort = "3500"
 	*daprAPIGRPCPort = "50003"

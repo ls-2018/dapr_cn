@@ -25,7 +25,7 @@ type Config struct {
 	DrainRebalancedActors         bool
 	Namespace                     string
 	Reentrancy                    app_config.ReentrancyConfig
-	RemindersStoragePartitions    int
+	RemindersStoragePartitions    int // 从应用程序获取
 }
 
 const (

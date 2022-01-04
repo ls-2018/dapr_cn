@@ -13,6 +13,6 @@ type Reminder struct {
 	Data           interface{} `json:"data"`
 	Period         string      `json:"period"`
 	DueTime        string      `json:"dueTime"`
-	RegisteredTime string      `json:"registeredTime,omitempty"`
-	ExpirationTime string      `json:"expirationTime,omitempty"`
+	RegisteredTime string      `json:"registeredTime,omitempty"` // 到期时间
+	ExpirationTime string      `json:"expirationTime,omitempty"` // 死亡时间 ttl
 }

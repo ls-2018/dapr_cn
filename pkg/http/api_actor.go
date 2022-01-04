@@ -16,16 +16,16 @@ import (
 func (a *api) constructActorEndpoints() []Endpoint {
 	return []Endpoint{
 		{
-			Methods: []string{fasthttp.MethodPost, fasthttp.MethodPut},
-			Route:   "actors/{actorType}/{actorId}/state",
-			Version: apiVersionV1,
-			Handler: a.onActorStateTransaction, // actor状态事务
-		},
-		{
 			Methods: []string{fasthttp.MethodGet, fasthttp.MethodPost, fasthttp.MethodDelete, fasthttp.MethodPut},
 			Route:   "actors/{actorType}/{actorId}/method/{method}",
 			Version: apiVersionV1,
 			Handler: a.onDirectActorMessage,
+		},
+		{
+			Methods: []string{fasthttp.MethodPost, fasthttp.MethodPut},
+			Route:   "actors/{actorType}/{actorId}/state",
+			Version: apiVersionV1,
+			Handler: a.onActorStateTransaction, // actor状态事务
 		},
 		{
 			Methods: []string{fasthttp.MethodGet},
@@ -34,10 +34,10 @@ func (a *api) constructActorEndpoints() []Endpoint {
 			Handler: a.onGetActorState,
 		},
 		{
-			Methods: []string{fasthttp.MethodPost, fasthttp.MethodPut},
-			Route:   "actors/{actorType}/{actorId}/reminders/{name}",
+			Methods: []string{fasthttp.MethodDelete},
+			Route:   "actors/{actorType}/{actorId}/timers/{name}",
 			Version: apiVersionV1,
-			Handler: a.onCreateActorReminder,
+			Handler: a.onDeleteActorTimer,
 		},
 		{
 			Methods: []string{fasthttp.MethodPost, fasthttp.MethodPut},
@@ -45,23 +45,26 @@ func (a *api) constructActorEndpoints() []Endpoint {
 			Version: apiVersionV1,
 			Handler: a.onCreateActorTimer,
 		},
-		{
-			Methods: []string{fasthttp.MethodDelete},
-			Route:   "actors/{actorType}/{actorId}/reminders/{name}",
-			Version: apiVersionV1,
-			Handler: a.onDeleteActorReminder,
-		},
-		{
-			Methods: []string{fasthttp.MethodDelete},
-			Route:   "actors/{actorType}/{actorId}/timers/{name}",
-			Version: apiVersionV1,
-			Handler: a.onDeleteActorTimer,
-		},
+
+
+
 		{
 			Methods: []string{fasthttp.MethodGet},
 			Route:   "actors/{actorType}/{actorId}/reminders/{name}",
 			Version: apiVersionV1,
 			Handler: a.onGetActorReminder,
+		},
+		{
+			Methods: []string{fasthttp.MethodPost, fasthttp.MethodPut},
+			Route:   "actors/{actorType}/{actorId}/reminders/{name}",
+			Version: apiVersionV1,
+			Handler: a.onCreateActorReminder,
+		},
+		{
+			Methods: []string{fasthttp.MethodDelete},
+			Route:   "actors/{actorType}/{actorId}/reminders/{name}",
+			Version: apiVersionV1,
+			Handler: a.onDeleteActorReminder,
 		},
 	}
 }
@@ -192,6 +195,7 @@ func (a *api) onCreateActorReminder(reqCtx *fasthttp.RequestCtx) {
 	}
 }
 
+//ok
 func (a *api) onCreateActorTimer(reqCtx *fasthttp.RequestCtx) {
 	if a.actor == nil {
 		msg := NewErrorResponse("ERR_ACTOR_RUNTIME_NOT_FOUND", messages.ErrActorRuntimeNotFound)
@@ -339,6 +343,7 @@ func (a *api) onGetActorReminder(reqCtx *fasthttp.RequestCtx) {
 	respond(reqCtx, withJSON(fasthttp.StatusOK, b))
 }
 
+// ok
 func (a *api) onDeleteActorTimer(reqCtx *fasthttp.RequestCtx) {
 	if a.actor == nil {
 		msg := NewErrorResponse("ERR_ACTOR_RUNTIME_NOT_FOUND", messages.ErrActorRuntimeNotFound)

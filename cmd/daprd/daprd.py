@@ -39,17 +39,19 @@ async def get(req: Request):
     # 没有数据传过来
     return {
         "entities": [
-            # 'a', 'b', 'c'  # 将决定本actor可以运行什么类型的任务
+            'actorType-a',
+            'actorType-b',
+            'actorType-c'  # 将决定本actor可以运行什么类型的任务
         ],
-        "actorIdleTimeout": "",  # 60m
-        "actorScanInterval": "",  # 30s
-        "drainOngoingCallTimeout": "",  # 60s
-        "drainRebalancedActors": False,
+        # "actorIdleTimeout": "",  # 60m
+        # "actorScanInterval": "",  # 30s
+        # "drainOngoingCallTimeout": "",  # 60s
+        "drainRebalancedActors": True,
         "reentrancy": {
-            'enabled': False,
-            'maxStackDepth': 0  # 32
+            'enabled': True,
+            'maxStackDepth': 32  # 32
         },
-        "remindersStoragePartitions": 0,
+        "remindersStoragePartitions": 3,
     }
 
 

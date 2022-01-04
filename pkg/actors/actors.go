@@ -86,13 +86,13 @@ type actorsRuntime struct {
 	activeRemindersLock      *sync.RWMutex
 	reminders                map[string][]actorReminderReference
 	evaluationLock           *sync.RWMutex // 评估锁
-	evaluationBusy           bool
-	evaluationChan           chan bool
+	evaluationBusy           bool          // 评估 是否忙碌
+	evaluationChan           chan bool     // 释放 评估不忙碌的信号
 	appHealthy               *atomic.Bool
 	certChain                *dapr_credentials.CertChain
 	tracingSpec              configuration.TracingSpec
 	reentrancyEnabled        bool
-	actorTypeMetadataEnabled bool
+	actorTypeMetadataEnabled bool // actor 是否支持元数据
 }
 
 // ActiveActorsCount contain actorType and count of actors each type has.
@@ -208,8 +208,8 @@ func (a *actorsRuntime) Init() error {
 	//如果app healthz返回不健康状态，Dapr将断开放置，将节点从一致的哈希环中移除。
 	//例如，如果应用程序是忙碌的状态，健康状态将是不稳定的，这导致频繁的演员再平衡。这将影响整个服务。
 	go a.startAppHealthCheck(
-		health.WithFailureThreshold(4),     // 失败次数
-		health.WithInterval(5*time.Second), // 检查周期
+		health.WithFailureThreshold(4),           // 失败次数
+		health.WithInterval(5*time.Second),       // 检查周期
 		health.WithRequestTimeout(2*time.Second)) // 请求超时
 
 	return nil
@@ -833,6 +833,7 @@ func (a *actorsRuntime) executeReminder(reminder *Reminder) error {
 	return err
 }
 
+// ok
 func (a *actorsRuntime) reminderRequiresUpdate(req *CreateReminderRequest, reminder *Reminder) bool {
 	if reminder.ActorID == req.ActorID && reminder.ActorType == req.ActorType && reminder.Name == req.Name &&
 		(reminder.Data != req.Data || reminder.DueTime != req.DueTime || reminder.Period != req.Period ||
@@ -843,11 +844,12 @@ func (a *actorsRuntime) reminderRequiresUpdate(req *CreateReminderRequest, remin
 	return false
 }
 
+// ok
 func (a *actorsRuntime) getReminder(req *CreateReminderRequest) (*Reminder, bool) {
 	a.remindersLock.RLock()
-	reminders := a.reminders[req.ActorType]
+	reminders := a.reminders[req.ActorType] // 用户随便写
 	a.remindersLock.RUnlock()
-
+	//判断有没有已经存在的 reminder
 	for _, r := range reminders {
 		if r.reminder.ActorID == req.ActorID && r.reminder.ActorType == req.ActorType && r.reminder.Name == req.Name {
 			return r.reminder, true
@@ -961,6 +963,7 @@ func (a *actorsRuntime) CreateReminder(ctx context.Context, req *CreateReminderR
 
 	a.activeRemindersLock.Lock()
 	defer a.activeRemindersLock.Unlock()
+	// 如果存在符合条件的reminder
 	if r, exists := a.getReminder(req); exists {
 		if a.reminderRequiresUpdate(req, r) {
 			err := a.DeleteReminder(ctx, &DeleteReminderRequest{
@@ -976,14 +979,14 @@ func (a *actorsRuntime) CreateReminder(ctx context.Context, req *CreateReminderR
 		}
 	}
 
-	// Store the reminder in active reminders list
+	// 在活动提醒列表中存储提醒信息
 	actorKey := constructCompositeKey(req.ActorType, req.ActorID)
 	reminderKey := constructCompositeKey(actorKey, req.Name)
 
 	if a.evaluationBusy {
 		select {
 		case <-time.After(time.Second * 5):
-			return errors.New("error creating reminder: timed out after 5s")
+			return errors.New("创建提醒时出错：5秒后超时了")
 		case <-a.evaluationChan:
 			break
 		}
@@ -999,7 +1002,7 @@ func (a *actorsRuntime) CreateReminder(ctx context.Context, req *CreateReminderR
 		DueTime:   req.DueTime,
 	}
 
-	// check input correctness
+	// 检查输入是否正确
 	var (
 		dueTime, ttl time.Time
 		repeats      int
@@ -1007,7 +1010,7 @@ func (a *actorsRuntime) CreateReminder(ctx context.Context, req *CreateReminderR
 	)
 	if len(req.DueTime) != 0 {
 		if dueTime, err = parseTime(req.DueTime, nil); err != nil {
-			return errors.Wrap(err, "error parsing reminder due time")
+			return errors.Wrap(err, "错误解析提醒到期时间")
 		}
 	} else {
 		dueTime = now
@@ -1017,21 +1020,19 @@ func (a *actorsRuntime) CreateReminder(ctx context.Context, req *CreateReminderR
 	if len(req.Period) != 0 {
 		_, repeats, err = parseDuration(req.Period)
 		if err != nil {
-			return errors.Wrap(err, "error parsing reminder period")
+			return errors.Wrap(err, "错误解析提醒周期")
 		}
-		// error on timers with zero repetitions
+		// 对重复次数为零的计时器有错误
 		if repeats == 0 {
-			return errors.Errorf("reminder %s has zero repetitions", reminder.Name)
+			return errors.Errorf("提醒%s的重复次数为零", reminder.Name)
 		}
 	}
-	// set expiration time if configured
 	if len(req.TTL) > 0 {
 		if ttl, err = parseTime(req.TTL, &dueTime); err != nil {
 			return errors.Wrap(err, "error parsing reminder TTL")
 		}
-		// check if already expired
 		if now.After(ttl) || dueTime.After(ttl) {
-			return errors.Errorf("reminder %s has already expired: registeredTime: %s TTL:%s",
+			return errors.Errorf("reminder %s 已经过期: registeredTime: %s TTL:%s",
 				reminderKey, reminder.RegisteredTime, req.TTL)
 		}
 		reminder.ExpirationTime = ttl.UTC().Format(time.RFC3339)
@@ -1046,16 +1047,16 @@ func (a *actorsRuntime) CreateReminder(ctx context.Context, req *CreateReminderR
 			return err2
 		}
 
-		// First we add it to the partition list.
+		// 首先，我们把它添加到分区列表中。
 		remindersInPartition, reminderRef, stateKey, etag := actorMetadata.insertReminderInPartition(reminders, &reminder)
 
-		// Get the database partiton key (needed for CosmosDB)
+		// 获取数据库分区密钥（CosmosDB需要）。
 		databasePartitionKey := actorMetadata.calculateDatabasePartitionKey(stateKey)
 
-		// Now we can add it to the "global" list.
+		// 现在我们可以把它添加到 "全局 "列表中。
 		reminders = append(reminders, reminderRef)
 
-		// Then, save the partition to the database.
+		// 然后，将该分区保存到数据库。
 		err2 = a.saveRemindersInPartition(ctx, stateKey, remindersInPartition, etag, databasePartitionKey)
 		if err2 != nil {
 			return err2
@@ -1105,7 +1106,7 @@ func (a *actorsRuntime) CreateTimer(ctx context.Context, req *CreateTimerRequest
 		if dueTime, err = parseTime(req.DueTime, nil); err != nil {
 			return errors.Wrap(err, "解析过期时间出错")
 		}
-		if time.Now().After(dueTime){
+		if time.Now().After(dueTime) {
 			return errors.Errorf("定时器 %s 已经过期: 过期时间: %s 存活时间: %s", timerKey, req.DueTime, req.TTL)
 		}
 	} else {
@@ -1236,6 +1237,7 @@ func (a *actorsRuntime) executeTimer(actorType, actorID, name, dueTime, period, 
 	return err
 }
 
+// 保存actor type 的元数据
 func (a *actorsRuntime) saveActorTypeMetadata(actorType string, actorMetadata *ActorMetadata) error {
 	if !a.actorTypeMetadataEnabled {
 		return nil
@@ -1249,6 +1251,7 @@ func (a *actorsRuntime) saveActorTypeMetadata(actorType string, actorMetadata *A
 	})
 }
 
+// 获取actor type的元数据
 func (a *actorsRuntime) getActorTypeMetadata(actorType string, migrate bool) (*ActorMetadata, error) {
 	if a.store == nil {
 		return nil, errors.New("actors: 状态存储不存在或配置不正确")
@@ -1270,8 +1273,7 @@ func (a *actorsRuntime) getActorTypeMetadata(actorType string, migrate bool) (*A
 		Key: metadataKey,
 	})
 	if err != nil || len(resp.Data) == 0 {
-		// Metadata field does not exist or failed to read.
-		// We fallback to the default "zero" partition behavior.
+		// 元数据字段不存在或读取失败。我们回退到默认的 "零 "分区行为。
 		actorMetadata := ActorMetadata{
 			ID: uuid.NewString(),
 			RemindersMetadata: ActorRemindersMetadata{
@@ -1281,12 +1283,10 @@ func (a *actorsRuntime) getActorTypeMetadata(actorType string, migrate bool) (*A
 			Etag: nil,
 		}
 
-		// Save metadata field to make sure the error was due to record not found.
-		// If the previous error was due to database, this write will fail due to:
-		//   1. database is still not responding, or
-		//   2. etag does not match since the item already exists.
-		// This write operation is also needed because we want to avoid a race condition
-		// where another sidecar is trying to do the same.
+		// 保存元数据字段，以确保错误是由于没有找到记录。如果之前的错误是由于数据库造成的，那么这次写入将失败，原因是。
+		//   1. 数据库仍然没有反应，或者
+		//   2. etag不匹配，因为该项目已经存在。
+		// 之所以需要这种写操作，也是因为我们要避免出现另一个挎包试图做同样事情的竞赛条件。
 		etag := ""
 		if resp != nil && resp.ETag != nil {
 			etag = *resp.ETag
@@ -1298,7 +1298,7 @@ func (a *actorsRuntime) getActorTypeMetadata(actorType string, migrate bool) (*A
 			return nil, err
 		}
 
-		// Needs to read to get the etag
+		// 需要去读并获取etag
 		resp, err = a.store.Get(&state.GetRequest{
 			Key: metadataKey,
 		})
@@ -1310,9 +1310,9 @@ func (a *actorsRuntime) getActorTypeMetadata(actorType string, migrate bool) (*A
 	var actorMetadata ActorMetadata
 	err = json.Unmarshal(resp.Data, &actorMetadata)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse metadata for actor type %s (%s): %w", actorType, string(resp.Data), err)
+		return nil, fmt.Errorf("不能解析actor type 元信息 %s (%s): %w", actorType, string(resp.Data), err)
 	}
-	actorMetadata.Etag = resp.ETag
+	actorMetadata.Etag = resp.ETag // 版本号
 	if !migrate {
 		return &actorMetadata, nil
 	}
@@ -1320,23 +1320,25 @@ func (a *actorsRuntime) getActorTypeMetadata(actorType string, migrate bool) (*A
 	return a.migrateRemindersForActorType(actorType, &actorMetadata)
 }
 
+// 将元信息 合并到actor type中
 func (a *actorsRuntime) migrateRemindersForActorType(actorType string, actorMetadata *ActorMetadata) (*ActorMetadata, error) {
 	if !a.actorTypeMetadataEnabled {
 		return actorMetadata, nil
 	}
 
+	// 如果元信息的分区数、与全局配置的分区数一致
 	if actorMetadata.RemindersMetadata.PartitionCount == a.config.RemindersStoragePartitions {
 		return actorMetadata, nil
 	}
 
 	if actorMetadata.RemindersMetadata.PartitionCount > a.config.RemindersStoragePartitions {
-		log.Warnf("cannot decrease number of partitions for reminders of actor type %s", actorType)
+		log.Warnf("不能减少reminder分区数量%s", actorType)
 		return actorMetadata, nil
 	}
 
-	log.Warnf("migrating actor metadata record for actor type %s", actorType)
+	log.Warnf("迁移reminder元数据记录 %s", actorType)
 
-	// Fetch all reminders for actor type.
+	// 取出所有reminder
 	reminderRefs, refreshedActorMetadata, err := a.getRemindersForActorType(actorType, false)
 	if err != nil {
 		return nil, err
@@ -1393,6 +1395,7 @@ func (a *actorsRuntime) migrateRemindersForActorType(actorType string, actorMeta
 	return actorMetadata, nil
 }
 
+// 根据actor type 获取reminders
 func (a *actorsRuntime) getRemindersForActorType(actorType string, migrate bool) ([]actorReminderReference, *ActorMetadata, error) {
 	if a.store == nil {
 		return nil, nil, errors.New("actors: 状态存储不存在或配置不正确")
@@ -1400,16 +1403,16 @@ func (a *actorsRuntime) getRemindersForActorType(actorType string, migrate bool)
 
 	actorMetadata, merr := a.getActorTypeMetadata(actorType, migrate)
 	if merr != nil {
-		return nil, nil, fmt.Errorf("could not read actor type metadata: %w", merr)
+		return nil, nil, fmt.Errorf("不能读取actor type元数据: %w", merr)
 	}
 
 	if actorMetadata.RemindersMetadata.PartitionCount >= 1 {
 		metadata := map[string]string{metadataPartitionKey: actorMetadata.ID}
 		actorMetadata.RemindersMetadata.partitionsEtag = map[uint32]*string{}
-		reminders := []actorReminderReference{}
+		var reminders []actorReminderReference
 
 		keyPartitionMap := map[string]uint32{}
-		getRequests := []state.GetRequest{}
+		var getRequests []state.GetRequest
 		for i := 1; i <= actorMetadata.RemindersMetadata.PartitionCount; i++ {
 			partition := uint32(i)
 			key := actorMetadata.calculateRemindersStateKey(actorType, partition)
@@ -1610,6 +1613,7 @@ func (a *actorsRuntime) GetReminder(ctx context.Context, req *GetReminderRequest
 	return nil, nil
 }
 
+// DeleteTimer ok
 func (a *actorsRuntime) DeleteTimer(ctx context.Context, req *DeleteTimerRequest) error {
 	actorKey := constructCompositeKey(req.ActorType, req.ActorID)
 	timerKey := constructCompositeKey(actorKey, req.Name)
