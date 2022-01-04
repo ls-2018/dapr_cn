@@ -55,6 +55,14 @@ async def get(req: Request):
     }
 
 
+#  定时触发
+@app.put('/actors/actorType-a/actorId-a/method/remind/demo')
+async def remind(req: Request):
+    print(await req.json())
+    # 应用程序内的自动订阅
+    return "ok"
+
+
 @app.get('/dapr/subscribe')
 async def sub(req: Request):
     # print(await req.json())
@@ -103,6 +111,11 @@ async def myevent(req: Request):
         return Response("200", status_code=200)
     else:
         return Response("500", status_code=500)
+
+
+@app.get('/healthz')
+async def healthz():
+    return 'ok'
 
 
 #  input_binding

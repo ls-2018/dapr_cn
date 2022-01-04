@@ -5,7 +5,7 @@
 
 package actors
 
-// ReminderTrack is a persisted object that keeps track of the last time a reminder fired.
+// ReminderTrack 是一个持久化的对象，它记录了最后一次提醒的时间。
 type ReminderTrack struct {
 	LastFiredTime  string `json:"lastFiredTime"`
 	RepetitionLeft int    `json:"repetitionLeft"`

@@ -11,7 +11,7 @@ type CreateReminderRequest struct {
 	ActorType string
 	ActorID   string
 	Data      interface{} `json:"data"`
-	DueTime   string      `json:"dueTime"`
+	DueTime   string      `json:"dueTime"`// 到期、启动、开始时间
 	Period    string      `json:"period"`
 	TTL       string      `json:"ttl"`
 }

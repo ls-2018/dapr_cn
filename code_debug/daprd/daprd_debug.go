@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/dapr/dapr/code_debug/replace"
 	auth "github.com/dapr/dapr/pkg/runtime/security"
+	"github.com/dapr/kit/logger"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	raw_k8s "k8s.io/client-go/kubernetes"
@@ -23,6 +24,8 @@ import (
 	"time"
 )
 
+var log = logger.NewLogger("[-----------SubCommand-------]")
+
 func PRE(
 	mode,
 	daprHTTPPort,
@@ -36,7 +39,7 @@ func PRE(
 	metricEnable,
 	enableMTLS *bool,
 ) {
-	if replace.Replace()>0{
+	if replace.Replace() > 0 {
 		return
 	}
 	//*mode = "kubernetes"
@@ -201,8 +204,13 @@ func SubCommand(opt []string) {
 	for {
 		tmp := make([]byte, 1024)
 		_, err := stdout.Read(tmp)
-
-		fmt.Print(strings.Join(strings.Split(string(tmp), "\n"), "\n[-----------SubCommand-------]"))
+		res := strings.Split(string(tmp), "\n")
+		for _, v := range res {
+			if v[0] != '\u0000' {
+				fmt.Println(v)
+				//log.Debug(v)
+			}
+		}
 		if err != nil {
 			break
 		}

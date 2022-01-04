@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	nethttp "net/http"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -692,7 +693,7 @@ func (a *actorsRuntime) updateReminderTrack(actorKey, name string, repetition in
 	return err
 }
 
-func (a *actorsRuntime) startReminder(reminder *Reminder, stopChannel chan bool) error {
+func (a *actorsRuntime) startReminder(reminder *Reminder, stopChannel chan bool) error { // 启动reminder
 	actorKey := constructCompositeKey(reminder.ActorType, reminder.ActorID)
 	reminderKey := constructCompositeKey(actorKey, reminder.Name)
 
@@ -701,33 +702,33 @@ func (a *actorsRuntime) startReminder(reminder *Reminder, stopChannel chan bool)
 		period                   time.Duration
 		repeats, repetitionsLeft int
 	)
-
+	// 获取注册时间
 	registeredTime, err := time.Parse(time.RFC3339, reminder.RegisteredTime)
 	if err != nil {
-		return errors.Wrap(err, "error parsing reminder registered time")
+		return errors.Wrap(err, "解析reminder注册时间失败")
 	}
 	if len(reminder.ExpirationTime) != 0 {
 		if ttl, err = time.Parse(time.RFC3339, reminder.ExpirationTime); err != nil {
-			return errors.Wrap(err, "error parsing reminder expiration time")
+			return errors.Wrap(err, "解析reminder过期时间失败")
 		}
 	}
 
 	repeats = -1 // set to default
 	if len(reminder.Period) != 0 {
 		if period, repeats, err = parseDuration(reminder.Period); err != nil {
-			return errors.Wrap(err, "error parsing reminder period")
+			return errors.Wrap(err, "解析reminder周期失败")
 		}
 	}
-
+	//是一个持久化的对象，它记录了最后一次提醒的时间。
 	track, err := a.getReminderTrack(actorKey, reminder.Name)
 	if err != nil {
-		return errors.Wrap(err, "error getting reminder track")
+		return errors.Wrap(err, "获取reminder执行信息失败")
 	}
 
 	if track != nil && len(track.LastFiredTime) != 0 {
 		lastFiredTime, err := time.Parse(time.RFC3339, track.LastFiredTime)
 		if err != nil {
-			return errors.Wrap(err, "error parsing reminder last fired time")
+			return errors.Wrap(err, "获取reminder上一次执行时间失败")
 		}
 		repetitionsLeft = track.RepetitionLeft
 		nextTime = lastFiredTime.Add(period)
@@ -742,6 +743,7 @@ func (a *actorsRuntime) startReminder(reminder *Reminder, stopChannel chan bool)
 			ttlTimerC           <-chan time.Time
 			err                 error
 		)
+		// 不是零值
 		if !ttl.IsZero() {
 			ttlTimer = time.NewTimer(time.Until(ttl))
 			ttlTimerC = ttlTimer.C
@@ -758,39 +760,40 @@ func (a *actorsRuntime) startReminder(reminder *Reminder, stopChannel chan bool)
 	L:
 		for {
 			select {
-			case <-nextTimer.C:
+			case v := <-nextTimer.C:
+				log.Debug(v)
 				// noop
 			case <-ttlTimerC:
-				// proceed with reminder deletion
-				log.Infof("reminder %s has expired", reminder.Name)
+				// 继续删除提醒信息
+				log.Infof("reminder %s 过期了", reminder.Name)
 				break L
 			case <-stop:
-				// reminder has been already deleted
-				log.Infof("reminder %s with parameters: dueTime: %s, period: %s, data: %v has been deleted.", reminder.Name, reminder.RegisteredTime, reminder.Period, reminder.Data)
+				// reminder 被删除
+				log.Infof("reminder %s with parameters: dueTime: %s, period: %s, data: %v 被删除了", reminder.Name, reminder.RegisteredTime, reminder.Period, reminder.Data)
 				return
 			}
 
 			_, exists := a.activeReminders.Load(reminderKey)
 			if !exists {
-				log.Errorf("could not find active reminder with key: %s", reminderKey)
+				log.Errorf("不能查找到活跃的 reminder  by key: %s", reminderKey)
 				return
 			}
-			// if all repetitions are completed, proceed with reminder deletion
+			// 如果所有的重复都已完成，则继续进行提醒删除。
 			if repetitionsLeft == 0 {
-				log.Infof("reminder %q has completed %d repetitions", reminder.Name, repeats)
+				log.Infof("reminder %q 完成了 %d ", reminder.Name, repeats)
 				break L
 			}
 			if err = a.executeReminder(reminder); err != nil {
-				log.Errorf("error execution of reminder %q for actor type %s with id %s: %v",
+				log.Errorf("error 执行reminder %q ;actor type %s; id %s; err: %v",
 					reminder.Name, reminder.ActorType, reminder.ActorID, err)
 			}
 			if repetitionsLeft > 0 {
 				repetitionsLeft--
 			}
 			if err = a.updateReminderTrack(actorKey, reminder.Name, repetitionsLeft, nextTime); err != nil {
-				log.Errorf("error updating reminder track: %v", err)
+				log.Errorf("更新reminder执行信息失败 %v", err)
 			}
-			// if reminder is not repetitive, proceed with reminder deletion
+			// 如果reminder不是重复的，则继续删除reminder
 			if period == 0 {
 				break L
 			}
@@ -813,6 +816,13 @@ func (a *actorsRuntime) startReminder(reminder *Reminder, stopChannel chan bool)
 	return nil
 }
 
+//type Reminder struct {
+//	ActorID        actorId-a
+//	ActorType      actorType-a
+//	Name           demo
+//	RegisteredTime 2022-01-04T14:35:37+08:00
+//}
+// 执行某个reminder
 func (a *actorsRuntime) executeReminder(reminder *Reminder) error {
 	r := ReminderResponse{
 		DueTime: reminder.DueTime,
@@ -824,7 +834,7 @@ func (a *actorsRuntime) executeReminder(reminder *Reminder) error {
 		return err
 	}
 
-	log.Debugf("executing reminder %s for actor type %s with id %s", reminder.Name, reminder.ActorType, reminder.ActorID)
+	log.Debugf("执行 reminder %s ;actor type %s ; id %s", reminder.Name, reminder.ActorType, reminder.ActorID)
 	req := invokev1.NewInvokeMethodRequest(fmt.Sprintf("remind/%s", reminder.Name))
 	req.WithActor(reminder.ActorType, reminder.ActorID)
 	req.WithRawData(b, invokev1.JSONContentType)
@@ -836,7 +846,7 @@ func (a *actorsRuntime) executeReminder(reminder *Reminder) error {
 // ok
 func (a *actorsRuntime) reminderRequiresUpdate(req *CreateReminderRequest, reminder *Reminder) bool {
 	if reminder.ActorID == req.ActorID && reminder.ActorType == req.ActorType && reminder.Name == req.Name &&
-		(reminder.Data != req.Data || reminder.DueTime != req.DueTime || reminder.Period != req.Period ||
+		(!reflect.DeepEqual(reminder.Data, req.Data) || reminder.DueTime != req.DueTime || reminder.Period != req.Period ||
 			len(req.TTL) != 0 || (len(reminder.ExpirationTime) != 0 && len(req.TTL) == 0)) {
 		return true
 	}
@@ -956,6 +966,7 @@ func (m *ActorMetadata) calculateDatabasePartitionKey(stateKey string) string {
 	return stateKey
 }
 
+// ok
 func (a *actorsRuntime) CreateReminder(ctx context.Context, req *CreateReminderRequest) error {
 	if a.store == nil {
 		return errors.New("actors: 状态存储不存在或配置不正确")
@@ -1042,6 +1053,7 @@ func (a *actorsRuntime) CreateReminder(ctx context.Context, req *CreateReminderR
 	a.activeReminders.Store(reminderKey, stop)
 
 	err = backoff.Retry(func() error {
+		// 将数据存储到actorStateStore中
 		reminders, actorMetadata, err2 := a.getRemindersForActorType(req.ActorType, true)
 		if err2 != nil {
 			return err2
@@ -1523,6 +1535,7 @@ func (a *actorsRuntime) saveRemindersInPartition(ctx context.Context, stateKey s
 	})
 }
 
+// DeleteReminder OK
 func (a *actorsRuntime) DeleteReminder(ctx context.Context, req *DeleteReminderRequest) error {
 	if a.store == nil {
 		return errors.New("actors: 状态存储不存在或配置不正确")
@@ -1531,7 +1544,7 @@ func (a *actorsRuntime) DeleteReminder(ctx context.Context, req *DeleteReminderR
 	if a.evaluationBusy {
 		select {
 		case <-time.After(time.Second * 5):
-			return errors.New("error deleting reminder: timed out after 5s")
+			return errors.New("删除reminder 失败:5秒超时")
 		case <-a.evaluationChan:
 			break
 		}
@@ -1542,7 +1555,7 @@ func (a *actorsRuntime) DeleteReminder(ctx context.Context, req *DeleteReminderR
 
 	stop, exists := a.activeReminders.Load(reminderKey)
 	if exists {
-		log.Infof("Found reminder with key: %v. Deleting reminder", reminderKey)
+		log.Infof("发现reminder: %v. 删除reminder", reminderKey)
 		close(stop.(chan bool))
 		a.activeReminders.Delete(reminderKey)
 	}

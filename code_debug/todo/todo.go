@@ -2,13 +2,34 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/dapr/dapr/pkg/actors"
+	"reflect"
 	"sort"
 	"time"
 )
 
 func main() {
+	issue()
+}
+func issue() {
+	data := `{
+	"data":{
+		"a":"b"
+	}
+}`
+	var a = actors.Reminder{}
+	json.Unmarshal([]byte(data), &a)
+	var b = actors.CreateReminderRequest{}
+	json.Unmarshal([]byte(data), &b)
+	//panic: runtime error: comparing uncomparable type map[string]interface {}
+	fmt.Println(reflect.DeepEqual(a.Data, b.Data))
+	fmt.Println(a.Data == b.Data)
+
+}
+
+func a() {
 	//x()
 	fmt.Println(int(^uint(0) >> 1))
 	fmt.Println(int64(^uint64(0) >> 1))
@@ -31,12 +52,12 @@ func main() {
 	//}
 
 	var de map[string][]string
-	for item := range de["a"]{
+	for item := range de["a"] {
 		fmt.Println(item)
 	}
+	fmt.Println(time.ParseDuration("5s"))
 
 }
-
 func x() {
 	ctx, _ := context.WithCancel(context.Background())
 	queue := make(chan int)

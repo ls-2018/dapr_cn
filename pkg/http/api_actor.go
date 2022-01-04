@@ -11,6 +11,10 @@ import (
 )
 
 // actor
+//    timer  	应用级别的定时器
+//    reminder	local app 级别的定时器
+
+// actor
 // 一个actor的并发量为1
 //POST/GET/PUT/DELETE http://localhost:3500/v1.0/actors/<actorType>/<actorId>/<method/state/timers/reminders>
 func (a *api) constructActorEndpoints() []Endpoint {
@@ -45,9 +49,6 @@ func (a *api) constructActorEndpoints() []Endpoint {
 			Version: apiVersionV1,
 			Handler: a.onCreateActorTimer,
 		},
-
-
-
 		{
 			Methods: []string{fasthttp.MethodGet},
 			Route:   "actors/{actorType}/{actorId}/reminders/{name}",
