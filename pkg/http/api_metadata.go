@@ -69,6 +69,7 @@ func (a *api) onGetMetadata(reqCtx *fasthttp.RequestCtx) {
 	}
 }
 
+// it's seem to have any function
 func (a *api) onPutMetadata(reqCtx *fasthttp.RequestCtx) {
 	key := fmt.Sprintf("%v", reqCtx.UserValue("key"))
 	body := reqCtx.PostBody()

@@ -79,10 +79,8 @@ func PRE(
 	go SubCommand([]string{"zsh", "-c", "kubectl port-forward svc/dapr-api -n dapr-system 6500:80"})
 	KillProcess(10080)
 	go SubCommand([]string{"zsh", "-c", "kubectl port-forward svc/dapr-sentry -n dapr-system 10080:80"})
-	if *mode == "kubernetes" {
-		KillProcess(50005)
-		go SubCommand([]string{"zsh", "-c", "kubectl port-forward svc/dapr-placement-server -n dapr-system 50005:50005 "})
-	}
+	KillProcess(50005)
+	go SubCommand([]string{"zsh", "-c", "kubectl port-forward svc/dapr-placement-server -n dapr-system 50005:50005 "})
 	// 以下证书，是从daprd的环境变量中截取的
 	crt := `-----BEGIN CERTIFICATE-----
 MIIBxDCCAWqgAwIBAgIQOg2CZq/XGrVCrIREuGi2NjAKBggqhkjOPQQDAjAxMRcw

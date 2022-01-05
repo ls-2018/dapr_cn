@@ -23,6 +23,7 @@ func (a *api) constructHealthzEndpoints() []Endpoint {
 	}
 }
 
+//ok
 func (a *api) onGetHealthz(reqCtx *fasthttp.RequestCtx) {
 	if !a.readyStatus {
 		msg := NewErrorResponse("ERR_HEALTH_NOT_READY", messages.ErrHealthNotReady)
@@ -32,6 +33,8 @@ func (a *api) onGetHealthz(reqCtx *fasthttp.RequestCtx) {
 		respond(reqCtx, withEmpty())
 	}
 }
+
+//ok
 func (a *api) onGetOutboundHealthz(reqCtx *fasthttp.RequestCtx) {
 	if !a.outboundReadyStatus {
 		msg := NewErrorResponse("ERR_HEALTH_NOT_READY", messages.ErrHealthNotReady)

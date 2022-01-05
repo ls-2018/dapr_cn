@@ -178,6 +178,7 @@ func (s *server) Close() error {
 	return merr
 }
 
+// 追踪middleware
 func (s *server) useTracing(next fasthttp.RequestHandler) fasthttp.RequestHandler {
 	if diag_utils.IsTracingEnabled(s.tracingSpec.SamplingRate) {
 		log.Infof("enabled tracing http middleware")
@@ -186,6 +187,7 @@ func (s *server) useTracing(next fasthttp.RequestHandler) fasthttp.RequestHandle
 	return next
 }
 
+// 指标middleware
 func (s *server) useMetrics(next fasthttp.RequestHandler) fasthttp.RequestHandler {
 	if s.metricSpec.Enabled {
 		log.Infof("enabled metrics http middleware")
@@ -196,6 +198,7 @@ func (s *server) useMetrics(next fasthttp.RequestHandler) fasthttp.RequestHandle
 	return next
 }
 
+// 获取所有路由
 func (s *server) useRouter() fasthttp.RequestHandler {
 	endpoints := s.api.APIEndpoints()
 	router := s.getRouter(endpoints)
@@ -203,6 +206,7 @@ func (s *server) useRouter() fasthttp.RequestHandler {
 	return router.Handler
 }
 
+// middleware
 func (s *server) usePublicRouter() fasthttp.RequestHandler {
 	endpoints := s.api.PublicEndpoints()
 	router := s.getRouter(endpoints)
@@ -210,27 +214,30 @@ func (s *server) usePublicRouter() fasthttp.RequestHandler {
 	return router.Handler
 }
 
+// middleware
 func (s *server) useComponents(next fasthttp.RequestHandler) fasthttp.RequestHandler {
 	return s.pipeline.Apply(next)
 }
 
+// middleware
 func (s *server) useCors(next fasthttp.RequestHandler) fasthttp.RequestHandler {
 	if s.config.AllowedOrigins == cors_dapr.DefaultAllowedOrigins {
 		return next
 	}
 
-	log.Infof("enabled cors http middleware")
+	log.Infof("启用Cors http中间件")
 	origins := strings.Split(s.config.AllowedOrigins, ",")
 	corsHandler := s.getCorsHandler(origins)
 	return corsHandler.CorsMiddleware(next)
 }
 
+// middleware
 func useAPIAuthentication(next fasthttp.RequestHandler) fasthttp.RequestHandler {
 	token := auth.GetAPIToken()
 	if token == "" {
 		return next
 	}
-	log.Info("enabled token authentication on http server")
+	log.Info("启用了http服务器上的令牌认证")
 
 	return func(ctx *fasthttp.RequestCtx) {
 		v := ctx.Request.Header.Peek(auth.APITokenHeader)
@@ -280,6 +287,7 @@ func (s *server) unescapeRequestParametersHandler(next fasthttp.RequestHandler) 
 	}
 }
 
+// 路由
 func (s *server) getRouter(endpoints []Endpoint) *routing.Router {
 	router := routing.New()
 	//	{
