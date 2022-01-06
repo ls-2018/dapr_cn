@@ -62,7 +62,7 @@ func GetSubscriptionsHTTP(channel channel.AppChannel, log logger.Logger) ([]Subs
 	req.WithHTTPExtension(http.MethodGet, "")
 	req.WithRawData(nil, invokev1.JSONContentType)
 
-	// TODO 传播 Context
+	//   传播 Context
 	ctx := context.Background()
 	resp, err := channel.InvokeMethod(ctx, req)
 	if err != nil {

@@ -25,8 +25,7 @@ func issue() {
 	json.Unmarshal([]byte(data), &b)
 	//panic: runtime error: comparing uncomparable type map[string]interface {}
 	fmt.Println(reflect.DeepEqual(a.Data, b.Data))
-	fmt.Println(a.Data == b.Data)
-
+	//fmt.Println(a.Data == b.Data)
 }
 
 func a() {

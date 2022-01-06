@@ -98,6 +98,7 @@ func addDNSResolverPrefix(addr []string) []string {
 		if err == nil && net.ParseIP(host) == nil {
 			prefix = "dns:///"
 		}
+		resolvers = append(resolvers, a)
 		resolvers = append(resolvers, prefix+a)
 	}
 	return resolvers

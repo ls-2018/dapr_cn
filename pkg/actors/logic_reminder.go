@@ -11,9 +11,7 @@ import (
 	"github.com/google/uuid"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
-	"hash/fnv"
 	"reflect"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -53,7 +51,7 @@ func (a *actorsRuntime) migrateRemindersForActorType(actorType string, actorMeta
 		actorRemindersPartitions[i] = make([]*Reminder, 0)
 	}
 
-	// Recalculate partition for each reminder.
+	// 为每个reminder 重新计算分区。
 	for _, reminderRef := range reminderRefs {
 		partitionID := actorMetadata.calculateReminderPartition(reminderRef.reminder.ActorID, reminderRef.reminder.Name)
 		actorRemindersPartitions[partitionID-1] = append(actorRemindersPartitions[partitionID-1], reminderRef.reminder)
@@ -82,13 +80,13 @@ func (a *actorsRuntime) migrateRemindersForActorType(actorType string, actorMeta
 		return nil, err
 	}
 
-	// Save new metadata so the new "metadataID" becomes the new de factor referenced list for reminders.
+	// 保存新的元数据，以便新的“metadataID”成为reminder的新因素引用列表。
 	err = a.saveActorTypeMetadata(actorType, actorMetadata)
 	if err != nil {
 		return nil, err
 	}
 	log.Warnf(
-		"completed actor metadata record migration for actor type %s, new metadata ID = %s",
+		"完成actor类型%s的actor元数据记录迁移，新的元数据ID=%s",
 		actorType, actorMetadata.ID)
 	return actorMetadata, nil
 }
@@ -312,6 +310,8 @@ func (a *actorsRuntime) GetReminder(ctx context.Context, req *GetReminderRequest
 	}
 	return nil, nil
 }
+
+//  ok
 func (a *actorsRuntime) getReminderTrack(actorKey, name string) (*ReminderTrack, error) {
 	if a.store == nil {
 		return nil, errors.New("actors: 状态存储不存在或配置不正确")
@@ -331,6 +331,7 @@ func (a *actorsRuntime) getReminderTrack(actorKey, name string) (*ReminderTrack,
 	return &track, nil
 }
 
+// ok
 func (a *actorsRuntime) updateReminderTrack(actorKey, name string, repetition int, lastInvokeTime time.Time) error {
 	if a.store == nil {
 		return errors.New("actors: 状态存储不存在或配置不正确")
@@ -348,6 +349,7 @@ func (a *actorsRuntime) updateReminderTrack(actorKey, name string, repetition in
 	return err
 }
 
+// ok
 func (a *actorsRuntime) startReminder(reminder *Reminder, stopChannel chan bool) error { // 启动reminder
 	actorKey := constructCompositeKey(reminder.ActorType, reminder.ActorID)
 	reminderKey := constructCompositeKey(actorKey, reminder.Name)
@@ -574,89 +576,4 @@ func (a *actorsRuntime) evaluateReminders() {
 	wg.Wait()
 	close(a.evaluationChan)
 	a.evaluationBusy = false
-}
-
-func (m *ActorMetadata) calculateReminderPartition(actorID, reminderName string) uint32 {
-	if m.RemindersMetadata.PartitionCount <= 0 {
-		return 0
-	}
-
-	// do not change this hash function because it would be a breaking change.
-	h := fnv.New32a()
-	h.Write([]byte(actorID))
-	h.Write([]byte(reminderName))
-	return (h.Sum32() % uint32(m.RemindersMetadata.PartitionCount)) + 1
-}
-
-func (m *ActorMetadata) removeReminderFromPartition(reminderRefs []actorReminderReference, actorType, actorID, reminderName string) ([]Reminder, string, *string) {
-	// First, we find the partition
-	var partitionID uint32 = 0
-	if m.RemindersMetadata.PartitionCount > 0 {
-		for _, reminderRef := range reminderRefs {
-			if reminderRef.reminder.ActorType == actorType && reminderRef.reminder.ActorID == actorID && reminderRef.reminder.Name == reminderName {
-				partitionID = reminderRef.actorRemindersPartitionID
-			}
-		}
-	}
-
-	var remindersInPartitionAfterRemoval []Reminder
-	for _, reminderRef := range reminderRefs {
-		if reminderRef.reminder.ActorType == actorType && reminderRef.reminder.ActorID == actorID && reminderRef.reminder.Name == reminderName {
-			continue
-		}
-
-		// Only the items in the partition to be updated.
-		if reminderRef.actorRemindersPartitionID == partitionID {
-			remindersInPartitionAfterRemoval = append(remindersInPartitionAfterRemoval, *reminderRef.reminder)
-		}
-	}
-
-	stateKey := m.calculateRemindersStateKey(actorType, partitionID)
-	return remindersInPartitionAfterRemoval, stateKey, m.calculateEtag(partitionID)
-}
-
-func (m *ActorMetadata) insertReminderInPartition(reminderRefs []actorReminderReference, reminder *Reminder) ([]Reminder, actorReminderReference, string, *string) {
-	newReminderRef := m.createReminderReference(reminder)
-
-	var remindersInPartitionAfterInsertion []Reminder
-	for _, reminderRef := range reminderRefs {
-		// Only the items in the partition to be updated.
-		if reminderRef.actorRemindersPartitionID == newReminderRef.actorRemindersPartitionID {
-			remindersInPartitionAfterInsertion = append(remindersInPartitionAfterInsertion, *reminderRef.reminder)
-		}
-	}
-
-	remindersInPartitionAfterInsertion = append(remindersInPartitionAfterInsertion, *reminder)
-
-	stateKey := m.calculateRemindersStateKey(newReminderRef.reminder.ActorType, newReminderRef.actorRemindersPartitionID)
-	return remindersInPartitionAfterInsertion, newReminderRef, stateKey, m.calculateEtag(newReminderRef.actorRemindersPartitionID)
-}
-
-func (m *ActorMetadata) createReminderReference(reminder *Reminder) actorReminderReference {
-	if m.RemindersMetadata.PartitionCount > 0 {
-		return actorReminderReference{
-			actorMetadataID:           m.ID,
-			actorRemindersPartitionID: m.calculateReminderPartition(reminder.ActorID, reminder.Name),
-			reminder:                  reminder,
-		}
-	}
-
-	return actorReminderReference{
-		actorMetadataID:           "",
-		actorRemindersPartitionID: 0,
-		reminder:                  reminder,
-	}
-}
-
-func (m *ActorMetadata) calculateRemindersStateKey(actorType string, remindersPartitionID uint32) string {
-	if remindersPartitionID == 0 {
-		return constructCompositeKey("actors", actorType)
-	}
-
-	return constructCompositeKey(
-		"actors",
-		actorType,
-		m.ID,
-		"reminders",
-		strconv.Itoa(int(remindersPartitionID)))
 }

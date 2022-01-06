@@ -5,7 +5,7 @@
 
 package actors
 
-// ActorHostedRequest is the request object for checking if an actor is hosted on this instance.
+// ActorHostedRequest 检查是否一个actor是否服务于本机 的请求对象
 type ActorHostedRequest struct {
 	ActorID   string `json:"actorId"`
 	ActorType string `json:"actorType"`

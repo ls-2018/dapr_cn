@@ -96,13 +96,6 @@ type ActiveActorsCount struct {
 	Count int    `json:"count"`
 }
 
-// ActorMetadata 代表关于actorType的信息。
-type ActorMetadata struct {
-	ID                string                 `json:"id"`
-	RemindersMetadata ActorRemindersMetadata `json:"actorRemindersMetadata"`
-	Etag              *string                `json:"-"`
-}
-
 // ActorRemindersMetadata reminder 的消息
 type ActorRemindersMetadata struct {
 	PartitionCount int                `json:"partitionCount"`
@@ -233,7 +226,6 @@ func constructCompositeKey(keys ...string) string {
 func decomposeCompositeKey(compositeKey string) []string {
 	return strings.Split(compositeKey, DaprSeparator)
 }
-
 
 func (a *actorsRuntime) deactivateActor(actorType, actorID string) error {
 	req := invokev1.NewInvokeMethodRequest(fmt.Sprintf("actors/%s/%s", actorType, actorID))
@@ -599,18 +591,6 @@ func (a *actorsRuntime) drainRebalancedActors() {
 		}(key, value, &wg)
 		return true
 	})
-}
-
-func (m *ActorMetadata) calculateEtag(partitionID uint32) *string {
-	return m.RemindersMetadata.partitionsEtag[partitionID]
-}
-
-func (m *ActorMetadata) calculateDatabasePartitionKey(stateKey string) string {
-	if m.RemindersMetadata.PartitionCount > 0 {
-		return m.ID
-	}
-
-	return stateKey
 }
 
 // 保存actor type 的元数据

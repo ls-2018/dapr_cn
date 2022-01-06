@@ -137,7 +137,7 @@ func ParseAccessControlSpec(accessControlSpec config.AccessControlSpec, protocol
 	return &accessControlList, nil
 }
 
-// GetAndParseSpiffeID retrieves the SPIFFE Id from the cert and parses it.
+// GetAndParseSpiffeID 检索证书中的SPIFFE Id，并对其进行解析。
 func GetAndParseSpiffeID(ctx context.Context) (*config.SpiffeID, error) {
 	spiffeID, err := getSpiffeID(ctx)
 	if err != nil {

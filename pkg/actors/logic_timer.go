@@ -118,8 +118,8 @@ func (a *actorsRuntime) CreateReminder(ctx context.Context, req *CreateReminderR
 			return err2
 		}
 
-		// Finally, we must save metadata to get a new eTag.
-		// This avoids a race condition between an update and a repartitioning.
+		// 最后，我们必须保存元数据以获得一个新的etag
+		// 这就避免了更新和重新分区之间的竞赛条件。
 		a.saveActorTypeMetadata(req.ActorType, actorMetadata)
 
 		a.remindersLock.Lock()
