@@ -17,10 +17,9 @@ import (
 
 const (
 	logStorePrefix    = "log-"
-	snapshotsRetained = 2
+	snapshotsRetained = 2 // 快照数量
 
-	// raftLogCacheSize is the maximum number of logs to cache in-memory.
-	// This is used to reduce disk I/O for the recently committed entries.
+	// raftLogCacheSize 是要在内存中缓存的日志的最大数量。 这是用来减少最近提交的条目的磁盘I/O。
 	raftLogCacheSize = 512
 
 	commandTimeout = 1 * time.Second
@@ -29,7 +28,7 @@ const (
 	nameResolveMaxRetry      = 120
 )
 
-// PeerInfo represents raft peer node information.
+// PeerInfo 代表 "raft "每个节点信息。
 type PeerInfo struct {
 	ID      string
 	Address string
@@ -74,8 +73,8 @@ func New(id string, inMem bool, peers []PeerInfo, logStorePath string) *Server {
 }
 
 func tryResolveRaftAdvertiseAddr(bindAddr string) (*net.TCPAddr, error) {
-	// HACKHACK: Kubernetes POD DNS A record population takes some time
-	// to look up the address after StatefulSet POD is deployed.
+	//HACKHACK：Kubernetes POD的DNS A记录 需要等一些时间
+	// 才能在StatefulSet POD部署后需要一些时间来查询地址。
 	var err error
 	var addr *net.TCPAddr
 	for retry := 0; retry < nameResolveMaxRetry; retry++ {
@@ -90,7 +89,6 @@ func tryResolveRaftAdvertiseAddr(bindAddr string) (*net.TCPAddr, error) {
 
 // StartRaft 启动raft服务
 func (s *Server) StartRaft(config *raft.Config) error {
-	// If we have an unclean exit then attempt to close the Raft store.
 	defer func() {
 		if s.raft == nil && s.raftStore != nil {
 			if err := s.raftStore.Close(); err != nil {
@@ -116,6 +114,7 @@ func (s *Server) StartRaft(config *raft.Config) error {
 
 	// Build an all in-memory setup for dev mode, otherwise prepare a full
 	// disk-based setup.
+	// 为开发模式建立一个全内存的设置，否则准备一个基于磁盘的完整设置。
 	if s.inMem {
 		raftInmem := raft.NewInmemStore()
 		s.stableStore = raftInmem
@@ -125,30 +124,28 @@ func (s *Server) StartRaft(config *raft.Config) error {
 		if err = ensureDir(s.raftStorePath()); err != nil {
 			return errors.Wrap(err, "failed to create log store directory")
 		}
-
-		// Create the backend raft store for logs and stable storage.
+		// 创建存储
 		s.raftStore, err = raftboltdb.NewBoltStore(filepath.Join(s.raftStorePath(), "raft.db"))
 		if err != nil {
 			return err
 		}
 		s.stableStore = s.raftStore
 
-		// Wrap the store in a LogCache to improve performance.
+		// 包装LogCache存储，用于提升性能
 		s.logStore, err = raft.NewLogCache(raftLogCacheSize, s.raftStore)
 		if err != nil {
 			return err
 		}
 
-		// Create the snapshot store.
+		// 创建快照存储
 		s.snapStore, err = raft.NewFileSnapshotStoreWithLogger(s.raftStorePath(), snapshotsRetained, loggerAdapter)
 		if err != nil {
 			return err
 		}
 	}
 
-	// Setup Raft configuration.
 	if config == nil {
-		// Set default configuration for raft
+		// raft默认配置
 		s.config = &raft.Config{
 			ProtocolVersion:    raft.ProtocolVersionMax,
 			HeartbeatTimeout:   1000 * time.Millisecond,
@@ -165,12 +162,11 @@ func (s *Server) StartRaft(config *raft.Config) error {
 		s.config = config
 	}
 
-	// Use LoggerAdapter to integrate with Dapr logger. Log level relies on placement log level.
+	// 使用LoggerAdapter与Dapr日志器集成。日志级别依赖于放置日志级别。
 	s.config.Logger = loggerAdapter
 	s.config.LocalID = raft.ServerID(s.id)
 
-	// If we are in bootstrap or dev mode and the state is clean then we can
-	// bootstrap now.
+	// 如果我们处于引导或开发模式，并且状态是干净的，那么我们现在就可以引导了。
 	bootstrapConf, err := s.bootstrapConfig(s.peers)
 	if err != nil {
 		return err
@@ -189,7 +185,7 @@ func (s *Server) StartRaft(config *raft.Config) error {
 		return err
 	}
 
-	logging.Infof("Raft server is starting on %s...", s.raftBind)
+	logging.Infof("Raft服务已启动 %s...", s.raftBind)
 
 	return err
 }
@@ -215,7 +211,6 @@ func (s *Server) bootstrapConfig(peers []PeerInfo) (*raft.Configuration, error) 
 		return raftConfig, nil
 	}
 
-	// return nil for raft.Configuration to use the existing log store files.
 	return nil, nil
 }
 

@@ -14,6 +14,7 @@ import (
 	"github.com/dapr/kit/logger"
 )
 
+// 特意在这里封装了一层,
 var logging = logger.NewLogger("dapr.placement.raft")
 
 func newLoggerAdapter() hclog.Logger {

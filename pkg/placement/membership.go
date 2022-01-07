@@ -108,6 +108,7 @@ func (p *Service) establishLeadership() {
 	p.hasLeadership.Store(true)
 }
 
+//  撤销领导者角色
 func (p *Service) revokeLeadership() {
 	p.hasLeadership.Store(false)
 
@@ -117,6 +118,7 @@ func (p *Service) revokeLeadership() {
 	p.cleanupHeartbeats()
 }
 
+// 清理心跳
 func (p *Service) cleanupHeartbeats() {
 	p.lastHeartBeat.Range(func(key, value interface{}) bool {
 		p.lastHeartBeat.Delete(key)

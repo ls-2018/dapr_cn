@@ -49,7 +49,7 @@ func newConfig() *config {
 		raftID:           "dapr-placement-0",
 		raftPeerString:   "dapr-placement-0=127.0.0.1:8201",
 		raftPeers:        []raft.PeerInfo{},
-		raftInMemEnabled: true,
+		raftInMemEnabled: true,// 先设置为TRUE
 		raftLogStorePath: "",
 
 		placementPort: defaultPlacementPort,   // 50005
@@ -77,7 +77,7 @@ func newConfig() *config {
 	flag.Parse()
 
 	cfg.raftPeers = parsePeersFromFlag(cfg.raftPeerString)
-	if cfg.raftLogStorePath != "" {
+	if cfg.raftLogStorePath != "" {// 如果没有设置存储路径,则构建基于内存的存储
 		cfg.raftInMemEnabled = false
 	}
 

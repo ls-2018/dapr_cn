@@ -39,7 +39,7 @@ func TestMain(m *testing.M) {
 
 	testRaftServer.StartRaft(nil)
 
-	// Wait until test raft node become a leader.
+	// 等待，直到测试raft节点成为leader
 	for range time.Tick(200 * time.Millisecond) {
 		if testRaftServer.IsLeader() {
 			break

@@ -27,29 +27,26 @@ import (
 
 var log = logger.NewLogger("dapr.placement")
 
+// 服务端流
 type placementGRPCStream placementv1pb.Placement_ReportDaprStatusServer
 
 const (
-	// membershipChangeChSize is the channel size of membership change request from Dapr runtime.
-	// MembershipChangeWorker will process actor host member change request.
+	// membershipChangeChSize 是来自Dapr runtime的成员变更请求的通道大小。MembershipChangeWorker将处理actor主持的成员变更请求。
 	membershipChangeChSize = 100
 
-	// faultyHostDetectDuration is the maximum duration when existing host is marked as faulty.
-	// Dapr runtime sends heartbeat every 1 second. Whenever placement server gets the heartbeat,
-	// it updates the last heartbeat time in UpdateAt of the FSM state. If Now - UpdatedAt exceeds
-	// faultyHostDetectDuration, membershipChangeWorker() tries to remove faulty Dapr runtime from
-	// membership.
-	// When placement gets the leadership, faultyHostDetectionDuration will be faultyHostDetectInitialDuration.
-	// This duration will give more time to let each runtime find the leader of placement nodes.
-	// Once the first dissemination happens after getting leadership, membershipChangeWorker will
+	// faultyHostDetectDuration是现有主机被标记为故障的最长时间。Dapr运行时每1秒发送一次心跳。每当安置服务器得到心跳，
+	//它就更新FSM状态UpdateAt中的最后一次心跳时间。如果Now - UpdatedAt超过faultyHostDetectDuration，
+	//membershipChangeWorker() 会尝试将有问题的Dapr runtime从 会员资格。
+	// 当放置得到领导权时，faultyHostDetectionDuration将是faultyHostDetectInitialDuration。
+	//这个持续时间将给予更多的时间让每个运行时找到安置节点的领导。一旦在获得领导权后发生第一次传播， membershipChangeWorker将
 	// use faultyHostDetectDefaultDuration.
 	faultyHostDetectInitialDuration = 6 * time.Second
 	faultyHostDetectDefaultDuration = 3 * time.Second
 
-	// faultyHostDetectInterval is the interval to check the faulty member.
+	// faultyHostDetectInterval 是检查故障成员的间隔时间。
 	faultyHostDetectInterval = 500 * time.Millisecond
 
-	// disseminateTimerInterval is the interval to disseminate the latest consistent hashing table.
+	// disseminateTimerInterval 是传播最新一致的散列表的时间间隔。
 	disseminateTimerInterval = 500 * time.Millisecond
 	// disseminateTimeout is the timeout to disseminate hashing tables after the membership change.
 	// When the multiple actor service pods are deployed first, a few pods are deployed in the beginning
@@ -66,50 +63,53 @@ type hostMemberChange struct {
 }
 
 // Service updates the Dapr runtimes with distributed hash tables for stateful entities.
+//更新Dapr runtime，为有状态实体提供分布式哈希表。
 type Service struct {
-	// serverListener is the TCP listener for placement gRPC server.
+	// serverListener placement grpc服务的tcp listener
 	serverListener net.Listener
-	// grpcServerLock is the lock fro grpcServer
+	// grpcServerLock
 	grpcServerLock *sync.Mutex
-	// grpcServer is the gRPC server for placement service.
+	// grpcServer placement grpc服务
 	grpcServer *grpc.Server
-	// streamConnPool has the stream connections established between placement gRPC server and Dapr runtime.
+	// streamConnPool  placement gRPC server and Dapr runtime之间建立的流连接
 	streamConnPool []placementGRPCStream
-	// streamConnPoolLock is the lock for streamConnPool change.
+	// streamConnPoolLock streamConnPool操作的锁
 	streamConnPoolLock *sync.RWMutex
 
-	// raftNode is the raft server instance.
+	// raftNode raft服务的节点
 	raftNode *raft.Server
 
-	// lastHeartBeat represents the last time stamp when runtime sent heartbeat.
+	// lastHeartBeat
 	lastHeartBeat *sync.Map
-	// membershipCh is the channel to maintain Dapr runtime host membership update.
+	// membershipCh 用于管理dapr runtime成员更新的channel
 	membershipCh chan hostMemberChange
-	// disseminateLock is the lock for hashing table dissemination.
+	// disseminateLock 是hash表传播的锁。
 	disseminateLock *sync.Mutex
-	// disseminateNextTime is the time when the hashing tables are disseminated.
+	// disseminateNextTime hash表传播的时间
 	disseminateNextTime atomic.Int64
-	// memberUpdateCount represents how many dapr runtimes needs to change.
-	// consistent hashing table. Only actor runtime's heartbeat will increase this.
+	// memberUpdateCount 表示有多少dapr运行时间需要改变。
+	//一致的散列表。只有actor runtimes的心跳会增加这个。
 	memberUpdateCount atomic.Uint32
 
 	// faultyHostDetectDuration
-	faultyHostDetectDuration *atomic.Int64
+	faultyHostDetectDuration *atomic.Int64 // 有故障的主机检测时间
 
-	// hasLeadership indicates the state for leadership.
+	// hasLeadership 是否是leader
 	hasLeadership atomic.Bool
 
 	// streamConnGroup represents the number of stream connections.
 	// This waits until all stream connections are drained when revoking leadership.
+	//代表流连接的数量。
+	//在撤销领导权时，这要等到所有的流连接被耗尽。
 	streamConnGroup sync.WaitGroup
 
-	// shutdownLock is the mutex to lock shutdown
+	// shutdownLock 停止锁
 	shutdownLock *sync.Mutex
-	// shutdownCh is the channel to be used for the graceful shutdown.
+	// shutdownCh 优雅关闭的channel
 	shutdownCh chan struct{}
 }
 
-// NewPlacementService returns a new placement service.
+// NewPlacementService 返回一个placement service
 func NewPlacementService(raftNode *raft.Server) *Service {
 	return &Service{
 		disseminateLock:          &sync.Mutex{},
@@ -125,7 +125,7 @@ func NewPlacementService(raftNode *raft.Server) *Service {
 	}
 }
 
-// Run starts the placement service gRPC server.
+// Run 开启placement service gRPC server.
 func (p *Service) Run(port string, certChain *dapr_credentials.CertChain) {
 	var err error
 	p.serverListener, err = net.Listen("tcp", fmt.Sprintf(":%s", port))
@@ -148,7 +148,7 @@ func (p *Service) Run(port string, certChain *dapr_credentials.CertChain) {
 	}
 }
 
-// Shutdown close all server connections.
+// Shutdown 关闭所有服务端连接
 func (p *Service) Shutdown() {
 	p.shutdownLock.Lock()
 	defer p.shutdownLock.Unlock()
@@ -175,7 +175,7 @@ TIMEOUT:
 	p.serverListener.Close()
 }
 
-// ReportDaprStatus gets a heartbeat report from different Dapr hosts.
+// ReportDaprStatus 获得各个节点的状态
 func (p *Service) ReportDaprStatus(stream placementv1pb.Placement_ReportDaprStatusServer) error {
 	registeredMemberID := ""
 	isActorRuntime := false
@@ -261,7 +261,7 @@ func (p *Service) ReportDaprStatus(stream placementv1pb.Placement_ReportDaprStat
 	return status.Error(codes.FailedPrecondition, "only leader can serve the request")
 }
 
-// addStreamConn adds stream connection between runtime and placement to the dissemination pool.
+// addStreamConn  dapr runtime <----> placement
 func (p *Service) addStreamConn(conn placementGRPCStream) {
 	p.streamConnPoolLock.Lock()
 	p.streamConnPool = append(p.streamConnPool, conn)
