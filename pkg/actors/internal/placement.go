@@ -390,7 +390,8 @@ func (p *ActorPlacement) onPlacementOrder(in *v1pb.PlacementOrder) {
 			// If placement experiences intermittently outage during updateplacement,
 			// user application will face 5 second blocking even if it can avoid deadlock.
 			// It can impact the entire system.
-			// 目前实现的是分布式两相锁算法。如果放置在更新放置过程中出现间歇性中断，即使可以避免死锁，用户应用程序也会面临5秒的阻塞。它会影响整个系统。
+			// 目前实现的是分布式两相锁算法。如果放置在更新放置过程中出现间歇性中断，
+			// 即使可以避免死锁，用户应用程序也会面临5秒的阻塞。它会影响整个系统。
 			time.Sleep(time.Second * 5)
 			p.unblockPlacements()
 		}()
@@ -443,7 +444,7 @@ func (p *ActorPlacement) updatePlacements(in *v1pb.PlacementTables) {
 		return
 	}
 
-	// 可以在内部调用LookupActor，所以不应该在placementtablellock锁定的情况下这样做。
+	// 可以在内部调用LookupActor，所以不应该在placement table lock锁定的情况下这样做。
 	p.afterTableUpdateFn()
 
 	log.Infof("placement tables updated, version: %s", in.GetVersion())
