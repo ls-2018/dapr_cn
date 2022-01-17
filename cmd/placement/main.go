@@ -65,14 +65,13 @@ func main() {
 	if raftServer == nil {
 		log.Fatal("failed to create raft server.")
 	}
-	// todo ;有个疑惑，居然没有阻塞设置诶
 	//cmd/placement/config.go:50
 	//Raft server is starting on 127.0.0.1:8201
 	if err := raftServer.StartRaft(nil); err != nil {
 		log.Fatalf("failed to start Raft Server: %v", err)
 	}
 
-	// Start Placement gRPC server.
+	// Start Placement gRPC server. // 复制因子 100
 	hashing.SetReplicationFactor(cfg.replicationFactor)
 
 	apiServer := placement.NewPlacementService(raftServer)
@@ -81,7 +80,7 @@ func main() {
 		certChain = loadCertChains(cfg.certChainPath)
 	}
 
-	go apiServer.MonitorLeadership()
+	go apiServer.MonitorLeadership() // 开始监听角色变换
 	//50005端口, tcp 非http
 	go apiServer.Run(strconv.Itoa(cfg.placementPort), certChain)
 	log.Infof("placement service started on port %d", cfg.placementPort)

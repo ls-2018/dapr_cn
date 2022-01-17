@@ -24,7 +24,7 @@ const (
 	barrierWriteTimeout            = 2 * time.Minute
 )
 
-// MonitorLeadership
+// MonitorLeadership 	// 监听leader变化,借鉴的consul的代码
 //是用来监督我们是否获得或失去我们的角色 作为Raft集群的领导者。领导者有一些工作要做
 //因此，我们必须对变化作出反应
 //
@@ -39,8 +39,9 @@ func (p *Service) MonitorLeadership() {
 		select {
 		case isLeader := <-leaderCh:
 			if isLeader {
+				// 可能在本身就是leader的情况下
 				if weAreLeaderCh != nil {
-					log.Error("attempted to start the leader loop while running")
+					log.Error("试图在运行过程中启动leader loop")
 					continue
 				}
 
@@ -50,18 +51,18 @@ func (p *Service) MonitorLeadership() {
 					defer leaderLoop.Done()
 					p.leaderLoop(ch)
 				}(weAreLeaderCh)
-				log.Info("cluster leadership acquired")
+				log.Info("获得的集群领导权")
 			} else {
 				if weAreLeaderCh == nil {
-					log.Error("attempted to stop the leader loop while not running")
+					log.Error("试图在不运行的情况下停止leader loop")
 					continue
 				}
 
-				log.Info("shutting down leader loop")
+				log.Info("停止 leader loop")
 				close(weAreLeaderCh)
-				leaderLoop.Wait()
+				leaderLoop.Wait() // 确保上边的go routinue 正常结束了
 				weAreLeaderCh = nil
-				log.Info("cluster leadership lost")
+				log.Info("丢失集群领导权")
 			}
 
 		case <-p.shutdownCh:
@@ -71,9 +72,9 @@ func (p *Service) MonitorLeadership() {
 }
 
 func (p *Service) leaderLoop(stopCh chan struct{}) {
-	// This loop is to ensure the FSM reflects all queued writes by applying Barrier
-	// and completes leadership establishment before becoming a leader.
+	// 这个循环是为了确保FSM通过应用屏障来反映所有排队的写入，并在成为领导之前完成领导的建立。
 	for !p.hasLeadership.Load() {
+		// 如果不是 leader
 		// for earlier stop
 		select {
 		case <-stopCh:
@@ -82,17 +83,19 @@ func (p *Service) leaderLoop(stopCh chan struct{}) {
 			return
 		default:
 		}
-
+		//是用来发布一个命令，该命令会阻断直到所有前面的操作都被应用到FSM上。
+		//它可以用来确保FSM反映所有排队的写操作。可以提供一个可选的超时来限制我们等待命令启动的时间。
+		//这必须在领导者上运行，否则会失败。
 		barrier := p.raftNode.Raft().Barrier(barrierWriteTimeout)
 		if err := barrier.Error(); err != nil {
-			log.Error("failed to wait for barrier", "error", err)
+			log.Error("没能等到屏障", "error", err)
 			continue
 		}
 
 		if !p.hasLeadership.Load() {
 			p.establishLeadership()
-			log.Info("leader is established.")
-			// revoke leadership process must be done before leaderLoop() ends.
+			log.Info("获得 leader.")
+			// 撤销leader 的过程必须在leaderLoop()结束前完成。
 			defer p.revokeLeadership()
 		}
 	}
@@ -100,8 +103,10 @@ func (p *Service) leaderLoop(stopCh chan struct{}) {
 	p.membershipChangeWorker(stopCh)
 }
 
+// 确立leader角色
 func (p *Service) establishLeadership() {
 	// Give more time to let each runtime to find the leader and connect to the leader.
+	// 给予更多的时间，让每个runtime找到leader并与leader连接。
 	p.faultyHostDetectDuration.Store(int64(faultyHostDetectInitialDuration))
 
 	p.membershipCh = make(chan hostMemberChange, membershipChangeChSize)
@@ -112,7 +117,7 @@ func (p *Service) establishLeadership() {
 func (p *Service) revokeLeadership() {
 	p.hasLeadership.Store(false)
 
-	log.Info("Waiting until all connections are drained.")
+	log.Info("等到所有的连接都被耗尽")
 	p.streamConnGroup.Wait()
 
 	p.cleanupHeartbeats()
@@ -126,11 +131,10 @@ func (p *Service) cleanupHeartbeats() {
 	})
 }
 
-// membershipChangeWorker is the worker to change the state of membership
-// and update the consistent hashing tables for actors.
+// membershipChangeWorker  更新成员状态的哈希表
 func (p *Service) membershipChangeWorker(stopCh chan struct{}) {
-	faultyHostDetectTimer := time.NewTicker(faultyHostDetectInterval)
-	disseminateTimer := time.NewTicker(disseminateTimerInterval)
+	faultyHostDetectTimer := time.NewTicker(faultyHostDetectInterval) // 故障节点 检测时间
+	disseminateTimer := time.NewTicker(disseminateTimerInterval)// 广播最新的哈希表的时间
 
 	p.memberUpdateCount.Store(0)
 
@@ -298,6 +302,8 @@ func (p *Service) performTableDissemination() {
 // It first locks so no further dapr can be taken it. Once placement table is locked
 // in runtime, it proceeds to update new table to Dapr runtimes and then unlock
 // once all runtimes have been updated.
+//使用3个阶段的提交更新所连接的dapr运行时。它首先锁定，所以不能再有任何dapr被占用。
+//一旦安置表在运行时被锁定，它将继续更新新表到Dapr运行时，然后解锁 一旦所有的运行时都被更新了，再解锁。
 func (p *Service) performTablesUpdate(hosts []placementGRPCStream, newTable *v1pb.PlacementTables) {
 	// TODO: error from disseminationOperation needs to be handle properly.
 	// Otherwise, each Dapr runtime will have inconsistent hashing table.

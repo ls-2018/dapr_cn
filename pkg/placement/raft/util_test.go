@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//OK
 func TestEnsureDir(t *testing.T) {
 	testDir := "_testDir"
 	t.Run("create dir successfully", func(t *testing.T) {
@@ -44,6 +45,7 @@ func TestEnsureDir(t *testing.T) {
 	})
 }
 
+//OK
 func TestRaftAddressForID(t *testing.T) {
 	raftAddressTests := []struct {
 		in  []PeerInfo
@@ -73,6 +75,7 @@ func TestRaftAddressForID(t *testing.T) {
 	}
 }
 
+//OK
 func TestMarshalAndUnmarshalMsgpack(t *testing.T) {
 	type testStruct struct {
 		Name            string
@@ -100,6 +103,7 @@ func TestMarshalAndUnmarshalMsgpack(t *testing.T) {
 	assert.Nil(t, decoded.notSerialized)
 }
 
+//OK
 func TestMakeRaftLogCommand(t *testing.T) {
 	// arrange
 	testMember := DaprHostMember{

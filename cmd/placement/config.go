@@ -36,7 +36,7 @@ type config struct {
 	certChainPath string
 	tlsEnabled    bool
 
-	replicationFactor int
+	replicationFactor int // 复制因子
 
 	// 日志、指标 配置
 	loggerOptions   logger.Options

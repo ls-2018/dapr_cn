@@ -34,7 +34,6 @@ type PeerInfo struct {
 	Address string
 }
 
-//
 // Server raft协议的实现
 type Server struct {
 	id  string
@@ -72,6 +71,7 @@ func New(id string, inMem bool, peers []PeerInfo, logStorePath string) *Server {
 	}
 }
 
+// 尝试解析raft地址
 func tryResolveRaftAdvertiseAddr(bindAddr string) (*net.TCPAddr, error) {
 	//HACKHACK：Kubernetes POD的DNS A记录 需要等一些时间
 	// 才能在StatefulSet POD部署后需要一些时间来查询地址。
@@ -236,10 +236,10 @@ func (s *Server) IsLeader() bool {
 	return s.raft.State() == raft.Leader
 }
 
-// ApplyCommand applies command log to state machine to upsert or remove members.
+// ApplyCommand 将命令日志应用于状态机，以增加或删除成员。
 func (s *Server) ApplyCommand(cmdType CommandType, data DaprHostMember) (bool, error) {
 	if !s.IsLeader() {
-		return false, errors.New("this is not the leader node")
+		return false, errors.New("这不是leader节点")
 	}
 
 	cmdLog, err := makeRaftLogCommand(cmdType, data)
@@ -256,13 +256,13 @@ func (s *Server) ApplyCommand(cmdType CommandType, data DaprHostMember) (bool, e
 	return resp.(bool), nil
 }
 
-// Shutdown shutdown raft server gracefully.
+// Shutdown 优雅停止raft服务
 func (s *Server) Shutdown() {
 	if s.raft != nil {
 		s.raftTransport.Close()
 		future := s.raft.Shutdown()
 		if err := future.Error(); err != nil {
-			logging.Warnf("error shutting down raft: %v", err)
+			logging.Warnf("停止raft出错: %v", err)
 		}
 		if s.raftStore != nil {
 			s.raftStore.Close()

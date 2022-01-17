@@ -278,3 +278,6 @@ func (p *Service) deleteStreamConn(conn placementGRPCStream) {
 	}
 	p.streamConnPoolLock.Unlock()
 }
+
+
+//var _ Placement = NewPlacementService(nil)

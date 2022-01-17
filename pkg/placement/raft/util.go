@@ -15,8 +15,10 @@ import (
 
 const defaultDirPermission = 0755
 
+// 创建新目录
 func ensureDir(dirName string) error {
 	info, err := os.Stat(dirName)
+	// 存在 且 不是文件
 	if !os.IsNotExist(err) && !info.Mode().IsDir() {
 		return errors.New("file already existed")
 	}
@@ -28,6 +30,7 @@ func ensureDir(dirName string) error {
 	return err
 }
 
+// 构建raft 日志命令 的消息体
 func makeRaftLogCommand(t CommandType, member DaprHostMember) ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
 	buf.WriteByte(uint8(t))
@@ -38,6 +41,7 @@ func makeRaftLogCommand(t CommandType, member DaprHostMember) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// 序列化消息体
 func marshalMsgPack(in interface{}) ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
 	enc := codec.NewEncoder(buf, &codec.MsgpackHandle{})
@@ -48,11 +52,13 @@ func marshalMsgPack(in interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// 反序列化消息体
 func unmarshalMsgPack(in []byte, out interface{}) error {
 	dec := codec.NewDecoderBytes(in, &codec.MsgpackHandle{})
 	return dec.Decode(out)
 }
 
+// 根据ID返回地址
 func raftAddressForID(id string, nodes []PeerInfo) string {
 	for _, node := range nodes {
 		if node.ID == id {

@@ -230,10 +230,11 @@ func (s *DaprHostMemberState) restore(r io.Reader) error {
 	return nil
 }
 
+// 将s.data 写入到w
 func (s *DaprHostMemberState) persist(w io.Writer) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-
+	// 序列化消息体
 	b, err := marshalMsgPack(s.data)
 	if err != nil {
 		return err
