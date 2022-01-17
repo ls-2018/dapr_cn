@@ -48,12 +48,9 @@ const (
 
 	// disseminateTimerInterval 是传播最新一致的散列表的时间间隔。
 	disseminateTimerInterval = 500 * time.Millisecond
-	// disseminateTimeout is the timeout to disseminate hashing tables after the membership change.
-	// When the multiple actor service pods are deployed first, a few pods are deployed in the beginning
-	// and the rest of pods will be deployed gradually. disseminateNextTime is maintained to decide when
-	// the hashing table is disseminated. disseminateNextTime is updated whenever membership change
-	// is applied to raft state or each pod is deployed. If we increase disseminateTimeout, it will
-	// reduce the frequency of dissemination, but it will delay the table dissemination.
+	// disseminateTimeout 是actor节点变化后传播hash表的超时。当首先部署多个角色服务pod时，在开始时部署几个pod，
+	//其余的pod将逐步部署。传播下一次时间被维护，以决定何时传播散列表。传播下一次时间在成员变化被应用到筏子状态或每个pod被部署时被更新。
+	//如果我们增加 disseminateTimeout，将减少传播的频率，但会延迟表的传播。
 	disseminateTimeout = 2 * time.Second
 )
 
@@ -62,7 +59,7 @@ type hostMemberChange struct {
 	host    raft.DaprHostMember
 }
 
-// Service updates the Dapr runtimes with distributed hash tables for stateful entities.
+// Service
 //更新Dapr runtime，为有状态实体提供分布式哈希表。
 type Service struct {
 	// serverListener placement grpc服务的tcp listener
@@ -199,7 +196,7 @@ func (p *Service) ReportDaprStatus(stream placementv1pb.Placement_ReportDaprStat
 				registeredMemberID = req.Name // 实例地址
 				p.addStreamConn(stream)
 				// TODO: If each sidecar can report table version, then placement
-				// 不需要向每个边车传播表格。
+				// 新注册的，返回已存在的所有actor数据。
 				p.performTablesUpdate([]placementGRPCStream{stream}, p.raftNode.FSM().PlacementState())
 				log.Debugf("Stream connection is established from %s", registeredMemberID)
 			}
@@ -262,7 +259,7 @@ func (p *Service) ReportDaprStatus(stream placementv1pb.Placement_ReportDaprStat
 			} else {
 				// 没有对hash表的操作。相反，MembershipChangeWorker将检查主机的更新时间
 				// 如果现在-更新时间>p.faultyHostDetectDuration，则删除主机。
-				log.Debugf("Stream connection is disconnected with the error: %v", err)
+				log.Debugf("流链接已经断开: %v", err)
 			}
 
 			return nil

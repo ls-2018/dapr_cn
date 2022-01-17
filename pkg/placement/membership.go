@@ -191,7 +191,7 @@ func (p *Service) membershipChangeWorker(stopCh chan struct{}) {
 					if elapsed < p.faultyHostDetectDuration.Load() {
 						continue
 					}
-					log.Debugf("Try to remove outdated host: %s, elapsed: %d ns", v.Name, elapsed)
+					log.Debugf("尝试删除过时的主机: %s, elapsed: %d ns", v.Name, elapsed)
 
 					p.membershipCh <- hostMemberChange{
 						cmdType: raft.MemberRemove,

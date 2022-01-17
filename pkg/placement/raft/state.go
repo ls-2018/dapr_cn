@@ -200,7 +200,6 @@ func (s *DaprHostMemberState) isActorHost(host *DaprHostMember) bool {
 	return len(host.Entities) > 0
 }
 
-// caller should holds lock.
 func (s *DaprHostMemberState) restoreHashingTables() {
 	if s.data.hashingTableMap == nil {
 		s.data.hashingTableMap = map[string]*hashing.Consistent{}

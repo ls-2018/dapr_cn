@@ -368,7 +368,7 @@ func (p *ActorPlacement) establishStreamConn() (v1pb.Placement_ReportDaprStatusC
 	return nil, nil
 }
 
-// 处理placement的消息
+// 处理placement的消息[actor 节点的变更]
 func (p *ActorPlacement) onPlacementOrder(in *v1pb.PlacementOrder) {
 	log.Debugf("接收到placement消息: %s", in.Operation)
 	diag.DefaultMonitoring.ActorPlacementTableOperationReceived(in.Operation)
@@ -377,6 +377,9 @@ func (p *ActorPlacement) onPlacementOrder(in *v1pb.PlacementOrder) {
 	p.operationUpdateLock.Lock()
 	defer p.operationUpdateLock.Unlock()
 
+	//1、lock
+	//2、update
+	//3、unlock
 	switch in.Operation {
 	case lockOperation: // 锁定
 		p.blockPlacements()
