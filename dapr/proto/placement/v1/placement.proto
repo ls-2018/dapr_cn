@@ -35,6 +35,6 @@ message Host {
   string name = 1;
   int64 port = 2;
   int64 load = 3;
-  repeated string entities = 4;
-  string id = 5;
+  repeated string entities = 4; // actor 类型的数组
+  string id = 5; // 应用ID
 }

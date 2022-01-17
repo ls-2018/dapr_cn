@@ -47,7 +47,7 @@ type FSM struct {
 	//stateLock仅用于保护State()的外部调用者不与Restore()竞争，后者由Raft调用(它放入一个全新的状态存储)。
 	//这里的所有内部内容都是由Raft端同步的，所以不需要锁这个。
 	stateLock sync.RWMutex
-	state     *DaprHostMemberState
+	state     *DaprHostMemberState // dapr成员状态
 }
 
 func newFSM() *FSM {
@@ -78,6 +78,7 @@ func (c *FSM) PlacementState() *v1pb.PlacementTables {
 	totalLoadMap := 0
 
 	entries := c.state.hashingTableMap()
+	//TODO 再遍历过程中发生了变化
 	for k, v := range entries {
 		hosts, sortedSet, loadMap, totalLoad := v.GetInternals()
 		table := v1pb.PlacementTable{
@@ -109,11 +110,11 @@ func (c *FSM) PlacementState() *v1pb.PlacementTables {
 		totalLoadMap += len(table.LoadMap)
 	}
 
-	logging.Debugf("PlacementTable Size, Hosts: %d, SortedSet: %d, LoadMap: %d", totalHostSize, totalSortedSet, totalLoadMap)
+	logging.Debugf("PlacementTable 大小, 主机数: %d, 排序集: %d, LoadMap: %d", totalHostSize, totalSortedSet, totalLoadMap)
 
 	return newTable
 }
-
+// OK
 func (c *FSM) upsertMember(cmdData []byte) (bool, error) {
 	var host DaprHostMember
 	if err := unmarshalMsgPack(cmdData, &host); err != nil {
@@ -125,7 +126,7 @@ func (c *FSM) upsertMember(cmdData []byte) (bool, error) {
 
 	return c.state.upsertMember(&host), nil
 }
-
+// OK
 func (c *FSM) removeMember(cmdData []byte) (bool, error) {
 	var host DaprHostMember
 	if err := unmarshalMsgPack(cmdData, &host); err != nil {
@@ -137,6 +138,12 @@ func (c *FSM) removeMember(cmdData []byte) (bool, error) {
 
 	return c.state.removeMember(&host), nil
 }
+
+var _ raft.FSM = &FSM{}
+
+//Apply(*Log) interface{} 执行一条日志
+//Snapshot() (FSMSnapshot, error)// 返回一个快照
+//Restore(io.ReadCloser) error//
 
 // Apply 当提交日志时，就会触发
 func (c *FSM) Apply(log *raft.Log) interface{} {

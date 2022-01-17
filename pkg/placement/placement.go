@@ -87,8 +87,7 @@ type Service struct {
 	disseminateLock *sync.Mutex
 	// disseminateNextTime hash表传播的时间
 	disseminateNextTime atomic.Int64
-	// memberUpdateCount 表示有多少dapr运行时间需要改变。
-	//一致的散列表。只有actor runtimes的心跳会增加这个。
+	// memberUpdateCount 表示有多少dapr运行时间需要改变。一致的hash表。只有actor runtimes的心跳会增加这个。
 	memberUpdateCount atomic.Uint32
 
 	// faultyHostDetectDuration
@@ -138,6 +137,7 @@ func (p *Service) Run(port string, certChain *dapr_credentials.CertChain) {
 		log.Fatalf("error creating gRPC options: %s", err)
 	}
 	grpcServer := grpc.NewServer(opts...)
+	var _ placementv1pb.PlacementServer = NewPlacementService(nil)
 	placementv1pb.RegisterPlacementServer(grpcServer, p)
 	p.grpcServerLock.Lock()
 	p.grpcServer = grpcServer
@@ -175,47 +175,58 @@ TIMEOUT:
 	p.serverListener.Close()
 }
 
-// ReportDaprStatus 获得各个节点的状态
+// ReportDaprStatus 获得节点的状态  (客户端的流,-->一直接收消息)
 func (p *Service) ReportDaprStatus(stream placementv1pb.Placement_ReportDaprStatusServer) error {
+	// 唯一客户端会请求的函数
 	registeredMemberID := ""
-	isActorRuntime := false
+	isActorRuntime := false // 是不是actor 实例
 
 	p.streamConnGroup.Add(1)
 	defer func() {
 		p.streamConnGroup.Done()
 		p.deleteStreamConn(stream)
 	}()
-
+	// 如果本节点是leader
 	for p.hasLeadership.Load() {
 		req, err := stream.Recv()
+		//				Name:     p.runtimeHostName, // 10.10.16.72:50002  daprInternalGRPCPort
+		//				Entities: p.actorTypes,      // []string
+		//				Id:       p.appID,           // dp-61b1a6e4382df1ff8c3cdff1-workerapp
+		//				Load:     1,                 // Not used yet
 		switch err {
 		case nil:
 			if registeredMemberID == "" {
-				registeredMemberID = req.Name
+				registeredMemberID = req.Name // 实例地址
 				p.addStreamConn(stream)
 				// TODO: If each sidecar can report table version, then placement
-				// doesn't need to disseminate tables to each sidecar.
+				// 不需要向每个边车传播表格。
 				p.performTablesUpdate([]placementGRPCStream{stream}, p.raftNode.FSM().PlacementState())
 				log.Debugf("Stream connection is established from %s", registeredMemberID)
 			}
 
-			// Ensure that the incoming runtime is actor instance.
+			// 确保传入的runtime是actor实例。
 			isActorRuntime = len(req.Entities) > 0
 			if !isActorRuntime {
-				// ignore if this runtime is non-actor.
+				// 如果不是actor,忽略
 				continue
 			}
 
-			// Record the heartbeat timestamp. This timestamp will be used to check if the member
-			// state maintained by raft is valid or not. If the member is outdated based the timestamp
-			// the member will be marked as faulty node and removed.
+			// 记录心跳的时间戳。
+			//这个时间戳将被用来检查由raft维护的成员状态是否有效。
+			//如果该成员根据时间戳已经过期，该成员将被标记为有问题的节点并被删除。
 			p.lastHeartBeat.Store(req.Name, time.Now().UnixNano())
 
 			members := p.raftNode.FSM().State().Members()
 
 			// Upsert incoming member only if it is an actor service (not actor client) and
 			// the existing member info is unmatched with the incoming member info.
+			// 只有当它是一个actor server（不是actor client），并且现有的成员信息与传入的成员信息不匹配时，才会将传入的成员上移。
 			upsertRequired := true
+			//				Name:     p.runtimeHostName, // 10.10.16.72:50002  daprInternalGRPCPort
+			//				Entities: p.actorTypes,      // []string
+			//				Id:       p.appID,           // dp-61b1a6e4382df1ff8c3cdff1-workerapp
+			//				Load:     1,                 // Not used yet
+			// appid 一致、ip:port 一致、actor 完全一致,则不用更新
 			if m, ok := members[req.Name]; ok {
 				if m.AppID == req.Id && m.Name == req.Name && cmp.Equal(m.Entities, req.Entities) {
 					upsertRequired = false
@@ -236,12 +247,12 @@ func (p *Service) ReportDaprStatus(stream placementv1pb.Placement_ReportDaprStat
 
 		default:
 			if registeredMemberID == "" {
-				log.Error("stream is disconnected before member is added")
+				log.Error("在添加成员之前，流被断开了")
 				return nil
 			}
 
 			if err == io.EOF {
-				log.Debugf("Stream connection is disconnected gracefully: %s", registeredMemberID)
+				log.Debugf("Stream链接已经被优雅关闭: %s", registeredMemberID)
 				if isActorRuntime {
 					p.membershipCh <- hostMemberChange{
 						cmdType: raft.MemberRemove,
@@ -249,8 +260,8 @@ func (p *Service) ReportDaprStatus(stream placementv1pb.Placement_ReportDaprStat
 					}
 				}
 			} else {
-				// no actions for hashing table. Instead, MembershipChangeWorker will check
-				// host updatedAt and if now - updatedAt > p.faultyHostDetectDuration, remove hosts.
+				// 没有对hash表的操作。相反，MembershipChangeWorker将检查主机的更新时间
+				// 如果现在-更新时间>p.faultyHostDetectDuration，则删除主机。
 				log.Debugf("Stream connection is disconnected with the error: %v", err)
 			}
 
@@ -258,7 +269,7 @@ func (p *Service) ReportDaprStatus(stream placementv1pb.Placement_ReportDaprStat
 		}
 	}
 
-	return status.Error(codes.FailedPrecondition, "only leader can serve the request")
+	return status.Error(codes.FailedPrecondition, "只有leader才能处理请求")
 }
 
 // addStreamConn  dapr runtime <----> placement
@@ -268,6 +279,7 @@ func (p *Service) addStreamConn(conn placementGRPCStream) {
 	p.streamConnPoolLock.Unlock()
 }
 
+// OK
 func (p *Service) deleteStreamConn(conn placementGRPCStream) {
 	p.streamConnPoolLock.Lock()
 	for i, c := range p.streamConnPool {
@@ -278,6 +290,3 @@ func (p *Service) deleteStreamConn(conn placementGRPCStream) {
 	}
 	p.streamConnPoolLock.Unlock()
 }
-
-
-//var _ Placement = NewPlacementService(nil)

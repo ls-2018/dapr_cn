@@ -26,6 +26,12 @@ func issue() {
 	//panic: runtime error: comparing uncomparable type map[string]interface {}
 	fmt.Println(reflect.DeepEqual(a.Data, b.Data))
 	//fmt.Println(a.Data == b.Data)
+	c:=make(chan int,0)
+	go func() {
+		c<-1
+	}()
+	fmt.Println(len(c ))
+
 }
 
 func a() {

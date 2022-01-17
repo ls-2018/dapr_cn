@@ -30,7 +30,7 @@ type DaprHostMemberStateData struct {
 	// Index raft 日志索引号
 	Index uint64
 	// Members 包括Dapr运行时主机。
-	Members map[string]*DaprHostMember
+	Members map[string]*DaprHostMember // ip:port=DaprHostMember{}
 
 	// TableGeneration  hashingTableMap 版本号
 	TableGeneration uint64
@@ -47,6 +47,7 @@ type DaprHostMemberState struct {
 	data DaprHostMemberStateData
 }
 
+//
 func newDaprHostMemberState() *DaprHostMemberState {
 	return &DaprHostMemberState{
 		data: DaprHostMemberStateData{
@@ -115,7 +116,7 @@ func (s *DaprHostMemberState) clone() *DaprHostMemberState {
 	return newMembers
 }
 
-// caller should holds lock.
+// 调用者应持有锁。
 func (s *DaprHostMemberState) updateHashingTables(host *DaprHostMember) {
 	for _, e := range host.Entities {
 		if _, ok := s.data.hashingTableMap[e]; !ok {
@@ -126,7 +127,7 @@ func (s *DaprHostMemberState) updateHashingTables(host *DaprHostMember) {
 	}
 }
 
-// caller should holds lock.
+// 调用方应该持锁
 func (s *DaprHostMemberState) removeHashingTables(host *DaprHostMember) {
 	for _, e := range host.Entities {
 		if t, ok := s.data.hashingTableMap[e]; ok {
@@ -141,8 +142,7 @@ func (s *DaprHostMemberState) removeHashingTables(host *DaprHostMember) {
 	}
 }
 
-// upsertMember upserts member host info to the FSM state and returns true
-// if the hashing table update happens.
+// upsertMember 将成员主机信息上传到FSM状态，如果发生hash表更新，则返回true。
 func (s *DaprHostMemberState) upsertMember(host *DaprHostMember) bool {
 	if !s.isActorHost(host) {
 		return false
@@ -150,16 +150,15 @@ func (s *DaprHostMemberState) upsertMember(host *DaprHostMember) bool {
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
-
+	// 如果存在相同的dapr主机成员，则不需要更新一致的hash表
 	if m, ok := s.data.Members[host.Name]; ok {
-		// No need to update consistent hashing table if the same dapr host member exists
+		//
 		if m.AppID == host.AppID && m.Name == host.Name && cmp.Equal(m.Entities, host.Entities) {
 			m.UpdatedAt = host.UpdatedAt
 			return false
 		}
-
-		// Remove hashing table because the existing member is invalid
-		// and needs to be updated by new member info.
+		// TODO 存在一种可能,UpdatedAt 由于某种原因时间晚
+		// 移除散列表，因为现有的成员是无效的 并需要被新的成员信息所更新。
 		s.removeHashingTables(m)
 	}
 
@@ -169,21 +168,18 @@ func (s *DaprHostMemberState) upsertMember(host *DaprHostMember) bool {
 		UpdatedAt: host.UpdatedAt,
 	}
 
-	// Update hashing table only when host reports actor types
 	s.data.Members[host.Name].Entities = make([]string, len(host.Entities))
 	copy(s.data.Members[host.Name].Entities, host.Entities)
 
 	s.updateHashingTables(s.data.Members[host.Name])
 
-	// Increase hashing table generation version. Runtime will compare the table generation
-	// version with its own and then update it if it is new.
+	// 增加hash表的生成版本。运行时将把表的生成版本与自己的版本进行比较，如果是新的，就更新它。
 	s.data.TableGeneration++
 
 	return true
 }
 
-// removeMember removes members from membership and update hashing table and returns true
-// if hashing table update happens.
+// removeMember 从成员资格中删除成员，并更新hash表，如果hash表发生更新，则返回true。
 func (s *DaprHostMemberState) removeMember(host *DaprHostMember) bool {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -199,6 +195,7 @@ func (s *DaprHostMemberState) removeMember(host *DaprHostMember) bool {
 	return false
 }
 
+// 是不是actor实例
 func (s *DaprHostMemberState) isActorHost(host *DaprHostMember) bool {
 	return len(host.Entities) > 0
 }

@@ -27,7 +27,7 @@ var (
 		"The total number of actor runtimes reported to placement service.",
 		stats.UnitDimensionless)
 
-	noKeys = []tag.Key{}
+	noKeys []tag.Key
 )
 
 // RecordRuntimesCount 记录 connected runtimes.

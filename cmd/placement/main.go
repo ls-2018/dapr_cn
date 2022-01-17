@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"github.com/dapr/dapr/pkg/placement/monitoring"
 	"os"
 	"os/signal"
 	"strconv"
@@ -20,7 +21,6 @@ import (
 	"github.com/dapr/dapr/pkg/health"      // ok
 	"github.com/dapr/dapr/pkg/placement"
 	"github.com/dapr/dapr/pkg/placement/hashing"
-	"github.com/dapr/dapr/pkg/placement/monitoring"
 	"github.com/dapr/dapr/pkg/placement/raft"
 	"github.com/dapr/dapr/pkg/version" // ok
 )
@@ -59,6 +59,8 @@ func main() {
 	if err := monitoring.InitMetrics(); err != nil {
 		log.Fatal(err)
 	}
+	// http://127.0.0.1:8080/healthz 根据响应码判断运行状态
+	go startHealthzServer(cfg.healthzPort)
 
 	// 启动raft集群，
 	raftServer := raft.New(cfg.raftID, cfg.raftInMemEnabled, cfg.raftPeers, cfg.raftLogStorePath)
@@ -85,8 +87,6 @@ func main() {
 	go apiServer.Run(strconv.Itoa(cfg.placementPort), certChain)
 	log.Infof("placement service started on port %d", cfg.placementPort)
 
-	// http://127.0.0.1:8080/healthz 根据响应码判断运行状态
-	go startHealthzServer(cfg.healthzPort)
 	// Relay incoming process signal to exit placement gracefully
 	signalCh := make(chan os.Signal, 10)
 	gracefulExitCh := make(chan struct{})
@@ -152,3 +152,7 @@ func loadCertChains(certChainPath string) *credentials.CertChain {
 
 	return chain
 }
+
+// ./placement -id dapr-placement-0 -port 30001 -initial-cluster dapr-placement-0=127.0.0.1:8201,dapr-placement-1=127.0.0.1:8202,dapr-placement-2=127.0.0.1:8203
+// ./placement -id dapr-placement-1 -port 30002 -initial-cluster dapr-placement-0=127.0.0.1:8201,dapr-placement-1=127.0.0.1:8202,dapr-placement-2=127.0.0.1:8203
+// ./placement -id dapr-placement-2 -port 30003 -initial-cluster dapr-placement-0=127.0.0.1:8201,dapr-placement-1=127.0.0.1:8202,dapr-placement-2=127.0.0.1:8203
