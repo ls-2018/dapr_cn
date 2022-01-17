@@ -134,7 +134,7 @@ func (p *Service) cleanupHeartbeats() {
 // membershipChangeWorker  更新成员状态的哈希表
 func (p *Service) membershipChangeWorker(stopCh chan struct{}) {
 	faultyHostDetectTimer := time.NewTicker(faultyHostDetectInterval) // 节点删除检测周期
-	disseminateTimer := time.NewTicker(disseminateTimerInterval)// 定时广播最新的 hash表
+	disseminateTimer := time.NewTicker(disseminateTimerInterval)      // 定时广播最新的 hash表
 
 	p.memberUpdateCount.Store(0)
 
@@ -257,9 +257,9 @@ func (p *Service) processRaftStateCommand(stopCh chan struct{}) {
 //OK
 func (p *Service) performTableDissemination() {
 	p.streamConnPoolLock.RLock()
-	nStreamConnPool := len(p.streamConnPool)// 当前有多少个 dapr runtime 客户端
+	nStreamConnPool := len(p.streamConnPool) // 当前有多少个 dapr runtime 客户端
 	p.streamConnPoolLock.RUnlock()
-	nTargetConns := len(p.raftNode.FSM().State().Members())//有多少个actor实例
+	nTargetConns := len(p.raftNode.FSM().State().Members()) //有多少个actor实例
 	monitoring.RecordRuntimesCount(nStreamConnPool)
 	monitoring.RecordActorRuntimesCount(nTargetConns)
 	// 如果没有成员更新，则不传播。
@@ -274,7 +274,7 @@ func (p *Service) performTableDissemination() {
 		streamConnPool := make([]placementGRPCStream, len(p.streamConnPool))
 		copy(streamConnPool, p.streamConnPool)
 		p.streamConnPoolLock.RUnlock()
-		p.performTablesUpdate(streamConnPool, state)// 将当前的state信息,传输到每一个stream客户端
+		p.performTablesUpdate(streamConnPool, state) // 将当前的state信息,传输到每一个stream客户端
 		log.Infof(
 			"广播数据完成. 成员更新次数: %d, streams: %d, targets: %d, table generation: %s",
 			cnt, nStreamConnPool, nTargetConns, state.Version)
@@ -297,6 +297,12 @@ func (p *Service) performTablesUpdate(hosts []placementGRPCStream, newTable *v1p
 	p.disseminateOperation(hosts, "lock", nil)
 	p.disseminateOperation(hosts, "update", newTable)
 	p.disseminateOperation(hosts, "unlock", nil)
+	//	现有逻辑: 某个actor Type change ,eg A，会将所有的actor runtime 【client】所保存的actor信息全部替换
+	// 	then：
+	//		向所有hosts发送lock,此时如果client 调用某一个actor A; 需要等待 WaitUntilPlacementTableIsReady 执行完毕;
+	//  那么这就会导致集群中所有的client调用全部阻塞
+	//	 如果过程现有的样子，那么只会阻塞某一个调用actor A 的 client
+
 }
 
 func (p *Service) disseminateOperation(targets []placementGRPCStream, operation string, tables *v1pb.PlacementTables) error {
@@ -333,4 +339,5 @@ func (p *Service) disseminateOperation(targets []placementGRPCStream, operation 
 
 	return err
 }
+
 //-id dapr-placement-0 -port 30001 -initial-cluster dapr-placement-0=127.0.0.1:8201,dapr-placement-1=127.0.0.1:8202,dapr-placement-2=127.0.0.1:8203
