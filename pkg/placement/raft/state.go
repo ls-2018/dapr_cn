@@ -38,7 +38,7 @@ type DaprHostMemberStateData struct {
 	// hashingTableMap is the map for storing consistent hashing data
 	// hashingTableMap是用d于存储每个Actor类型的一致哈希数据的映射。当日志条目被重播时将会生成。在对状态进行快照时，
 	//不会保存该成员。相反，hashingTableMap将在快照恢复过程中恢复。
-	hashingTableMap map[string]*hashing.Consistent
+	hashingTableMap map[string]*hashing.Consistent //  ip:port=Consistent{}
 }
 
 // DaprHostMemberState 存储Dapr运行时主机和一致的哈希表的状态。
@@ -170,7 +170,7 @@ func (s *DaprHostMemberState) upsertMember(host *DaprHostMember) bool {
 
 	s.data.Members[host.Name].Entities = make([]string, len(host.Entities))
 	copy(s.data.Members[host.Name].Entities, host.Entities)
-
+	// 将同一个key ,设置了n个副本
 	s.updateHashingTables(s.data.Members[host.Name])
 
 	// 增加hash表的生成版本。运行时将把表的生成版本与自己的版本进行比较，如果是新的，就更新它。

@@ -26,11 +26,12 @@ func issue() {
 	//panic: runtime error: comparing uncomparable type map[string]interface {}
 	fmt.Println(reflect.DeepEqual(a.Data, b.Data))
 	//fmt.Println(a.Data == b.Data)
-	c:=make(chan int,0)
+	c := make(chan int, 0)
 	go func() {
-		c<-1
+		c <- 1
 	}()
-	fmt.Println(len(c ))
+	fmt.Println(len(c))
+	SortSearch()
 
 }
 
@@ -75,4 +76,14 @@ func x() {
 		fmt.Println(msg)
 	}
 	fmt.Println(123)
+}
+
+func SortSearch() {
+	arrInts := []int{13, 35, 56, 79}
+	findPos := sort.Search(len(arrInts), func(i int) bool {
+		return arrInts[i] == 35
+	})
+
+	fmt.Println(findPos)
+	return
 }

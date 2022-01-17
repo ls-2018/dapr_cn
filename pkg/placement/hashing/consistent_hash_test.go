@@ -20,7 +20,7 @@ func TestReplicationFactor(t *testing.T) {
 		keys = append(keys, fmt.Sprint(i))
 	}
 
-	t.Run("varying replication factors, no movement", func(t *testing.T) {
+	t.Run("不同的复制因子，没有移动", func(t *testing.T) {
 		factors := []int{1, 100, 1000, 10000}
 
 		for _, f := range factors {

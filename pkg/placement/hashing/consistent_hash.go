@@ -51,9 +51,9 @@ type Host struct {
 
 // Consistent 一致性哈希
 type Consistent struct {
-	hosts     map[uint64]string
-	sortedSet []uint64          // actorID散列值[会重复replicationFactor]
-	loadMap   map[string]*Host  // 主机名与主机实例的绑定
+	hosts     map[uint64]string // 对 ip:port+i 进行的hash = ip:port
+	sortedSet []uint64          // 对 ip:port+i 进行的hash    散列值[会重复replicationFactor]
+	loadMap   map[string]*Host  // 主机名与主机实例的绑定    ip:port=Host{}
 	totalLoad int64
 
 	sync.RWMutex
@@ -118,7 +118,7 @@ func (c *Consistent) Add(host, id string, port int64) bool {
 		c.hosts[h] = host
 		c.sortedSet = append(c.sortedSet, h)
 	}
-	// sort hashes ascendingly
+	// 对哈希值进行升序排序
 	sort.Slice(c.sortedSet, func(i int, j int) bool {
 		return c.sortedSet[i] < c.sortedSet[j]
 	})
@@ -184,6 +184,7 @@ func (c *Consistent) GetLeast(key string) (string, error) {
 		}
 	}
 }
+
 // 在排序好的列表中寻找第一个>=key的值的下标
 func (c *Consistent) search(key uint64) int {
 	idx := sort.Search(len(c.sortedSet), func(i int) bool {
@@ -242,7 +243,7 @@ func (c *Consistent) Remove(host string) bool {
 	for i := 0; i < replicationFactor; i++ {
 		h := c.hash(fmt.Sprintf("%s%d", host, i))
 		delete(c.hosts, h)
-		c.delSlice(h)
+		c.delSlice(h) // 从hashSet中删除某个指定的值
 	}
 	delete(c.loadMap, host)
 	return true
@@ -314,7 +315,7 @@ func (c *Consistent) loadOK(host string) bool {
 
 // 从sortedSet删除指定值
 func (c *Consistent) delSlice(val uint64) {
-	// 为啥不使用sort.search
+	// 为啥不使用sort.search code_debug/todo/todo.go:81
 	idx := -1
 	l := 0
 	r := len(c.sortedSet) - 1
