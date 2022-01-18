@@ -38,10 +38,9 @@ operator = controlPlaneAddress = dapr-api.dapr-system.svc.cluster.local:80
 - injector 负责将daprd注入到副本集中
 - placement  raft 只负责记录actor 实例 ;以及将所有actor记录同步到每一个actor实例中
   - backoff.Retry 函数重试
-  - todo
   - 1、在同步actor数据到client时,为什么要分三次请求，lock,update,unlock
   - 2、placement收到【客户端流】client心跳时,并不会等到raft同步完后再返回，而是交给了一个channel处理
-  
+    - pkg/placement/placement.go:234
 
 ``` 
     -   /usr/local/go/src/crypto/x509/root_unix.go:20
